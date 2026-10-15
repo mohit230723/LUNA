@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "luna"
+version = "0.1.0"
+description = "LUNA OS: Graph-Native Multi-Agent Orchestrator on FalkorDB"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "falkordb>=1.0.0",
+    "graphrag-sdk>=0.3.0",
+    "langchain-ollama>=0.1.0",
+    "mcp>=1.0.0",
+    "pydantic>=2.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "networkx>=3.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["luna*"]
