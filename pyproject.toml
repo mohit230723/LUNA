@@ -24,3 +24,7 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["luna*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

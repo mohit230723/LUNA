@@ -1,0 +1,124 @@
+"""GraphStore connection wrapper and execution engine for FalkorDB."""
+
+from typing import Any, Optional
+import re
+import falkordb
+from luna.config import settings
+
+
+class GraphStore:
+    """Manages multi-graph connections, queries, and lifecycle on FalkorDB."""
+
+    def __init__(
+        self,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        client: Optional[Any] = None,
+    ) -> None:
+        self.host = host or settings.FALKORDB_HOST
+        self.port = port or settings.FALKORDB_PORT
+        self._client = client
+
+    @property
+    def client(self) -> falkordb.FalkorDB:
+        """Lazily initialize FalkorDB client connection."""
+        if self._client is None:
+            self._client = falkordb.FalkorDB(host=self.host, port=self.port)
+        return self._client
+
+    def _validate_query_safety(self, query_str: str, params: Optional[dict[str, Any]]) -> None:
+        """Enforce parameterized query safety and reject unsafe interpolation patterns."""
+        if not query_str or not isinstance(query_str, str):
+            raise ValueError("Query string must be a non-empty string.")
+
+        # Reject python string formatting indicators
+        if "%s" in query_str or "%d" in query_str or "{}" in query_str:
+            raise ValueError("Unsafe string formatting detected in query. Use $param syntax.")
+
+        # Check for multiple statements / SQL-injection-style chaining
+        if ";" in query_str.rstrip(";"):
+            raise ValueError("Multiple statements separated by semicolon are not permitted.")
+
+        # If parameters exist in query ($param), ensure params dictionary is provided
+        param_matches = set(re.findall(r"\$([a-zA-Z0-9_]+)", query_str))
+        if param_matches:
+            if not params:
+                raise ValueError(
+                    f"Query references parameters {param_matches} but no params dictionary was provided."
+                )
+            missing = param_matches - set(params.keys())
+            if missing:
+                raise ValueError(f"Missing query parameters: {missing}")
+
+    def select_graph(self, graph_name: str) -> Any:
+        """Get graph instance for specified named graph."""
+        if not graph_name or not isinstance(graph_name, str):
+            raise ValueError("Graph name must be a valid non-empty string.")
+        return self.client.select_graph(graph_name)
+
+    def query(
+        self,
+        graph_name: str,
+        query_str: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> list[dict[str, Any]]:
+        """Execute a parameterized Cypher query and return rows as dictionaries."""
+        self._validate_query_safety(query_str, params)
+        graph = self.select_graph(graph_name)
+
+        result = graph.query(query_str, params or {})
+
+        rows: list[dict[str, Any]] = []
+        if not hasattr(result, "result_set") or not result.result_set:
+            return rows
+
+        # Extract column names from header
+        headers: list[str] = []
+        if hasattr(result, "header") and result.header:
+            for col in result.header:
+                if isinstance(col, (list, tuple)) and len(col) > 1:
+                    headers.append(str(col[1]))
+                else:
+                    headers.append(str(col))
+
+        for record in result.result_set:
+            row_dict: dict[str, Any] = {}
+            for idx, item in enumerate(record):
+                col_name = headers[idx] if idx < len(headers) else f"col_{idx}"
+                # Handle FalkorDB Node/Edge or primitive objects
+                if hasattr(item, "properties"):
+                    row_dict[col_name] = item.properties
+                else:
+                    row_dict[col_name] = item
+            rows.append(row_dict)
+
+        return rows
+
+    def delete_graph(self, graph_name: str) -> bool:
+        """Delete named graph from FalkorDB."""
+        try:
+            graph = self.select_graph(graph_name)
+            if hasattr(graph, "delete"):
+                graph.delete()
+                return True
+            return False
+        except Exception:
+            return False
+
+    def list_graphs(self) -> list[str]:
+        """List all active graphs in FalkorDB instance."""
+        try:
+            return self.client.list_graphs()
+        except Exception:
+            return []
+
+    def copy_graph(self, source_graph_name: str, target_graph_name: str) -> bool:
+        """Copy a graph into another named graph."""
+        try:
+            graph = self.select_graph(source_graph_name)
+            if hasattr(graph, "copy"):
+                graph.copy(target_graph_name)
+                return True
+            return False
+        except Exception:
+            return False
