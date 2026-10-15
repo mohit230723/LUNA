@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-15T23:26:00+05:30
+updated: 2026-10-15T23:33:00+05:30
 ---
 
 # Project State
@@ -8,20 +8,19 @@ updated: 2026-10-15T23:26:00+05:30
 
 **Milestone:** v1.0  
 **Phase:** 2 - Execution, Isolation & Promotion  
-**Status:** ready_to_execute  
-**Plan:** 2.1 - Per-Agent FastMCP Server & Client Session Builder  
+**Status:** executing  
+**Plan:** 2.2 - Sub-Graph Slice Extraction (k-Hop Neighborhoods)  
 
 ## Last Action
 
-Completed Phase 2 planning (`/plan 2`): created `RESEARCH.md` and 4 atomic plans (`2.1-PLAN.md` through `2.4-PLAN.md`) across 2 waves.
+Completed Plan 2.1: Per-Agent FastMCP Server (`luna/mcp/server.py`) and Client Session Adapter (`luna/mcp/client.py`) with strict tool scoping, graph name pinning, and 32/32 tests passing.
 
 ## Next Steps
 
-1. Execute Plan 2.1: `luna/mcp/server.py` and `luna/mcp/client.py` with tests in `tests/test_mcp.py`.
-2. Execute Plan 2.2: `luna/orchestrator/slice.py` with tests in `tests/test_slice.py`.
-3. Execute Plan 2.3: `luna/agents/models.py` and `luna/agents/subagent.py` with tests in `tests/test_subagent.py`.
-4. Execute Plan 2.4: `luna/orchestrator/promote.py` with tests in `tests/test_promote.py`.
-5. Verify Phase 2 with empirical evidence.
+1. Execute Plan 2.2: Sub-Graph Slice Extraction (`luna/orchestrator/slice.py`) copying k-hop neighborhoods from `domain` to `agent_<run>_<agent>` with tests in `tests/test_slice.py`.
+2. Execute Plan 2.3: Sub-Agent Execution Loop (`luna/agents/subagent.py`) with tests in `tests/test_subagent.py`.
+3. Execute Plan 2.4: Finding Promotion Engine (`luna/orchestrator/promote.py`) with tests in `tests/test_promote.py`.
+4. Verify Phase 2 with empirical evidence.
 
 ## Active Decisions
 
@@ -41,8 +40,8 @@ None.
 
 ## Concerns
 
-- Ensure FastMCP tool registration properly validates and binds private graph names so agents cannot query domain directly.
+- FalkorDB Cypher `path` unwinding across multi-hop relationships: ensure both directionalities are captured during k-hop slice extraction.
 
 ## Session Context
 
-Phase 1 is verified with 28 passing unit tests. Phase 2 plans are ready for execution!
+Plan 2.1 is executed. Plan 2.2 (Sub-graph slice extraction) is up next.

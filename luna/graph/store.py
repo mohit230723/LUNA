@@ -76,10 +76,11 @@ class GraphStore:
         headers: list[str] = []
         if hasattr(result, "header") and result.header:
             for col in result.header:
-                if isinstance(col, (list, tuple)) and len(col) > 1:
-                    headers.append(str(col[1]))
+                val = col[1] if (isinstance(col, (list, tuple)) and len(col) > 1) else col
+                if isinstance(val, bytes):
+                    headers.append(val.decode("utf-8"))
                 else:
-                    headers.append(str(col))
+                    headers.append(str(val))
 
         for record in result.result_set:
             row_dict: dict[str, Any] = {}
