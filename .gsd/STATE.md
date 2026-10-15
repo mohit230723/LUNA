@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-15T23:36:00+05:30
+updated: 2026-10-15T23:39:00+05:30
 ---
 
 # Project State
@@ -9,17 +9,17 @@ updated: 2026-10-15T23:36:00+05:30
 **Milestone:** v1.0  
 **Phase:** 2 - Execution, Isolation & Promotion  
 **Status:** executing  
-**Plan:** 2.3 - Sub-Agent Execution Loop & Draft Findings  
+**Plan:** 2.4 - Finding Promotion Engine & Evidence Verification  
 
 ## Last Action
 
-Completed Plan 2.2: Sub-Graph Slice Extraction (`luna/orchestrator/slice.py`) isolating k-hop induced subgraphs into private agent graphs (`agent_<run>_<agent>`) with 36/36 tests passing.
+Completed Plan 2.3: Sub-Agent Execution Loop (`luna/agents/models.py`, `luna/agents/subagent.py`) with autonomous observe-orient-decide-act loop, structured findings, and 40/40 tests passing.
 
 ## Next Steps
 
-1. Execute Plan 2.3: Sub-Agent Execution Loop (`luna/agents/models.py`, `luna/agents/subagent.py`) with tests in `tests/test_subagent.py`.
-2. Execute Plan 2.4: Finding Promotion Engine (`luna/orchestrator/promote.py`) with tests in `tests/test_promote.py`.
-3. Verify Phase 2 with empirical evidence.
+1. Execute Plan 2.4: Finding Promotion Engine (`luna/orchestrator/promote.py`) validating evidence `cid` existence against agent slices before merging to `run_<id>` with tests in `tests/test_promote.py`.
+2. Verify Phase 2 with empirical evidence report (`.gsd/phases/2/VERIFICATION.md`).
+3. Advance to Phase 3: Conflict Resolution & Action Lifecycle.
 
 ## Active Decisions
 
@@ -39,8 +39,8 @@ None.
 
 ## Concerns
 
-- Sub-agent structured LLM synthesis: ensure deterministic heuristic fallback is always in place if LLM response is malformed or offline during tests.
+- None.
 
 ## Session Context
 
-Plans 2.1 and 2.2 are complete. Plan 2.3 (Sub-agent execution loop) is up next.
+Plans 2.1, 2.2, and 2.3 are complete. Plan 2.4 (Finding promotion engine) is the final plan in Phase 2!
