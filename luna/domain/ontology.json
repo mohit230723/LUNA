@@ -1,0 +1,106 @@
+{
+  "entities": [
+    {
+      "name": "Customer",
+      "description": "Insurance policyholder or claimant",
+      "attributes": [
+        {"name": "cid", "type": "STRING", "description": "Unique customer identifier"},
+        {"name": "name", "type": "STRING", "description": "Full name of the customer"},
+        {"name": "flagged", "type": "BOOLEAN", "description": "Whether customer has been flagged for investigation"}
+      ]
+    },
+    {
+      "name": "Provider",
+      "description": "Medical provider or clinic providing treatment for claims",
+      "attributes": [
+        {"name": "cid", "type": "STRING", "description": "Unique provider identifier"},
+        {"name": "name", "type": "STRING", "description": "Business or clinic name"},
+        {"name": "specialty", "type": "STRING", "description": "Medical specialty"}
+      ]
+    },
+    {
+      "name": "InsuranceClaim",
+      "description": "Insurance claim filed by a customer",
+      "attributes": [
+        {"name": "cid", "type": "STRING", "description": "Unique claim identifier"},
+        {"name": "amount", "type": "FLOAT", "description": "Claim amount in dollars"},
+        {"name": "date", "type": "STRING", "description": "Date of incident or filing"},
+        {"name": "status", "type": "STRING", "description": "Settlement or review status"}
+      ]
+    },
+    {
+      "name": "Policy",
+      "description": "Insurance policy held by a customer",
+      "attributes": [
+        {"name": "cid", "type": "STRING", "description": "Unique policy identifier"},
+        {"name": "policy_type", "type": "STRING", "description": "Coverage type"},
+        {"name": "coverage_limit", "type": "FLOAT", "description": "Maximum payout limit"}
+      ]
+    },
+    {
+      "name": "Phone",
+      "description": "Contact telephone number",
+      "attributes": [
+        {"name": "cid", "type": "STRING", "description": "Unique phone identifier"},
+        {"name": "number", "type": "STRING", "description": "Phone number string"}
+      ]
+    },
+    {
+      "name": "Address",
+      "description": "Physical residential or billing address",
+      "attributes": [
+        {"name": "cid", "type": "STRING", "description": "Unique address identifier"},
+        {"name": "street", "type": "STRING", "description": "Street address"},
+        {"name": "city", "type": "STRING", "description": "City name"},
+        {"name": "zip", "type": "STRING", "description": "Postal code"}
+      ]
+    },
+    {
+      "name": "BankAccount",
+      "description": "Bank account used for premium payments and claim payouts",
+      "attributes": [
+        {"name": "cid", "type": "STRING", "description": "Unique bank account identifier"},
+        {"name": "account_number", "type": "STRING", "description": "Masked or explicit account number"},
+        {"name": "bank_name", "type": "STRING", "description": "Financial institution name"}
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "type": "HOLDS",
+      "source": "Customer",
+      "target": "Policy",
+      "description": "Customer holds policy"
+    },
+    {
+      "type": "FILED",
+      "source": "Customer",
+      "target": "InsuranceClaim",
+      "description": "Customer filed insurance claim"
+    },
+    {
+      "type": "TREATED_BY",
+      "source": "InsuranceClaim",
+      "target": "Provider",
+      "description": "Claim treatment provided by clinic/provider"
+    },
+    {
+      "type": "USES_PHONE",
+      "source": "Customer",
+      "target": "Phone",
+      "description": "Customer uses phone number"
+    },
+    {
+      "type": "LIVES_AT",
+      "source": "Customer",
+      "target": "Address",
+      "description": "Customer resides at address"
+    },
+    {
+      "type": "PAYS_FROM",
+      "source": "Customer",
+      "target": "BankAccount",
+      "description": "Customer pays from or receives deposits into bank account"
+    }
+  ]
+}
