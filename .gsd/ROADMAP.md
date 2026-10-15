@@ -11,10 +11,10 @@ updated: 2026-10-15T22:15:00+05:30
 
 ## Must-Haves (from SPEC)
 
-- [ ] FalkorDB multi-graph store with parameterized Cypher queries and isolated graph naming.
-- [ ] Synthetic claims domain generator with planted 8-node fraud ring, 4-node decoy family, and GraphRAG ontology.
-- [ ] Atlas skill catalog with 7 skills and 6 tools (`ask_graph` + 5 deterministic algorithm tools).
-- [ ] Task decomposition and graph-based skill selection logging chosen and rejected candidates.
+- [x] FalkorDB multi-graph store with parameterized Cypher queries and isolated graph naming.
+- [x] Synthetic claims domain generator with planted 8-node fraud ring, 4-node decoy family, and GraphRAG ontology.
+- [x] Atlas skill catalog with 7 skills and 6 tools (`ask_graph` + 5 deterministic algorithm tools).
+- [x] Task decomposition and graph-based skill selection logging chosen and rejected candidates.
 - [ ] FastMCP per-agent tool scoping over stdio.
 - [ ] Private sub-graph slice extraction and sub-agent execution loop drafting findings.
 - [ ] Finding promotion validating evidence against private slices into shared run memory.
@@ -29,16 +29,16 @@ updated: 2026-10-15T22:15:00+05:30
 ## Phases
 
 ### Phase 1: Foundation & Graph Infrastructure
-**Status:** ⬜ Not Started  
+**Status:** ✅ Complete  
 **Objective:** Establish FalkorDB Docker container, connection/query wrapper (`GraphStore`), synthetic domain generator with planted fraud ring, GraphRAG ontology, `atlas` skill catalog, algorithm tool registry, Ollama LLM client, and task decomposition / skill selection engine.  
 **Requirements:** REQ-01, REQ-02, REQ-03, REQ-04, REQ-05, REQ-06, REQ-07, REQ-08  
 
 **Plans:**
-- [ ] Plan 1.1: Environment setup, Docker Compose (FalkorDB), schema constants, and `GraphStore` wrapper with test suite.
-- [ ] Plan 1.2: Synthetic domain generator (`luna/domain/generate.py`) with planted fraud ring / decoy family, ground truth exporter, and `ontology.json`.
-- [ ] Plan 1.3: `atlas` graph seeder (`luna/atlas/seed.py`) with 7 skills, capabilities, dependencies, and tool bindings.
-- [ ] Plan 1.4: Tool registry with 5 deterministic graph algorithm tools plus GraphRAG SDK `ask_graph` integration.
-- [ ] Plan 1.5: `LLMClient` protocol, `ChatOllama` wrapper with JSON mode, mock client, task decomposition, and `atlas` skill selection queries.
+- [x] Plan 1.1: Environment setup, Docker Compose (FalkorDB), schema constants, and `GraphStore` wrapper with test suite.
+- [x] Plan 1.2: Synthetic domain generator (`luna/domain/generate.py`) with planted fraud ring / decoy family, ground truth exporter, and `ontology.json`.
+- [x] Plan 1.3: `atlas` graph seeder (`luna/atlas/seed.py`) with 7 skills, capabilities, dependencies, and tool bindings.
+- [x] Plan 1.4: Tool registry with 5 deterministic graph algorithm tools plus GraphRAG SDK `ask_graph` integration.
+- [x] Plan 1.5: `LLMClient` protocol, `ChatOllama` wrapper with JSON mode, mock client, task decomposition, and `atlas` skill selection queries.
 
 ---
 
@@ -101,11 +101,11 @@ updated: 2026-10-15T22:15:00+05:30
 
 | Phase | Status | Plans | Complete |
 |-------|--------|-------|----------|
-| 1: Foundation & Graph Infrastructure | ⬜ | 0/5 | 0% |
-| 2: Execution, Isolation & Promotion | ⬜ | 0/4 | 0% |
-| 3: Conflict Resolution & Action Lifecycle | ⬜ | 0/4 | 0% |
-| 4: Explainability & Backend API | ⬜ | 0/3 | 0% |
-| 5: Obsidian UI & Final Polish | ⬜ | 0/4 | 0% |
+| 1: Foundation & Graph Infrastructure | ✅ Complete | 5/5 | 100% |
+| 2: Execution, Isolation & Promotion | ⬜ Not Started | 0/4 | 0% |
+| 3: Conflict Resolution & Action Lifecycle | ⬜ Not Started | 0/4 | 0% |
+| 4: Explainability & Backend API | ⬜ Not Started | 0/3 | 0% |
+| 5: Obsidian UI & Final Polish | ⬜ Not Started | 0/4 | 0% |
 
 ---
 
@@ -113,7 +113,7 @@ updated: 2026-10-15T22:15:00+05:30
 
 | Phase | Started | Completed | Duration |
 |-------|---------|-----------|----------|
-| 1: Foundation & Graph Infrastructure | — | — | — |
+| 1: Foundation & Graph Infrastructure | 2026-10-15 | 2026-10-15 | 1 day |
 | 2: Execution, Isolation & Promotion | — | — | — |
 | 3: Conflict Resolution & Action Lifecycle | — | — | — |
 | 4: Explainability & Backend API | — | — | — |

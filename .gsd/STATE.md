@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-15T22:25:00+05:30
+updated: 2026-10-15T23:21:00+05:30
 ---
 
 # Project State
@@ -7,22 +7,22 @@ updated: 2026-10-15T22:25:00+05:30
 ## Current Position
 
 **Milestone:** v1.0  
-**Phase:** 1 - Foundation & Graph Infrastructure  
-**Status:** ready for execution  
-**Plan:** 1.1 - Docker Compose, Schema Constants & GraphStore Wrapper  
+**Phase:** 2 - Execution, Isolation & Promotion  
+**Status:** ready_to_plan  
+**Plan:** None  
 
 ## Last Action
 
-Completed Phase 1 planning (`/plan 1`). Created 5 atomic execution plans across 3 waves in `.gsd/phases/1/`, validated against all 6 dimensions of the GSD Plan Checker.
+Verified Phase 1 (Foundation & Graph Infrastructure) with 28/28 unit tests passing across all core modules and generated `.gsd/phases/1/VERIFICATION.md` with verdict PASS.
 
 ## Next Steps
 
-1. Execute Phase 1 plans: `/execute 1` (or start with Plan 1.1).
-2. Plan 1.1: Environment setup, `docker-compose.yml`, `luna/config.py`, `luna/graph/schema.py`, and `luna/graph/store.py`.
-3. Plan 1.2: Synthetic domain generator (`luna/domain/generate.py`) and `ontology.json`.
-4. Plan 1.3: Atlas skill catalog seeder (`luna/atlas/seed.py`).
-5. Plan 1.4: Tool registry, deterministic graph algorithms, and GraphRAG `ask_graph`.
-6. Plan 1.5: LLM client protocol, task decomposition, and atlas skill matching.
+1. Plan Phase 2 (`/plan 2`): Break down REQ-09, REQ-10, REQ-11, REQ-12 into atomic plans:
+   - Plan 2.1: Per-agent FastMCP server & stdio client session builder (`luna/mcp/`).
+   - Plan 2.2: Sub-graph extraction copying k-hop neighborhoods into private agent graphs (`luna/orchestrator/slice.py`).
+   - Plan 2.3: Sub-agent execution loop with draft findings generation (`luna/agents/subagent.py`).
+   - Plan 2.4: Finding promotion engine validating evidence `cid` existence against agent slices before merging to `run_<id>` (`luna/orchestrator/promote.py`).
+2. Execute Phase 2 plans with atomic commits and empirical tests.
 
 ## Active Decisions
 
@@ -42,9 +42,8 @@ None.
 
 ## Concerns
 
-- Local Docker daemon must be running to start FalkorDB on port 6379 for live integration tests.
-- Local Ollama instance should have `llama3.1:8b` pulled (`ollama pull llama3.1:8b`).
+- FastMCP Python SDK stdio server execution in Windows Python 3.12: ensure transport setup works cleanly both in subprocess/stdio mode and in in-memory test harnesses.
 
 ## Session Context
 
-Phase 1 plans are verified and locked. Ready for execution via `/execute 1`.
+Phase 1 is complete and verified with 28 unit tests passing. Phase 2 begins now!
