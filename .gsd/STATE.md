@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-15T23:33:00+05:30
+updated: 2026-10-15T23:36:00+05:30
 ---
 
 # Project State
@@ -9,18 +9,17 @@ updated: 2026-10-15T23:33:00+05:30
 **Milestone:** v1.0  
 **Phase:** 2 - Execution, Isolation & Promotion  
 **Status:** executing  
-**Plan:** 2.2 - Sub-Graph Slice Extraction (k-Hop Neighborhoods)  
+**Plan:** 2.3 - Sub-Agent Execution Loop & Draft Findings  
 
 ## Last Action
 
-Completed Plan 2.1: Per-Agent FastMCP Server (`luna/mcp/server.py`) and Client Session Adapter (`luna/mcp/client.py`) with strict tool scoping, graph name pinning, and 32/32 tests passing.
+Completed Plan 2.2: Sub-Graph Slice Extraction (`luna/orchestrator/slice.py`) isolating k-hop induced subgraphs into private agent graphs (`agent_<run>_<agent>`) with 36/36 tests passing.
 
 ## Next Steps
 
-1. Execute Plan 2.2: Sub-Graph Slice Extraction (`luna/orchestrator/slice.py`) copying k-hop neighborhoods from `domain` to `agent_<run>_<agent>` with tests in `tests/test_slice.py`.
-2. Execute Plan 2.3: Sub-Agent Execution Loop (`luna/agents/subagent.py`) with tests in `tests/test_subagent.py`.
-3. Execute Plan 2.4: Finding Promotion Engine (`luna/orchestrator/promote.py`) with tests in `tests/test_promote.py`.
-4. Verify Phase 2 with empirical evidence.
+1. Execute Plan 2.3: Sub-Agent Execution Loop (`luna/agents/models.py`, `luna/agents/subagent.py`) with tests in `tests/test_subagent.py`.
+2. Execute Plan 2.4: Finding Promotion Engine (`luna/orchestrator/promote.py`) with tests in `tests/test_promote.py`.
+3. Verify Phase 2 with empirical evidence.
 
 ## Active Decisions
 
@@ -40,8 +39,8 @@ None.
 
 ## Concerns
 
-- FalkorDB Cypher `path` unwinding across multi-hop relationships: ensure both directionalities are captured during k-hop slice extraction.
+- Sub-agent structured LLM synthesis: ensure deterministic heuristic fallback is always in place if LLM response is malformed or offline during tests.
 
 ## Session Context
 
-Plan 2.1 is executed. Plan 2.2 (Sub-graph slice extraction) is up next.
+Plans 2.1 and 2.2 are complete. Plan 2.3 (Sub-agent execution loop) is up next.
