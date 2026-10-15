@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-15T23:21:00+05:30
+updated: 2026-10-15T23:26:00+05:30
 ---
 
 # Project State
@@ -8,21 +8,20 @@ updated: 2026-10-15T23:21:00+05:30
 
 **Milestone:** v1.0  
 **Phase:** 2 - Execution, Isolation & Promotion  
-**Status:** ready_to_plan  
-**Plan:** None  
+**Status:** ready_to_execute  
+**Plan:** 2.1 - Per-Agent FastMCP Server & Client Session Builder  
 
 ## Last Action
 
-Verified Phase 1 (Foundation & Graph Infrastructure) with 28/28 unit tests passing across all core modules and generated `.gsd/phases/1/VERIFICATION.md` with verdict PASS.
+Completed Phase 2 planning (`/plan 2`): created `RESEARCH.md` and 4 atomic plans (`2.1-PLAN.md` through `2.4-PLAN.md`) across 2 waves.
 
 ## Next Steps
 
-1. Plan Phase 2 (`/plan 2`): Break down REQ-09, REQ-10, REQ-11, REQ-12 into atomic plans:
-   - Plan 2.1: Per-agent FastMCP server & stdio client session builder (`luna/mcp/`).
-   - Plan 2.2: Sub-graph extraction copying k-hop neighborhoods into private agent graphs (`luna/orchestrator/slice.py`).
-   - Plan 2.3: Sub-agent execution loop with draft findings generation (`luna/agents/subagent.py`).
-   - Plan 2.4: Finding promotion engine validating evidence `cid` existence against agent slices before merging to `run_<id>` (`luna/orchestrator/promote.py`).
-2. Execute Phase 2 plans with atomic commits and empirical tests.
+1. Execute Plan 2.1: `luna/mcp/server.py` and `luna/mcp/client.py` with tests in `tests/test_mcp.py`.
+2. Execute Plan 2.2: `luna/orchestrator/slice.py` with tests in `tests/test_slice.py`.
+3. Execute Plan 2.3: `luna/agents/models.py` and `luna/agents/subagent.py` with tests in `tests/test_subagent.py`.
+4. Execute Plan 2.4: `luna/orchestrator/promote.py` with tests in `tests/test_promote.py`.
+5. Verify Phase 2 with empirical evidence.
 
 ## Active Decisions
 
@@ -42,8 +41,8 @@ None.
 
 ## Concerns
 
-- FastMCP Python SDK stdio server execution in Windows Python 3.12: ensure transport setup works cleanly both in subprocess/stdio mode and in in-memory test harnesses.
+- Ensure FastMCP tool registration properly validates and binds private graph names so agents cannot query domain directly.
 
 ## Session Context
 
-Phase 1 is complete and verified with 28 unit tests passing. Phase 2 begins now!
+Phase 1 is verified with 28 passing unit tests. Phase 2 plans are ready for execution!
