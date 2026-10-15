@@ -15,9 +15,9 @@ updated: 2026-10-15T22:15:00+05:30
 - [x] Synthetic claims domain generator with planted 8-node fraud ring, 4-node decoy family, and GraphRAG ontology.
 - [x] Atlas skill catalog with 7 skills and 6 tools (`ask_graph` + 5 deterministic algorithm tools).
 - [x] Task decomposition and graph-based skill selection logging chosen and rejected candidates.
-- [ ] FastMCP per-agent tool scoping over stdio.
-- [ ] Private sub-graph slice extraction and sub-agent execution loop drafting findings.
-- [ ] Finding promotion validating evidence against private slices into shared run memory.
+- [x] FastMCP per-agent tool scoping over stdio.
+- [x] Private sub-graph slice extraction and sub-agent execution loop drafting findings.
+- [x] Finding promotion validating evidence against private slices into shared run memory.
 - [ ] Contradiction detection (`CONFLICTS_WITH`) and resolution with superseded audit state.
 - [ ] Human approval gate, idempotent domain action execution, and cross-run learning score update.
 - [ ] Cypher "Why?" path query tracing complete decision justifications.
@@ -43,16 +43,16 @@ updated: 2026-10-15T22:15:00+05:30
 ---
 
 ### Phase 2: Execution, Isolation & Promotion
-**Status:** ⬜ Not Started  
+**Status:** ✅ Complete  
 **Objective:** Implement per-agent FastMCP server exposing only equipped skills, k-hop private slice extraction from domain graph into `agent_<run>_<agent>`, sub-agent execution loop with draft findings, and finding promotion engine with strict evidence validation.  
 **Requirements:** REQ-09, REQ-10, REQ-11, REQ-12  
 **Depends on:** Phase 1  
 
 **Plans:**
-- [ ] Plan 2.1: Per-agent FastMCP server & stdio client session builder.
-- [ ] Plan 2.2: Sub-graph extraction copying k-hop neighborhoods into private agent graphs.
-- [ ] Plan 2.3: Sub-agent execution loop (system prompt fragment + MCP tool calls + draft findings generation).
-- [ ] Plan 2.4: Finding promotion engine validating evidence `cid` existence against agent slices before merging to `run_<id>`.
+- [x] Plan 2.1: Per-agent FastMCP server & stdio client session builder.
+- [x] Plan 2.2: Sub-graph extraction copying k-hop neighborhoods into private agent graphs.
+- [x] Plan 2.3: Sub-agent execution loop (system prompt fragment + MCP tool calls + draft findings generation).
+- [x] Plan 2.4: Finding promotion engine validating evidence `cid` existence against agent slices before merging to `run_<id>`.
 
 ---
 
@@ -102,7 +102,7 @@ updated: 2026-10-15T22:15:00+05:30
 | Phase | Status | Plans | Complete |
 |-------|--------|-------|----------|
 | 1: Foundation & Graph Infrastructure | ✅ Complete | 5/5 | 100% |
-| 2: Execution, Isolation & Promotion | ⬜ Not Started | 0/4 | 0% |
+| 2: Execution, Isolation & Promotion | ✅ Complete | 4/4 | 100% |
 | 3: Conflict Resolution & Action Lifecycle | ⬜ Not Started | 0/4 | 0% |
 | 4: Explainability & Backend API | ⬜ Not Started | 0/3 | 0% |
 | 5: Obsidian UI & Final Polish | ⬜ Not Started | 0/4 | 0% |
@@ -114,7 +114,7 @@ updated: 2026-10-15T22:15:00+05:30
 | Phase | Started | Completed | Duration |
 |-------|---------|-----------|----------|
 | 1: Foundation & Graph Infrastructure | 2026-10-15 | 2026-10-15 | 1 day |
-| 2: Execution, Isolation & Promotion | — | — | — |
+| 2: Execution, Isolation & Promotion | 2026-10-15 | 2026-10-15 | 1 day |
 | 3: Conflict Resolution & Action Lifecycle | — | — | — |
 | 4: Explainability & Backend API | — | — | — |
 | 5: Obsidian UI & Final Polish | — | — | — |
