@@ -7,7 +7,13 @@ from luna.config import settings
 
 
 class GraphStore:
-    """Manages multi-graph connections, queries, and lifecycle on FalkorDB."""
+    """Manages multi-graph connections, queries, and lifecycle on FalkorDB.
+
+    Security Architecture:
+    Strict query parameterization ($param) is the primary protection against Cypher injection.
+    The internal validation guard (_validate_query_safety) is a secondary safety net to catch
+    accidental string interpolation, format placeholders, or statement chaining before transmission.
+    """
 
     def __init__(
         self,
@@ -32,8 +38,15 @@ class GraphStore:
         if not query_str or not isinstance(query_str, str):
             raise ValueError("Query string must be a non-empty string.")
 
-        # Reject python string formatting indicators
-        if "%s" in query_str or "%d" in query_str or "{}" in query_str:
+        # Reject python string formatting indicators (%s, %d, {}, {0})
+        if (
+            "%s" in query_str
+            or "%d" in query_str
+            or "%r" in query_str
+            or "%f" in query_str
+            or "{}" in query_str
+            or re.search(r"\{[0-9]+\}", query_str)
+        ):
             raise ValueError("Unsafe string formatting detected in query. Use $param syntax.")
 
         # Check for multiple statements / SQL-injection-style chaining

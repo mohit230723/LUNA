@@ -56,6 +56,56 @@ def test_query_safety_validation():
         store.query("test_graph", "MATCH (c:Customer {cid: $cid, name: $name}) RETURN c", {"cid": "c1"})
 
 
+def test_allows_property_maps():
+    """Verify that property map syntax in Cypher patterns is allowed and validated."""
+    mock_client = MagicMock()
+    mock_graph = MagicMock()
+    mock_client.select_graph.return_value = mock_graph
+    mock_graph.query.return_value = MagicMock(header=[[0, "c"]], result_set=[])
+    store = GraphStore(client=mock_client)
+
+    # Should execute without safety error when $cid is parameterized
+    rows = store.query("test_graph", "MATCH (c:Customer {cid: $cid}) RETURN c", {"cid": "cust-01"})
+    assert rows == []
+
+
+def test_allows_map_literal_in_return():
+    """Verify that Cypher map literals in RETURN projections are allowed."""
+    mock_client = MagicMock()
+    mock_graph = MagicMock()
+    mock_client.select_graph.return_value = mock_graph
+    mock_graph.query.return_value = MagicMock(header=[[0, "meta"]], result_set=[])
+    store = GraphStore(client=mock_client)
+
+    rows = store.query(
+        "test_graph",
+        "MATCH (c:Customer {cid: $cid}) RETURN {id: c.cid, active: true} AS meta",
+        {"cid": "cust-01"},
+    )
+    assert rows == []
+
+
+def test_rejects_semicolon_chaining():
+    """Verify that semicolon statement chaining is rejected."""
+    store = GraphStore(client=MagicMock())
+    with pytest.raises(ValueError, match="Multiple statements"):
+        store.query("test_graph", "MATCH (c:Customer) RETURN c; DROP GRAPH test")
+
+
+def test_rejects_percent_format_and_brace_format_patterns_in_query_text():
+    """Verify that %s, %d, {}, and positional brace patterns are rejected."""
+    store = GraphStore(client=MagicMock())
+    with pytest.raises(ValueError, match="Unsafe string formatting"):
+        store.query("test_graph", "MATCH (c:Customer) WHERE c.name = '%s' RETURN c")
+    with pytest.raises(ValueError, match="Unsafe string formatting"):
+        store.query("test_graph", "MATCH (c:Customer) WHERE c.id = %d RETURN c")
+    with pytest.raises(ValueError, match="Unsafe string formatting"):
+        store.query("test_graph", "MATCH (c:Customer) WHERE c.name = '{}' RETURN c")
+    with pytest.raises(ValueError, match="Unsafe string formatting"):
+        store.query("test_graph", "MATCH (c:Customer) WHERE c.name = '{0}' RETURN c")
+
+
+
 def test_query_mock_execution():
     """Verify query execution and row mapping with mocked FalkorDB client."""
     mock_client = MagicMock()
