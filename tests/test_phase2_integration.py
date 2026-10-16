@@ -101,12 +101,15 @@ async def test_complete_phase1_phase2_end_to_end_pipeline(live_store) -> None:
         assert finding.verdict == "suspicious"
         assert len(finding.evidence_cids) > 0
 
-        # Step 6: Finding promotion into shared run graph
+        # Step 6: Finding promotion into shared run graph with full provenance
         promo_result = promote_findings(
             store=live_store,
             agent_graph_name=slice_graph,
             run_graph_name=shared_run_graph,
             findings=[finding],
+            observed=subagent.tool_log.observed_strings(),
+            require_observed=True,
+            max_hops=3,
         )
         assert promo_result.total_promoted == 1
         assert promo_result.total_rejected == 0

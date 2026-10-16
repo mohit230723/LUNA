@@ -3,6 +3,7 @@
 import json
 from typing import Any, Optional
 from luna.agents.models import Finding, SubAgentRunConfig
+from luna.agents.provenance import ToolCallLog
 from luna.llm.client import LLMClient
 from luna.mcp.client import AgentMCPClient
 
@@ -19,6 +20,7 @@ class SubAgent:
         self.config = config
         self.mcp_client = mcp_client
         self.llm_client = llm_client
+        self.tool_log = ToolCallLog()
 
     async def _gather_observations(self, target_cid: str) -> tuple[dict[str, Any], set[str]]:
         """Query scoped FastMCP tools to observe graph patterns and collect evidence CIDs."""
@@ -29,7 +31,9 @@ class SubAgent:
 
         if "shared_attribute_links" in available_tool_names:
             try:
-                res = await self.mcp_client.call_tool("shared_attribute_links", {"cid": target_cid})
+                args = {"cid": target_cid}
+                res = await self.mcp_client.call_tool("shared_attribute_links", args)
+                self.tool_log.record("shared_attribute_links", args, res)
                 observations["shared_attribute_links"] = res
                 if isinstance(res, list):
                     for link in res:
@@ -43,9 +47,9 @@ class SubAgent:
 
         if "connected_components" in available_tool_names:
             try:
-                res = await self.mcp_client.call_tool(
-                    "connected_components", {"cids": self.config.target_cids}
-                )
+                args = {"cids": self.config.target_cids}
+                res = await self.mcp_client.call_tool("connected_components", args)
+                self.tool_log.record("connected_components", args, res)
                 observations["connected_components"] = res
                 if isinstance(res, list):
                     for cluster in res:
@@ -57,7 +61,9 @@ class SubAgent:
 
         if "pagerank_top" in available_tool_names:
             try:
-                res = await self.mcp_client.call_tool("pagerank_top", {"limit": 10})
+                args = {"limit": 10}
+                res = await self.mcp_client.call_tool("pagerank_top", args)
+                self.tool_log.record("pagerank_top", args, res)
                 observations["pagerank_top"] = res
                 if isinstance(res, list):
                     for entry in res:
@@ -69,9 +75,9 @@ class SubAgent:
 
         if "claim_amount_outliers" in available_tool_names:
             try:
-                res = await self.mcp_client.call_tool(
-                    "claim_amount_outliers", {"std_dev_threshold": 2.0}
-                )
+                args = {"std_dev_threshold": 2.0}
+                res = await self.mcp_client.call_tool("claim_amount_outliers", args)
+                self.tool_log.record("claim_amount_outliers", args, res)
                 observations["claim_amount_outliers"] = res
                 if isinstance(res, list):
                     for outlier in res:
@@ -82,10 +88,9 @@ class SubAgent:
 
         if "ask_graph" in available_tool_names:
             try:
-                res = await self.mcp_client.call_tool(
-                    "ask_graph",
-                    {"question": f"Who shares accounts or addresses with customer {target_cid}?"},
-                )
+                args = {"question": f"Who shares accounts or addresses with customer {target_cid}?"}
+                res = await self.mcp_client.call_tool("ask_graph", args)
+                self.tool_log.record("ask_graph", args, res)
                 observations["ask_graph"] = res
             except Exception as e:
                 observations["ask_graph_error"] = str(e)
