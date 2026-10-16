@@ -156,3 +156,28 @@ def get_server_tool_names(server: FastMCP) -> list[str]:
     if hasattr(server, "_tool_manager") and hasattr(server._tool_manager, "_tools"):
         return list(server._tool_manager._tools.keys())
     return []
+
+
+def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Scoped Agent FastMCP Stdio Server")
+    parser.add_argument("--agent", required=True, help="Agent ID")
+    parser.add_argument("--graph", required=True, help="Scoped graph name")
+    parser.add_argument("--tools", required=True, help="Comma-separated tool names")
+    parser.add_argument("--host", default="localhost", help="FalkorDB host")
+    parser.add_argument("--port", type=int, default=6379, help="FalkorDB port")
+    args = parser.parse_args()
+
+    tool_names = [t.strip() for t in args.tools.split(",") if t.strip()]
+    store = GraphStore(host=args.host, port=args.port)
+    server = create_agent_mcp_server(
+        agent_id=args.agent,
+        tool_names=tool_names,
+        graph_store=store,
+        agent_graph_name=args.graph,
+    )
+    server.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()
