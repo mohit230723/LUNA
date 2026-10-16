@@ -18,6 +18,7 @@ class GraphStore:
         self.host = host or settings.FALKORDB_HOST
         self.port = port or settings.FALKORDB_PORT
         self._client = client
+        self._procedure_cache: Optional[set[str]] = None
 
     @property
     def client(self) -> falkordb.FalkorDB:
@@ -140,3 +141,19 @@ class GraphStore:
             return False
         except Exception:
             return False
+
+    def supports_procedure(self, name: str) -> bool:
+        """Check if FalkorDB instance supports a given procedure name (cached per instance)."""
+        if self._procedure_cache is None:
+            self._procedure_cache = set()
+            try:
+                # Probe procedures via CALL dbms.procedures()
+                rows = self.query("domain", "CALL dbms.procedures()")
+                for r in rows:
+                    proc_name = r.get("name")
+                    if proc_name:
+                        self._procedure_cache.add(str(proc_name))
+            except Exception:
+                pass
+        return name in self._procedure_cache
+

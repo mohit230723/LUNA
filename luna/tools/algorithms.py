@@ -38,6 +38,7 @@ def connected_components(
     graph_name: str,
     cids: list[str],
     rel_types: Optional[list[str]] = None,
+    use_native: Optional[bool] = None,
 ) -> list[list[str]]:
     """Compute connected component clusters among specified entity CIDs.
 
@@ -48,6 +49,7 @@ def connected_components(
         graph_name: Target graph name
         cids: List of entity CIDs to cluster
         rel_types: Optional attribute labels or relationship types to filter on
+        use_native: True for native algo.WCC, False for NetworkX, None for auto-detect
 
     Returns:
         List of connected clusters (each cluster is a list of CIDs, sorted largest first).
@@ -55,9 +57,37 @@ def connected_components(
     if not cids:
         return []
 
-    labels_filter = rel_types or []
+    should_use_native = (
+        use_native
+        if use_native is not None
+        else (hasattr(store, "supports_procedure") and store.supports_procedure("algo.WCC") and not rel_types)
+    )
 
-    # Query 2-hop connections through shared attributes between any two cids in the list
+    if should_use_native:
+        try:
+            wcc_query = "CALL algo.WCC() YIELD node, componentId RETURN node.cid AS cid, componentId"
+            rows = store.query(graph_name, wcc_query)
+            cids_set = set(cids)
+            comps_by_id: dict[Any, set[str]] = {}
+            seen_cids: set[str] = set()
+            for r in rows:
+                cid = r.get("cid")
+                if cid and cid in cids_set:
+                    comps_by_id.setdefault(r["componentId"], set()).add(cid)
+                    seen_cids.add(cid)
+
+            result_comps = [sorted(list(c)) for c in comps_by_id.values()]
+            unseen = cids_set - seen_cids
+            for u in sorted(unseen):
+                result_comps.append([u])
+
+            result_comps.sort(key=len, reverse=True)
+            return result_comps
+        except Exception:
+            pass
+
+    # NetworkX fallback
+    labels_filter = rel_types or []
     query = (
         "MATCH (c1)-[r1]->(a)<-[r2]-(c2) "
         "WHERE c1.cid IN $cids AND c2.cid IN $cids AND c1 <> c2 "
@@ -66,7 +96,6 @@ def connected_components(
     )
     rows = store.query(graph_name, query, {"cids": cids, "labels_filter": labels_filter})
 
-    # Construct NetworkX graph for deterministic clustering
     g = nx.Graph()
     for cid in cids:
         g.add_node(cid)
@@ -86,17 +115,42 @@ def pagerank_top(
     store: GraphStore,
     graph_name: str,
     limit: int = 10,
+    node_label: Optional[str] = None,
+    rel_type: Optional[str] = None,
+    use_native: Optional[bool] = None,
 ) -> list[dict[str, Any]]:
-    """Calculate PageRank centrality across all nodes in the target graph.
+    """Calculate PageRank centrality across nodes in the target graph.
 
     Args:
         store: GraphStore connection wrapper
         graph_name: Target graph name
         limit: Number of top central entities to return
+        node_label: Target node label for native algo.pageRank
+        rel_type: Target relationship type for native algo.pageRank
+        use_native: True for native algo.pageRank, False for NetworkX, None for auto-detect
 
     Returns:
         List of dicts containing 'cid' and 'score', sorted by score descending.
     """
+    should_use_native = (
+        use_native
+        if use_native is not None
+        else (hasattr(store, "supports_procedure") and store.supports_procedure("algo.pageRank") and bool(node_label and rel_type))
+    )
+
+    if should_use_native and node_label and rel_type:
+        try:
+            query = (
+                f"CALL algo.pageRank('{node_label}', '{rel_type}') YIELD node, score "
+                f"RETURN node.cid AS cid, score ORDER BY score DESC LIMIT $limit"
+            )
+            rows = store.query(graph_name, query, {"limit": limit})
+            if rows:
+                return [{"cid": r["cid"], "score": round(float(r["score"]), 6)} for r in rows if r.get("cid")]
+        except Exception:
+            pass
+
+    # NetworkX fallback
     query = "MATCH (a)-[r]->(b) RETURN a.cid AS source, b.cid AS target"
     rows = store.query(graph_name, query, {})
 
@@ -116,7 +170,6 @@ def pagerank_top(
     try:
         ranks = nx.pagerank(g, alpha=0.85)
     except Exception:
-        # Fallback to degree centrality if convergence fails or graph is disconnected
         ranks = nx.degree_centrality(g)
 
     sorted_ranks = sorted(ranks.items(), key=lambda kv: kv[1], reverse=True)[:limit]
@@ -128,6 +181,7 @@ def shortest_path(
     graph_name: str,
     source_cid: str,
     target_cid: str,
+    use_native: Optional[bool] = None,
 ) -> list[dict[str, Any]]:
     """Find the shortest connection path between two entities.
 
@@ -136,20 +190,27 @@ def shortest_path(
         graph_name: Target graph name
         source_cid: Origin entity CID
         target_cid: Destination entity CID
+        use_native: True for native Cypher shortestPath, False for NetworkX fallback
 
     Returns:
         List containing path hops and entity CIDs.
     """
-    query = (
-        "MATCH (a {cid: $source_cid}), (b {cid: $target_cid}) "
-        "WITH shortestPath((a)-[*]-(b)) AS p "
-        "RETURN [n in nodes(p) | n.cid] AS path_cids, "
-        "       [r in relationships(p) | type(r)] AS rel_types, "
-        "       length(p) AS length"
-    )
-    rows = store.query(graph_name, query, {"source_cid": source_cid, "target_cid": target_cid})
-    if rows:
-        return rows
+    should_use_native = use_native if use_native is not None else True
+
+    if should_use_native:
+        try:
+            query = (
+                "MATCH (a {cid: $source_cid}), (b {cid: $target_cid}) "
+                "WITH shortestPath((a)-[*]-(b)) AS p "
+                "RETURN [n in nodes(p) | n.cid] AS path_cids, "
+                "       [r in relationships(p) | type(r)] AS rel_types, "
+                "       length(p) AS length"
+            )
+            rows = store.query(graph_name, query, {"source_cid": source_cid, "target_cid": target_cid})
+            if rows:
+                return rows
+        except Exception:
+            pass
 
     # Fallback to NetworkX in-memory pathfinding over the graph slice
     edge_query = "MATCH (a)-[r]-(b) RETURN a.cid AS source, b.cid AS target, type(r) AS rel"
