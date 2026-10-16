@@ -28,3 +28,7 @@ include = ["luna*"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "integration: tests requiring a running FalkorDB instance",
+    "slow: slow tests (e.g. real subprocesses, LLMs)",
+]
