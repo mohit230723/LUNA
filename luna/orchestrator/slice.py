@@ -22,6 +22,7 @@ def extract_subgraph_slice(
     target_graph: str,
     seed_cids: list[str],
     k_hops: int = 2,
+    max_nodes: int = 2000,
 ) -> dict[str, Any]:
     """Extract a k-hop induced subgraph centered on seed_cids from source_graph into target_graph.
 
@@ -76,17 +77,27 @@ def extract_subgraph_slice(
                     "props": props,
                 }
 
-    extracted_cids = list(nodes_by_cid.keys())
-    if not extracted_cids:
+    if not nodes_by_cid:
         return {
             "source_graph": source_graph,
             "target_graph": target_graph,
             "seed_cids": seed_cids,
             "k_hops": k_hops,
+            "max_nodes": max_nodes,
+            "truncated": False,
             "nodes_extracted": 0,
             "edges_extracted": 0,
             "extracted_cids": [],
         }
+
+    all_cids = sorted(nodes_by_cid.keys())
+    truncated = False
+    if len(all_cids) > max_nodes:
+        extracted_cids = all_cids[:max_nodes]
+        truncated = True
+        nodes_by_cid = {cid: nodes_by_cid[cid] for cid in extracted_cids}
+    else:
+        extracted_cids = all_cids
 
     # Step 3: Extract induced edges connecting extracted nodes
     edge_query = (
@@ -132,6 +143,8 @@ def extract_subgraph_slice(
         "target_graph": target_graph,
         "seed_cids": seed_cids,
         "k_hops": k_hops,
+        "max_nodes": max_nodes,
+        "truncated": truncated,
         "nodes_extracted": len(nodes_by_cid),
         "edges_extracted": len(edge_rows),
         "extracted_cids": extracted_cids,

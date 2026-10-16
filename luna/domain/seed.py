@@ -1,14 +1,18 @@
 """Seed synthetic domain dataset into FalkorDB domain named graph."""
 
-from typing import Any
+from typing import Any, Literal
 from luna.graph.schema import GRAPH_DOMAIN
 from luna.graph.store import GraphStore
-from luna.domain.generate import GroundTruth, generate_insurance_dataset
+from luna.domain.generate import GroundTruth, generate_domain, generate_insurance_dataset
 
 
-def seed_domain(store: GraphStore, seed: int = 42) -> GroundTruth:
+def seed_domain(
+    store: GraphStore,
+    seed: int = 42,
+    profile: Literal["small", "demo"] = "small",
+) -> GroundTruth:
     """Populate domain graph in FalkorDB with synthetic insurance data."""
-    dataset, ground_truth = generate_insurance_dataset(seed=seed)
+    dataset, ground_truth = generate_domain(seed=seed, profile=profile)
 
     # Recreate clean domain graph
     store.delete_graph(GRAPH_DOMAIN)
