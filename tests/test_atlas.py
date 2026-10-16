@@ -1,5 +1,6 @@
 """Unit tests for the atlas skill catalog, models, and graph seeder."""
 
+import pytest
 from unittest.mock import MagicMock
 from luna.atlas.models import CapabilityDef, ToolDef, SkillDef, SkillScore
 from luna.atlas.seed import seed_atlas, get_seeded_skills, get_seeded_capabilities, get_seeded_tools
@@ -71,27 +72,25 @@ def test_seeded_catalog_integrity():
         assert "ask_graph" in s.exposes, f"Skill {s.id} does not expose ask_graph"
 
 
-def test_seed_atlas_query_execution():
-    """Verify that seed_atlas executes the expected batch queries against GraphStore."""
-    mock_store = MagicMock()
-    seed_atlas(mock_store)
+@pytest.mark.integration
+def test_seed_atlas_query_execution(live_store):
+    """Verify that seed_atlas populates the real atlas catalog in FalkorDB."""
+    seed_atlas(live_store)
 
-    # 1. Deletes previous atlas graph
-    mock_store.delete_graph.assert_called_once_with("atlas")
+    # 1. Verify 7 skills created
+    skills = live_store.query("atlas", "MATCH (s:Skill) RETURN s.id AS id")
+    assert len(skills) == 7
 
-    # 2. Executes queries for capabilities, tools, task_type, skills, and relationships
-    assert mock_store.query.call_count >= 8
+    # 2. Verify capabilities and tools created
+    caps = live_store.query("atlas", "MATCH (c:Capability) RETURN c.name AS name")
+    assert len(caps) >= 5
 
-    # Verify query strings passed
-    queries = [call[0][1] for call in mock_store.query.call_args_list]
-    assert any("Capability" in q for q in queries)
-    assert any("Tool" in q for q in queries)
-    assert any("TaskType" in q for q in queries)
-    assert any("Skill" in q for q in queries)
-    assert any("PROVIDES" in q for q in queries)
-    assert any("REQUIRES" in q for q in queries)
-    assert any("EXPOSES" in q for q in queries)
-    assert any("SUCCEEDED_ON" in q for q in queries)
+    tools = live_store.query("atlas", "MATCH (t:Tool) RETURN t.name AS name")
+    assert len(tools) >= 6
+
+    # 3. Verify relationships exist
+    provides = live_store.query("atlas", "MATCH (:Skill)-[:PROVIDES]->(:Capability) RETURN count(*) AS cnt")
+    assert provides[0]["cnt"] >= 7
 
 
 def test_simulated_atlas_skill_matching():

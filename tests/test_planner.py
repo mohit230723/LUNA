@@ -1,13 +1,14 @@
-"""Unit tests for task decomposition and atlas graph skill matching."""
+"""Unit and integration tests for task decomposition and atlas graph skill matching."""
 
-from unittest.mock import MagicMock
+import pytest
+from luna.atlas.seed import seed_atlas
 from luna.llm.client import MockLLMClient
 from luna.planner.decompose import Subtask, decompose_task
 from luna.atlas.assign import assign_skills_to_subtasks
 
 
 def test_decompose_task_with_mock_llm():
-    """Verify task decomposition using MockLLMClient."""
+    """Verify task decomposition using MockLLMClient (pure logic)."""
     mock_llm = MockLLMClient()
     mock_llm.register_response(
         r"fraud",
@@ -41,7 +42,7 @@ def test_decompose_task_with_mock_llm():
 
 
 def test_decompose_task_fallback():
-    """Verify default fallback subtasks when LLM returns unparseable or empty response."""
+    """Verify default fallback subtasks when LLM returns unparseable or empty response (pure logic)."""
     mock_llm = MockLLMClient(default_response="Not a json response")
 
     subtasks = decompose_task(
@@ -55,61 +56,17 @@ def test_decompose_task_fallback():
     assert subtasks[1].capability == "detect_communities"
 
 
-def test_assign_skills_policy_rejection_and_score_ranking():
-    """Verify assign_skills_to_subtasks rejects restricted skills and ranks by score."""
-    mock_store = MagicMock()
-
-    # Query responses for subtask 1 (link_entities) and subtask 2 (detect_communities)
-    def mock_query(graph_name, query_str, params=None):
-        cap = (params or {}).get("cap")
-        if cap == "link_entities":
-            return [
-                {
-                    "id": "bulk-linker",
-                    "name": "Bulk Linker",
-                    "prompt_fragment": "Link all.",
-                    "restricted": True,
-                    "score": 0.95,
-                    "requires": [],
-                },
-                {
-                    "id": "entity-linker",
-                    "name": "Entity Linker",
-                    "prompt_fragment": "Report shared attributes.",
-                    "restricted": False,
-                    "score": 0.70,
-                    "requires": [],
-                },
-            ]
-        elif cap == "detect_communities":
-            return [
-                {
-                    "id": "ring-detector",
-                    "name": "Fraud Ring Detector",
-                    "prompt_fragment": "Address-only is clean.",
-                    "restricted": False,
-                    "score": 0.80,
-                    "requires": ["entity-linker"],
-                },
-                {
-                    "id": "ring-detector-lite",
-                    "name": "Ring Detector Lite",
-                    "prompt_fragment": "Basic components.",
-                    "restricted": False,
-                    "score": 0.50,
-                    "requires": [],
-                },
-            ]
-        return []
-
-    mock_store.query.side_effect = mock_query
+@pytest.mark.integration
+def test_assign_skills_policy_rejection_and_score_ranking(live_store):
+    """Verify assign_skills_to_subtasks rejects restricted skills and ranks by score against live atlas."""
+    seed_atlas(live_store)
 
     subtasks = [
         Subtask(id="sub_1", description="Link entities", capability="link_entities"),
         Subtask(id="sub_2", description="Detect ring", capability="detect_communities"),
     ]
 
-    assignments = assign_skills_to_subtasks(mock_store, subtasks, "fraud_ring_investigation")
+    assignments = assign_skills_to_subtasks(live_store, subtasks, "fraud_ring_investigation")
 
     assert len(assignments) == 2
 
@@ -132,13 +89,13 @@ def test_assign_skills_policy_rejection_and_score_ranking():
     assert "Lower historical track record score" in lite_reason
 
 
-def test_assign_skills_unknown_capability():
-    """Verify handling when no skill provides the required capability."""
-    mock_store = MagicMock()
-    mock_store.query.return_value = []
+@pytest.mark.integration
+def test_assign_skills_unknown_capability(live_store):
+    """Verify handling when no skill provides the required capability on live atlas."""
+    seed_atlas(live_store)
 
     subtasks = [Subtask(id="sub_x", description="Unrecognized task", capability="unknown_capability")]
-    assignments = assign_skills_to_subtasks(mock_store, subtasks, "fraud_ring_investigation")
+    assignments = assign_skills_to_subtasks(live_store, subtasks, "fraud_ring_investigation")
 
     assert len(assignments) == 1
     assert assignments[0].chosen_skill is None

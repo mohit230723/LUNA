@@ -142,7 +142,7 @@ def shortest_path(
     """
     query = (
         "MATCH (a {cid: $source_cid}), (b {cid: $target_cid}) "
-        "MATCH p = shortestPath((a)-[*]-(b)) "
+        "WITH shortestPath((a)-[*]-(b)) AS p "
         "RETURN [n in nodes(p) | n.cid] AS path_cids, "
         "       [r in relationships(p) | type(r)] AS rel_types, "
         "       length(p) AS length"

@@ -1,149 +1,146 @@
-"""Unit tests for finding promotion engine and anti-hallucination barrier."""
+"""Integration tests for finding promotion engine and anti-hallucination barrier."""
 
-from unittest.mock import MagicMock
+import pytest
 from luna.agents.models import Finding
-from luna.graph.store import GraphStore
 from luna.orchestrator.promote import promote_findings
 
 
-def test_promote_valid_findings() -> None:
-    """Verify that findings with verified evidence in the agent slice are promoted."""
-    executed_queries: list[tuple[str, str, dict]] = []
+@pytest.mark.integration
+def test_promote_valid_findings(live_store, tmp_graph: str) -> None:
+    """Verify that findings with verified evidence in the agent slice are promoted to the live run graph."""
+    run_graph = f"{tmp_graph}_run"
+    try:
+        # Populate agent slice in tmp_graph with verified entities
+        live_store.query(
+            tmp_graph,
+            "CREATE (c:Customer {cid: 'cust-000'}), "
+            "       (b:BankAccount {cid: 'ba-ring-01'}), "
+            "       (a:Customer {cid: 'cust-001'})"
+        )
 
-    def mock_query(graph_name: str, query_str: str, params=None):
-        executed_queries.append((graph_name, query_str, params or {}))
-        # Evidence check in agent graph slice
-        if "MATCH (n) WHERE n.cid = $cid" in query_str:
-            cid = (params or {}).get("cid")
-            if cid in ("ba-ring-01", "cust-001"):
-                return [{"cnt": 1}]
-            return [{"cnt": 0}]
-        return []
+        finding = Finding(
+            id="find-valid-01",
+            agent_id="agent-01",
+            skill_id="entity-linker",
+            target_cid="cust-000",
+            verdict="suspicious",
+            confidence=0.92,
+            reasoning="Shared high-risk bank account with associate",
+            evidence_cids=["ba-ring-01", "cust-001"],
+        )
 
-    mock_store = GraphStore(client=MagicMock())
-    mock_store.query = mock_query  # type: ignore
+        res = promote_findings(
+            store=live_store,
+            agent_graph_name=tmp_graph,
+            run_graph_name=run_graph,
+            findings=[finding],
+        )
 
-    finding = Finding(
-        id="find-valid-01",
-        agent_id="agent-01",
-        skill_id="entity-linker",
-        target_cid="cust-000",
-        verdict="suspicious",
-        confidence=0.92,
-        reasoning="Shared high-risk bank account with associate",
-        evidence_cids=["ba-ring-01", "cust-001"],
-    )
+        assert res.total_promoted == 1
+        assert res.total_rejected == 0
+        assert len(res.promoted) == 1
+        assert res.promoted[0].id == "find-valid-01"
 
-    res = promote_findings(
-        store=mock_store,
-        agent_graph_name="agent_slice_01",
-        run_graph_name="run_001",
-        findings=[finding],
-    )
+        # Verify Finding node and relationships exist in live run graph
+        findings = live_store.query(run_graph, "MATCH (f:Finding {id: 'find-valid-01'}) RETURN f.id AS id")
+        assert len(findings) == 1
 
-    assert res.total_promoted == 1
-    assert res.total_rejected == 0
-    assert len(res.promoted) == 1
-    assert res.promoted[0].id == "find-valid-01"
+        promoted_from = live_store.query(run_graph, "MATCH (:Finding)-[:PROMOTED_FROM]->(:Agent) RETURN count(*) AS cnt")
+        assert promoted_from[0]["cnt"] == 1
 
-    # Verify write queries executed against run graph
-    run_queries = [q for q in executed_queries if q[0] == "run_001"]
-    assert len(run_queries) == 3  # Finding node + 2 evidence edge queries
-    assert any("PROMOTED_FROM" in q[1] for q in run_queries)
-    assert any("ASSESSES" in q[1] for q in run_queries)
-    assert any("SUPPORTED_BY" in q[1] for q in run_queries)
+        assesses = live_store.query(run_graph, "MATCH (:Finding)-[:ASSESSES]->(:Customer) RETURN count(*) AS cnt")
+        assert assesses[0]["cnt"] == 1
 
-
-def test_reject_hallucinated_evidence() -> None:
-    """Verify that findings citing non-existent evidence CIDs are rejected."""
-    executed_queries: list[tuple[str, str, dict]] = []
-
-    def mock_query(graph_name: str, query_str: str, params=None):
-        executed_queries.append((graph_name, query_str, params or {}))
-        # Evidence check in agent graph slice
-        if "MATCH (n) WHERE n.cid = $cid" in query_str:
-            cid = (params or {}).get("cid")
-            if cid == "ba-ring-01":
-                return [{"cnt": 1}]
-            # Hallucinated CID
-            return [{"cnt": 0}]
-        return []
-
-    mock_store = GraphStore(client=MagicMock())
-    mock_store.query = mock_query  # type: ignore
-
-    hallucinated_finding = Finding(
-        id="find-hallucinated-02",
-        agent_id="agent-01",
-        skill_id="entity-linker",
-        target_cid="cust-000",
-        verdict="suspicious",
-        confidence=0.95,
-        reasoning="Hallucinated evidence connection",
-        evidence_cids=["ba-ring-01", "cust-fake-999"],
-    )
-
-    res = promote_findings(
-        store=mock_store,
-        agent_graph_name="agent_slice_01",
-        run_graph_name="run_001",
-        findings=[hallucinated_finding],
-    )
-
-    assert res.total_promoted == 0
-    assert res.total_rejected == 1
-    assert len(res.rejected) == 1
-    assert res.rejected[0].finding.id == "find-hallucinated-02"
-    assert "cust-fake-999" in res.rejected[0].reason
-    assert "anti-hallucination barrier" in res.rejected[0].reason
-
-    # Verify no writes occurred on run graph
-    run_queries = [q for q in executed_queries if q[0] == "run_001"]
-    assert len(run_queries) == 0
+        supported_by = live_store.query(run_graph, "MATCH (:Finding)-[:SUPPORTED_BY]->(:Entity) RETURN count(*) AS cnt")
+        assert supported_by[0]["cnt"] == 2
+    finally:
+        live_store.delete_graph(run_graph)
 
 
-def test_partial_batch_promotion() -> None:
+@pytest.mark.integration
+def test_reject_hallucinated_evidence(live_store, tmp_graph: str) -> None:
+    """Verify that findings citing non-existent evidence CIDs are rejected by live barrier."""
+    run_graph = f"{tmp_graph}_run"
+    try:
+        # Populate agent slice with only one valid node
+        live_store.query(
+            tmp_graph,
+            "CREATE (c:Customer {cid: 'cust-000'}), (b:BankAccount {cid: 'ba-ring-01'})"
+        )
+
+        hallucinated_finding = Finding(
+            id="find-hallucinated-02",
+            agent_id="agent-01",
+            skill_id="entity-linker",
+            target_cid="cust-000",
+            verdict="suspicious",
+            confidence=0.95,
+            reasoning="Hallucinated evidence connection",
+            evidence_cids=["ba-ring-01", "cust-fake-999"],
+        )
+
+        res = promote_findings(
+            store=live_store,
+            agent_graph_name=tmp_graph,
+            run_graph_name=run_graph,
+            findings=[hallucinated_finding],
+        )
+
+        assert res.total_promoted == 0
+        assert res.total_rejected == 1
+        assert len(res.rejected) == 1
+        assert res.rejected[0].finding.id == "find-hallucinated-02"
+        assert "cust-fake-999" in res.rejected[0].reason
+        assert "anti-hallucination barrier" in res.rejected[0].reason
+
+        # Verify no writes occurred on run graph
+        findings = live_store.query(run_graph, "MATCH (f:Finding) RETURN count(f) AS cnt")
+        assert findings == [] or findings[0]["cnt"] == 0
+    finally:
+        live_store.delete_graph(run_graph)
+
+
+@pytest.mark.integration
+def test_partial_batch_promotion(live_store, tmp_graph: str) -> None:
     """Verify mixed batch with 1 valid and 1 invalid finding."""
-    def mock_query(graph_name: str, query_str: str, params=None):
-        if "MATCH (n) WHERE n.cid = $cid" in query_str:
-            cid = (params or {}).get("cid")
-            if cid == "valid-evidence-cid":
-                return [{"cnt": 1}]
-            return [{"cnt": 0}]
-        return []
+    run_graph = f"{tmp_graph}_run"
+    try:
+        live_store.query(
+            tmp_graph,
+            "CREATE (c1:Customer {cid: 'cust-000'}), (c2:Customer {cid: 'cust-001'}), (e:Entity {cid: 'valid-evidence-cid'})"
+        )
 
-    mock_store = GraphStore(client=MagicMock())
-    mock_store.query = mock_query  # type: ignore
+        f1 = Finding(
+            id="find-good",
+            agent_id="agent-01",
+            skill_id="entity-linker",
+            target_cid="cust-000",
+            verdict="suspicious",
+            confidence=0.9,
+            reasoning="Genuine evidence",
+            evidence_cids=["valid-evidence-cid"],
+        )
+        f2 = Finding(
+            id="find-bad",
+            agent_id="agent-01",
+            skill_id="entity-linker",
+            target_cid="cust-001",
+            verdict="suspicious",
+            confidence=0.8,
+            reasoning="Fake evidence",
+            evidence_cids=["ghost-cid"],
+        )
 
-    f1 = Finding(
-        id="find-good",
-        agent_id="agent-01",
-        skill_id="entity-linker",
-        target_cid="cust-000",
-        verdict="suspicious",
-        confidence=0.9,
-        reasoning="Genuine evidence",
-        evidence_cids=["valid-evidence-cid"],
-    )
-    f2 = Finding(
-        id="find-bad",
-        agent_id="agent-01",
-        skill_id="entity-linker",
-        target_cid="cust-001",
-        verdict="suspicious",
-        confidence=0.8,
-        reasoning="Fake evidence",
-        evidence_cids=["ghost-cid"],
-    )
+        res = promote_findings(
+            store=live_store,
+            agent_graph_name=tmp_graph,
+            run_graph_name=run_graph,
+            findings=[f1, f2],
+        )
 
-    res = promote_findings(
-        store=mock_store,
-        agent_graph_name="agent_slice_01",
-        run_graph_name="run_001",
-        findings=[f1, f2],
-    )
-
-    assert res.total_promoted == 1
-    assert res.total_rejected == 1
-    assert res.promoted[0].id == "find-good"
-    assert res.rejected[0].finding.id == "find-bad"
+        assert res.total_promoted == 1
+        assert res.total_rejected == 1
+        assert res.promoted[0].id == "find-good"
+        assert res.rejected[0].finding.id == "find-bad"
+    finally:
+        live_store.delete_graph(run_graph)

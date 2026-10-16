@@ -1,6 +1,7 @@
 """Unit tests for synthetic domain generator, ground truth, and ontology."""
 
 import json
+import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 from luna.domain.generate import generate_insurance_dataset, GroundTruth
@@ -108,16 +109,17 @@ def test_ontology_json_schema():
     assert expected_rels.issubset(rel_types)
 
 
-def test_seed_domain_execution():
-    """Verify seed_domain executes batch deletions and insertions against GraphStore."""
-    mock_store = MagicMock()
-    gt = seed_domain(mock_store, seed=42)
+@pytest.mark.integration
+def test_seed_domain_execution(live_store):
+    """Verify seed_domain populates the real domain graph in FalkorDB."""
+    gt = seed_domain(live_store, seed=42)
 
     assert isinstance(gt, GroundTruth)
     assert len(gt.ring_cids) == 8
     assert len(gt.decoy_cids) == 4
 
-    # delete_graph called to clear previous state
-    mock_store.delete_graph.assert_called_once_with("domain")
-    # query called multiple times for batch node and edge creation
-    assert mock_store.query.call_count >= 10
+    # Verify nodes and edges created in live domain graph
+    nodes = live_store.query("domain", "MATCH (n) RETURN count(n) AS cnt")
+    assert nodes[0]["cnt"] > 0
+    edges = live_store.query("domain", "MATCH ()-[r]->() RETURN count(r) AS cnt")
+    assert edges[0]["cnt"] > 0
