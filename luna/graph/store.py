@@ -56,18 +56,8 @@ class GraphStore:
             raise ValueError("Graph name must be a valid non-empty string.")
         return self.client.select_graph(graph_name)
 
-    def query(
-        self,
-        graph_name: str,
-        query_str: str,
-        params: Optional[dict[str, Any]] = None,
-    ) -> list[dict[str, Any]]:
-        """Execute a parameterized Cypher query and return rows as dictionaries."""
-        self._validate_query_safety(query_str, params)
-        graph = self.select_graph(graph_name)
-
-        result = graph.query(query_str, params or {})
-
+    def _parse_query_result(self, result: Any) -> list[dict[str, Any]]:
+        """Parse QueryResult extracting decoded headers and node/edge/primitive properties."""
         rows: list[dict[str, Any]] = []
         if not hasattr(result, "result_set") or not result.result_set:
             return rows
@@ -94,6 +84,33 @@ class GraphStore:
             rows.append(row_dict)
 
         return rows
+
+    def query(
+        self,
+        graph_name: str,
+        query_str: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> list[dict[str, Any]]:
+        """Execute a parameterized Cypher query and return rows as dictionaries."""
+        self._validate_query_safety(query_str, params)
+        graph = self.select_graph(graph_name)
+        result = graph.query(query_str, params or {})
+        return self._parse_query_result(result)
+
+    def read_query(
+        self,
+        graph_name: str,
+        query_str: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> list[dict[str, Any]]:
+        """Execute a read-only parameterized Cypher query using FalkorDB's ro_query."""
+        self._validate_query_safety(query_str, params)
+        graph = self.select_graph(graph_name)
+        if hasattr(graph, "ro_query"):
+            result = graph.ro_query(query_str, params or {})
+        else:
+            result = graph.query(query_str, params or {})
+        return self._parse_query_result(result)
 
     def delete_graph(self, graph_name: str) -> bool:
         """Delete named graph from FalkorDB."""

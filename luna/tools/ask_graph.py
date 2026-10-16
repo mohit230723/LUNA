@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 from luna.graph.store import GraphStore
+from luna.tools.cypher_guard import validate_read_only, UnsafeCypherError
 
 
 def _load_ontology(ontology_path: Optional[str] = None) -> dict[str, Any]:
@@ -93,12 +94,16 @@ def ask_graph(
     # Heuristic and ontology-guided Cypher translation
     cypher_query, params = _nl_to_cypher_heuristic(question)
     try:
-        results = store.query(graph_name, cypher_query, params)
+        validated_cypher = validate_read_only(cypher_query)
+    except UnsafeCypherError:
+        return {"error": "unsafe_query"}
+
+    try:
+        results = store.read_query(graph_name, validated_cypher, params)
     except Exception as e:
-        results = []
         return {
             "question": question,
-            "cypher": cypher_query,
+            "cypher": validated_cypher,
             "params": params,
             "results": [],
             "error": str(e),
@@ -107,7 +112,7 @@ def ask_graph(
 
     return {
         "question": question,
-        "cypher": cypher_query,
+        "cypher": validated_cypher,
         "params": params,
         "results": results,
         "summary": f"Executed Cypher against {graph_name} returning {len(results)} records.",
