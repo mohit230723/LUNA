@@ -7,7 +7,7 @@ discovery_level: 2
 # Phase 3 Research: Conflict Resolution & Action Lifecycle
 
 ## Objective
-Establish the technical requirements, Cypher queries, data models, and testing patterns for automated contradiction detection, main-agent conflict resolution with immutable superseded history, human approval gates, idempotent domain graph mutations, and cross-run exponential moving average skill score updates.
+Establish the technical requirements, Cypher queries, data models, and testing patterns for automated contradiction detection, main-agent conflict resolution with append-only by convention: losing findings are marked superseded, never deleted, human approval gates, idempotent domain graph mutations, and cross-run exponential moving average skill score updates.
 
 ---
 

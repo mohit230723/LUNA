@@ -21,9 +21,9 @@ Traditional multi-agent frameworks suffer from critical flaws:
 **LUNA OS solves all four problems using FalkorDB's multi-graph architecture:**
 - **Dynamic Skill Equipping via Atlas:** Blank sub-agents are dynamically equipped by querying an `atlas` skill catalog graph for capabilities, prerequisite chains, and historical success scores.
 - **Process & Tool Isolation via FastMCP:** Each sub-agent runs inside its own FastMCP server exposed over stdio, configured *only* with tools exposed by its assigned skill, and pinned *exclusively* to its designated private graph slice.
-- **Sub-Graph Slice Extraction:** The orchestrator extracts an isolated k-hop induced subgraph from the `domain` graph into `agent_<run>_<agent>`, making cross-agent data leakage mathematically impossible.
-- **Cryptographic Anti-Hallucination Barrier:** Before any draft finding is promoted to shared run memory, the promotion engine checks that *every cited evidence CID actually exists* in the agent's private slice. Hallucinations are immediately rejected with an audit trail.
-- **Immutable Explainability Contract:** Contradicting findings are never deleted. Losing findings are marked `status = 'superseded'` and linked with `[:SUPERSEDES]`, enabling a single Cypher "Why?" path query to reconstruct the entire decision tree.
+- **Sub-Graph Slice Extraction:** The orchestrator extracts an isolated k-hop induced subgraph from the `domain` graph into `agent_<run>_<agent>`: agents operate on a copied slice and are never given the domain graph name.
+- **Evidence Provenance Barrier:** Before any draft finding is promoted to shared run memory, the promotion engine applies an evidence provenance barrier (existence, observation, and connectivity checks). Hallucinations and unobserved/unconnected citations are immediately rejected with an audit trail.
+- **Append-Only Explainability Contract:** Append-only by convention: losing findings are marked superseded, never deleted. Contradicting findings are never deleted; losing findings are marked `status = 'superseded'` and linked with `[:SUPERSEDES]`, enabling a single Cypher "Why?" path query to reconstruct the entire decision tree.
 
 ---
 
@@ -131,7 +131,7 @@ Implemented 5 deterministic graph algorithm tools plus GraphRAG natural language
   2. Queries the exact **induced subgraph edges** connecting the extracted nodes (`MATCH (a)-[r]->(b) WHERE a.cid IN $cids AND b.cid IN $cids`).
   3. Sanitizes all node labels and relationship types against strict identifier regexes (`SAFE_LABEL_PATTERN`, `SAFE_REL_PATTERN`) to prevent Cypher injection.
   4. Batch inserts nodes and edges into `target_graph` (`agent_<run>_<agent>`) via Cypher `UNWIND $batch`.
-  5. Tested mathematical isolation: Decoy customer slice contains only benign family nodes with 0% leakage into fraud ring entities.
+  5. Tested slice isolation: Decoy customer slice contains only benign family nodes with 0% leakage into fraud ring entities (agents operate on a copied slice and are never given the domain graph name).
 
 ### 4.3. Autonomous Sub-Agent Loop (`luna/agents/`)
 - Pydantic Model `Finding`:
@@ -147,7 +147,7 @@ Implemented 5 deterministic graph algorithm tools plus GraphRAG natural language
 - `SubAgent.run()` Observe-Orient-Decide-Act Loop:
   - **Observe:** Calls scoped FastMCP tools (`shared_attribute_links`, `connected_components`, `ask_graph`, etc.) against the private slice to gather structural evidence.
   - **Orient & Decide:** Synthesizes observations with skill prompt fragment via structured LLM schema.
-  - **Fallback Resilience:** Built-in deterministic graph rule evaluator ensures 100% test reliability and offline execution.
+  - **Fallback Resilience:** Built-in deterministic offline fallback, flagged on each finding, ensures test reliability and offline execution.
   - **Act:** Emits draft findings citing authentic evidence CIDs.
 
 ### 4.4. Finding Promotion Engine with Anti-Hallucination Barrier (`luna/orchestrator/promote.py`)

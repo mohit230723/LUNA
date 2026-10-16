@@ -7,7 +7,7 @@ discovery_level: 2
 # Phase 2 Research: Execution, Isolation & Promotion
 
 ## Objective
-Establish the technical requirements, architecture, and testing patterns for per-agent FastMCP tool isolation, k-hop sub-graph slice extraction in FalkorDB, sub-agent execution loops with draft findings, and finding promotion with cryptographic/CID evidence validation into shared run graphs.
+Establish the technical requirements, architecture, and testing patterns for per-agent FastMCP tool isolation, k-hop sub-graph slice extraction in FalkorDB, sub-agent execution loops with draft findings, and finding promotion with evidence provenance barrier (existence, observation, and connectivity checks) into shared run graphs.
 
 ---
 
