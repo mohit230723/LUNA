@@ -1,7 +1,7 @@
 """Pydantic data models for sub-agent execution and findings."""
 
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, Optional
 from uuid import uuid4
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,8 @@ class Finding(BaseModel):
     timestamp: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
+    backend: Literal["llm", "rules", "scripted"] = "llm"
+    fallback_reason: Optional[str] = None
 
 
 class SubAgentRunConfig(BaseModel):

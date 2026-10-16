@@ -1,11 +1,14 @@
-"""Autonomous sub-agent execution loop operating within private graph slices."""
-
 import json
+import logging
+import os
 from typing import Any, Optional
 from luna.agents.models import Finding, SubAgentRunConfig
 from luna.agents.provenance import ToolCallLog
-from luna.llm.client import LLMClient
+from luna.agents.exceptions import LLMUnavailableError
+from luna.llm.client import LLMClient, MockLLMClient
 from luna.mcp.client import AgentMCPClient
+
+logger = logging.getLogger(__name__)
 
 
 class SubAgent:
@@ -16,10 +19,12 @@ class SubAgent:
         config: SubAgentRunConfig,
         mcp_client: AgentMCPClient,
         llm_client: LLMClient,
+        strict_llm: bool = False,
     ) -> None:
         self.config = config
         self.mcp_client = mcp_client
         self.llm_client = llm_client
+        self.strict_llm = strict_llm or (os.getenv("LUNA_STRICT_LLM") == "1")
         self.tool_log = ToolCallLog()
 
     async def _gather_observations(self, target_cid: str) -> tuple[dict[str, Any], set[str]]:
@@ -199,6 +204,7 @@ class SubAgent:
                 f"Observed Evidence CIDs: {sorted(evidence_cids)}"
             )
 
+            fallback_reason: Optional[str] = None
             try:
                 llm_response = self.llm_client.complete(
                     prompt=user_prompt,
@@ -209,6 +215,7 @@ class SubAgent:
                 if isinstance(llm_response, dict) and "verdict" in llm_response:
                     verdict_val = str(llm_response.get("verdict", "")).lower()
                     if verdict_val in ("suspicious", "benign"):
+                        backend_val = "scripted" if isinstance(self.llm_client, MockLLMClient) else "llm"
                         findings.append(
                             Finding(
                                 agent_id=self.config.agent_id,
@@ -220,14 +227,39 @@ class SubAgent:
                                 evidence_cids=list(
                                     set(llm_response.get("evidence_cids", [])) | evidence_cids
                                 ),
+                                backend=backend_val,
+                                fallback_reason=None,
                             )
                         )
                         continue
-            except Exception:
-                pass
+                    else:
+                        fallback_reason = "invalid_json"
+                else:
+                    fallback_reason = "invalid_json"
+            except TimeoutError:
+                fallback_reason = "timeout"
+            except Exception as e:
+                err_msg = str(e).lower()
+                if "timeout" in err_msg:
+                    fallback_reason = "timeout"
+                else:
+                    fallback_reason = "llm_error"
+
+            if self.strict_llm:
+                raise LLMUnavailableError(
+                    f"LLM unavailable for agent '{self.config.agent_id}': {fallback_reason}"
+                )
+
+            logger.warning(
+                "SubAgent '%s' falling back to deterministic rules. Reason: %s",
+                self.config.agent_id,
+                fallback_reason,
+            )
 
             # Fallback to deterministic heuristic evaluation
             heuristic_finding = self._heuristic_evaluate(target_cid, observations, evidence_cids)
+            heuristic_finding.backend = "rules"
+            heuristic_finding.fallback_reason = fallback_reason or "rules"
             findings.append(heuristic_finding)
 
         return findings

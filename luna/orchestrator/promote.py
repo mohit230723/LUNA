@@ -133,7 +133,9 @@ def promote_findings(
             "    skill_id: $skill_id, "
             "    agent_id: $agent_id, "
             "    status: 'promoted', "
-            "    timestamp: $timestamp "
+            "    timestamp: $timestamp, "
+            "    backend: $backend, "
+            "    fallback_reason: $fallback_reason "
             "}) "
             "MERGE (a:Agent {id: $agent_id}) "
             f"CREATE (f)-[:{REL_PROMOTED_FROM}]->(a) "
@@ -149,6 +151,8 @@ def promote_findings(
             "skill_id": finding.skill_id,
             "agent_id": finding.agent_id,
             "timestamp": finding.timestamp,
+            "backend": finding.backend,
+            "fallback_reason": finding.fallback_reason,
         }
         store.query(run_graph_name, create_finding_query, finding_params)
 
