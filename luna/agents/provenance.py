@@ -9,6 +9,13 @@ class ToolCallLog:
     def __init__(self) -> None:
         self.entries: list[dict[str, Any]] = []
 
+    @property
+    def calls(self) -> list[dict[str, Any]]:
+        return self.entries
+
+    def __len__(self) -> int:
+        return len(self.entries)
+
     def record(self, tool_name: str, args: dict, result: Any) -> None:
         """Record an executed tool call and its result."""
         self.entries.append({

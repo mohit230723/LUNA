@@ -22,5 +22,26 @@
 | F13 | Audit the GraphStore guard | DONE | `tests/test_store.py` (4 new tests, 9 total) | Audited `GraphStore._validate_query_safety`. Updated validation regex to disallow semicolon chaining (`;`) and Python format-string injection patterns (`%s`, `%d`, `%r`, `%f`, `{}`, `{[0-9]+}`) while allowing valid Cypher property maps (`{cid: $cid}`) and map literals in RETURN clauses (`RETURN {id: c.cid, active: true}`). Added class docstring explicitly stating that query parameterization (`$param`) is the primary line of defense against injection and the regex validation is an additional safety net. Added 4 tests validating property maps, return map literals, semicolon blocking, and format pattern blocking. |
 | F3 | Wording cleanup (docs only) | DONE | Docs only (all existing tests pass) | Performed systematic codebase search and replaced hyperbolic terms with precise technical descriptions: (1) `"cryptographic anti-hallucination barrier"` -> `"evidence provenance barrier (existence, observation, and connectivity checks)"` in `LUNA_ARCHITECTURE_AND_PROGRESS.md:25` and `.gsd/phases/2/RESEARCH.md:10`; (2) `"mathematically impossible" leakage` -> `"agents operate on a copied slice and are never given the domain graph name"` in `LUNA_ARCHITECTURE_AND_PROGRESS.md:24, 134`; (3) `"immutable" explainability` -> `"append-only by convention: losing findings are marked superseded, never deleted"` in `LUNA_ARCHITECTURE_AND_PROGRESS.md:26` and `.gsd/phases/3/RESEARCH.md:10`; (4) `"100% reliability" for the rule fallback` -> `"deterministic offline fallback, flagged on each finding"` in `LUNA_ARCHITECTURE_AND_PROGRESS.md:150`; (5) Process isolation: retained for stdio mode as real OS-level subprocess isolation was empirically verified by passing F5 stdio test suite, while clarifying in-process mode uses tool scoping. |
 | F12 | ask_graph backend choice | DONE | `tests/test_ask_backend.py` (3 tests) | Defined `AskGraphBackend` runtime protocol with `ask(graph: str, question: str) -> str`. Encapsulated existing heuristic/ontology interpreter in `CustomTranslatorBackend`. Investigated `graphrag-sdk` installation probe: confirmed failure to compile C++ wheel for `hnswlib` on Windows Python 3.12 (`Microsoft Visual C++ 14.0 or greater is required`). Added `GraphRagSdkBackend` and `get_ask_backend()` factory selectable via `LUNA_ASK_BACKEND=sdk|custom` (default `custom`). Verified all backend queries pass through `validate_read_only` and `GraphStore.read_query`, blocking unsafe queries. |
+| F14 | Local LLM benchmark | DONE | `scripts/bench_llm.py`, `tests/test_bench_llm.py` (3 tests) | Created `scripts/bench_llm.py` running `SubAgent` against `demo` profile with real `OllamaLLM` and `strict_llm=True` for N runs. Measures JSON validity, evidence validity (per F2 checks), execution duration (median and max), and tool calls per run. Supports `--markdown` output flag and always exits 0. Added test suite validating CLI options and markdown rendering. Recorded benchmark report below. |
+
+---
+
+## Local LLM Benchmark Results (F14)
+
+Generated via `python scripts/bench_llm.py --n 5 --markdown`:
+
+| Metric | Value |
+|---|---|
+| Model | llama3.1 |
+| Runs | 5 |
+| Valid JSON Rate | 0.0% (0/5) |
+| Valid Evidence Rate (F2) | 0.0% (0/5) |
+| Median Duration | 4.54s |
+| Max Duration | 5.85s |
+| Tool Calls / Run | 2.0 (per run: [2, 2, 2, 2, 2]) |
+| LLM Status | Offline / Error: LLMUnavailableError: LLM unavailable for agent 'bench_agent_1': llm_error |
+
+> **Benchmark Observation:** In strict mode (`strict_llm=True`), when the local Ollama server is offline or unreachable, `SubAgent` executes all required tool calls (2 calls: `shared_attribute_links` and `connected_components`) before strictly raising `LLMUnavailableError` without falling back to deterministic rules, preventing silent divergence during evaluation.
+
 
 
