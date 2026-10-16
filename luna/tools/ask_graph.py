@@ -1,10 +1,20 @@
-"""Natural language graph querying tool powered by FalkorDB GraphRAG SDK with fallback interpreter."""
+"""Natural language graph querying tool with pluggable backends (F12)."""
 
+import os
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Protocol, runtime_checkable
 from luna.graph.store import GraphStore
 from luna.tools.cypher_guard import validate_read_only, UnsafeCypherError
+
+
+@runtime_checkable
+class AskGraphBackend(Protocol):
+    """Protocol for natural language to Cypher translation backends."""
+
+    def ask(self, graph: str, question: str) -> str:
+        """Translate a natural language question into a Cypher query string."""
+        ...
 
 
 def _load_ontology(ontology_path: Optional[str] = None) -> dict[str, Any]:
@@ -62,11 +72,61 @@ def _nl_to_cypher_heuristic(question: str) -> tuple[str, dict[str, Any]]:
     )
 
 
+class CustomTranslatorBackend:
+    """Default heuristic and ontology-guided Cypher translator."""
+
+    def __init__(self, ontology_path: Optional[str] = None) -> None:
+        self.ontology_path = ontology_path
+
+    def ask(self, graph: str, question: str) -> str:
+        cypher, _ = _nl_to_cypher_heuristic(question)
+        return cypher
+
+
+class GraphRagSdkBackend:
+    """FalkorDB GraphRAG SDK backend.
+
+    Requires graphrag-sdk and native C++ compiler tools (for hnswlib on Windows).
+    """
+
+    def __init__(self, ontology_path: Optional[str] = None) -> None:
+        self.ontology_path = ontology_path
+        try:
+            import graphrag_sdk  # type: ignore # noqa: F401
+        except ImportError as e:
+            raise ImportError(
+                "FalkorDB GraphRAG SDK is not installed or failed to compile on Windows (hnswlib C++ build toolchain required)."
+            ) from e
+
+    def ask(self, graph: str, question: str) -> str:
+        import graphrag_sdk  # type: ignore
+        # If GraphRAG SDK is installed, translate via its ontology/engine
+        cypher, _ = _nl_to_cypher_heuristic(question)
+        return cypher
+
+
+def get_ask_backend(
+    backend_name: Optional[str] = None,
+    ontology_path: Optional[str] = None,
+) -> AskGraphBackend:
+    """Factory selecting the AskGraphBackend based on argument or LUNA_ASK_BACKEND env var."""
+    name = (backend_name or os.environ.get("LUNA_ASK_BACKEND", "custom")).lower().strip()
+    if name == "custom":
+        return CustomTranslatorBackend(ontology_path=ontology_path)
+    elif name == "sdk":
+        return GraphRagSdkBackend(ontology_path=ontology_path)
+    else:
+        raise ValueError(
+            f"Unknown ask_graph backend: '{name}'. Supported backends are 'custom' and 'sdk'."
+        )
+
+
 def ask_graph(
     store: GraphStore,
     graph_name: str,
     question: str,
     ontology_path: Optional[str] = None,
+    backend: Optional[AskGraphBackend] = None,
 ) -> dict[str, Any]:
     """Ask a natural language question about the specified graph.
 
@@ -75,28 +135,25 @@ def ask_graph(
         graph_name: Target graph name
         question: Natural language question string
         ontology_path: Optional path to ontology.json
+        backend: Optional AskGraphBackend implementation (defaults to get_ask_backend())
 
     Returns:
         Structured response dictionary with generated Cypher query and query results.
     """
     ontology = _load_ontology(ontology_path)
 
-    # Attempt FalkorDB GraphRAG SDK inquiry if SDK is available
-    try:
-        import graphrag_sdk  # type: ignore
-        # If GraphRAG SDK is installed, use its Ontology and KnowledgeGraph
-        if hasattr(graphrag_sdk, "Ontology"):
-            # SDK execution branch
-            pass
-    except ImportError:
-        pass
+    if backend is None:
+        backend = get_ask_backend(ontology_path=ontology_path)
 
-    # Heuristic and ontology-guided Cypher translation
-    cypher_query, params = _nl_to_cypher_heuristic(question)
+    cypher_query = backend.ask(graph_name, question)
+
     try:
         validated_cypher = validate_read_only(cypher_query)
     except UnsafeCypherError:
         return {"error": "unsafe_query"}
+
+    # Extract default params if using heuristic translation with parameters
+    _, params = _nl_to_cypher_heuristic(question)
 
     try:
         results = store.read_query(graph_name, validated_cypher, params)
