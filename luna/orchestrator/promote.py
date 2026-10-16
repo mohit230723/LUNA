@@ -36,21 +36,48 @@ def promote_findings(
     observed: Optional[set[str]] = None,
     require_observed: bool = False,
     max_hops: Optional[int] = None,
+    threshold: float = 0.6,
 ) -> PromotionResult:
     """Validate evidence CIDs against the agent's private slice and promote verified findings.
 
     ANTI-HALLUCINATION & PROVENANCE BARRIER:
-    1. Every CID in finding.evidence_cids MUST exist as a node in `agent_graph_name`.
+    1. Confidence must be >= threshold (default 0.6).
+    2. Evidence CIDs must not be empty.
+    3. Every CID in finding.evidence_cids MUST exist as a node in `agent_graph_name`.
        Failure reason contains "evidence_not_in_slice" and "anti-hallucination barrier rejection".
-    2. If require_observed=True, every evidence CID must be in `observed` (target_cid exempt).
+    4. If require_observed=True, every evidence CID must be in `observed` (target_cid exempt).
        Failure reason contains "evidence_not_observed".
-    3. If max_hops is not None, every evidence CID must be within max_hops of target_cid in slice.
+    5. If max_hops is not None, every evidence CID must be within max_hops of target_cid in slice.
        Failure reason contains "evidence_not_connected".
-    Verified findings are merged into `run_graph_name` with provenance links. Zero writes on rejection.
+    Verified findings are merged into `run_graph_name` with provenance links (MERGE idempotency).
+    Zero writes on rejection.
     """
     result = PromotionResult()
 
     for finding in findings:
+        # Check 0a: Confidence threshold
+        if finding.confidence < threshold:
+            result.rejected.append(
+                RejectedFinding(
+                    finding=finding,
+                    reason=(
+                        f"Finding confidence {finding.confidence} is below required threshold "
+                        f"{threshold}: low_confidence"
+                    ),
+                )
+            )
+            continue
+
+        # Check 0b: No evidence rejected
+        if not finding.evidence_cids:
+            result.rejected.append(
+                RejectedFinding(
+                    finding=finding,
+                    reason="Finding has no evidence CIDs: no_evidence",
+                )
+            )
+            continue
+
         # Check 1: Evidence CIDs must exist in the agent slice
         missing_cids: list[str] = []
         for cid in finding.evidence_cids:
@@ -122,25 +149,24 @@ def promote_findings(
                 )
                 continue
 
-        # Step 2: Persist verified finding and provenance edges into shared run graph
+        # Step 2: Persist verified finding and provenance edges into shared run graph (idempotent via MERGE)
         create_finding_query = (
-            "CREATE (f:Finding { "
-            "    id: $id, "
-            "    target_cid: $target_cid, "
-            "    verdict: $verdict, "
-            "    confidence: $confidence, "
-            "    reasoning: $reasoning, "
-            "    skill_id: $skill_id, "
-            "    agent_id: $agent_id, "
-            "    status: 'promoted', "
-            "    timestamp: $timestamp, "
-            "    backend: $backend, "
-            "    fallback_reason: $fallback_reason "
-            "}) "
+            "MERGE (f:Finding {id: $id}) "
+            "ON CREATE SET "
+            "    f.target_cid = $target_cid, "
+            "    f.verdict = $verdict, "
+            "    f.confidence = $confidence, "
+            "    f.reasoning = $reasoning, "
+            "    f.skill_id = $skill_id, "
+            "    f.agent_id = $agent_id, "
+            "    f.status = 'promoted', "
+            "    f.timestamp = $timestamp, "
+            "    f.backend = $backend, "
+            "    f.fallback_reason = $fallback_reason "
             "MERGE (a:Agent {id: $agent_id}) "
-            f"CREATE (f)-[:{REL_PROMOTED_FROM}]->(a) "
+            f"MERGE (f)-[:{REL_PROMOTED_FROM}]->(a) "
             "MERGE (c:Customer {cid: $target_cid}) "
-            f"CREATE (f)-[:{REL_ASSESSES}]->(c)"
+            f"MERGE (f)-[:{REL_ASSESSES}]->(c)"
         )
         finding_params = {
             "id": finding.id,
@@ -156,12 +182,12 @@ def promote_findings(
         }
         store.query(run_graph_name, create_finding_query, finding_params)
 
-        # Step 3: Link verified evidence entity CIDs in run graph
+        # Step 3: Link verified evidence entity CIDs in run graph (idempotent via MERGE)
         for ev_cid in finding.evidence_cids:
             evidence_query = (
                 "MATCH (f:Finding {id: $finding_id}) "
                 "MERGE (e:Entity {cid: $ev_cid}) "
-                f"CREATE (f)-[:{REL_SUPPORTED_BY}]->(e)"
+                f"MERGE (f)-[:{REL_SUPPORTED_BY}]->(e)"
             )
             store.query(
                 run_graph_name,

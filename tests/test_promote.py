@@ -144,3 +144,111 @@ def test_partial_batch_promotion(live_store, tmp_graph: str) -> None:
         assert res.rejected[0].finding.id == "find-bad"
     finally:
         live_store.delete_graph(run_graph)
+
+
+@pytest.mark.integration
+def test_low_confidence_rejected(live_store, tmp_graph: str) -> None:
+    """Verify that findings with confidence below threshold are rejected."""
+    run_graph = f"{tmp_graph}_run"
+    try:
+        live_store.query(tmp_graph, "CREATE (c:Customer {cid: 'cust-000'}), (e:Entity {cid: 'ev-01'})")
+        low_conf_finding = Finding(
+            id="find-low-conf",
+            agent_id="agent-01",
+            skill_id="entity-linker",
+            target_cid="cust-000",
+            verdict="suspicious",
+            confidence=0.55,
+            reasoning="Uncertain lead",
+            evidence_cids=["ev-01"],
+        )
+        res = promote_findings(
+            store=live_store,
+            agent_graph_name=tmp_graph,
+            run_graph_name=run_graph,
+            findings=[low_conf_finding],
+            threshold=0.60,
+        )
+        assert res.total_promoted == 0
+        assert res.total_rejected == 1
+        assert "low_confidence" in res.rejected[0].reason
+    finally:
+        live_store.delete_graph(run_graph)
+
+
+@pytest.mark.integration
+def test_no_evidence_rejected(live_store, tmp_graph: str) -> None:
+    """Verify that findings with empty evidence list are rejected."""
+    run_graph = f"{tmp_graph}_run"
+    try:
+        live_store.query(tmp_graph, "CREATE (c:Customer {cid: 'cust-000'})")
+        no_ev_finding = Finding(
+            id="find-no-ev",
+            agent_id="agent-01",
+            skill_id="entity-linker",
+            target_cid="cust-000",
+            verdict="suspicious",
+            confidence=0.90,
+            reasoning="Empty evidence list test",
+            evidence_cids=[],
+        )
+        res = promote_findings(
+            store=live_store,
+            agent_graph_name=tmp_graph,
+            run_graph_name=run_graph,
+            findings=[no_ev_finding],
+        )
+        assert res.total_promoted == 0
+        assert res.total_rejected == 1
+        assert "no_evidence" in res.rejected[0].reason
+    finally:
+        live_store.delete_graph(run_graph)
+
+
+@pytest.mark.integration
+def test_promoting_twice_creates_one_finding(live_store, tmp_graph: str) -> None:
+    """Verify promoting the exact same finding twice is idempotent (MERGE on finding id)."""
+    run_graph = f"{tmp_graph}_run"
+    try:
+        live_store.query(tmp_graph, "CREATE (c:Customer {cid: 'cust-000'}), (e:Entity {cid: 'ev-01'})")
+        finding = Finding(
+            id="find-idempotent-01",
+            agent_id="agent-01",
+            skill_id="entity-linker",
+            target_cid="cust-000",
+            verdict="suspicious",
+            confidence=0.92,
+            reasoning="Idempotent promotion test",
+            evidence_cids=["ev-01"],
+        )
+        res1 = promote_findings(
+            store=live_store,
+            agent_graph_name=tmp_graph,
+            run_graph_name=run_graph,
+            findings=[finding],
+        )
+        assert res1.total_promoted == 1
+
+        # Second promotion of identical finding
+        res2 = promote_findings(
+            store=live_store,
+            agent_graph_name=tmp_graph,
+            run_graph_name=run_graph,
+            findings=[finding],
+        )
+        assert res2.total_promoted == 1
+
+        # Verify only 1 finding exists in live run graph
+        findings = live_store.query(run_graph, "MATCH (f:Finding {id: 'find-idempotent-01'}) RETURN count(f) AS cnt")
+        assert findings[0]["cnt"] == 1
+
+        # Verify relationships are not duplicated
+        rel_cnt = live_store.query(run_graph, "MATCH (:Finding {id: 'find-idempotent-01'})-[r]->() RETURN count(r) AS cnt")
+        assert rel_cnt[0]["cnt"] == 3  # PROMOTED_FROM, ASSESSES, SUPPORTED_BY
+    finally:
+        live_store.delete_graph(run_graph)
+
+
+# Alias test name matching F11 spec
+test_partial_batch_promotes_valid_and_rejects_invalid = test_partial_batch_promotion
+
