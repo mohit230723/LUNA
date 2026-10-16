@@ -108,14 +108,116 @@ class SubAgent:
         observations: dict[str, Any],
         evidence_cids: set[str],
     ) -> Finding:
-        """Deterministic evaluation fallback based on graph observations."""
+        """Deterministic evaluation fallback based on graph observations and equipped skill."""
+        skill = self.config.skill_id
         shared_links = observations.get("shared_attribute_links")
         clusters = observations.get("connected_components")
         outliers = observations.get("claim_amount_outliers")
 
+        # 1. entity-linker skill logic:
+        # Any customer sharing any attribute (phone, bank account, address) with another is "suspicious" with confidence 0.60 to 0.70.
+        if skill == "entity-linker":
+            if isinstance(shared_links, list) and len(shared_links) >= 1:
+                attr_types = sorted(list({str(x.get("attribute_type")) for x in shared_links if isinstance(x, dict) and x.get("attribute_type")}))
+                is_moderate_confidence = "0.60 to 0.70" in self.config.prompt_fragment or set(attr_types) == {"Address"}
+                confidence = 0.65 if is_moderate_confidence else 0.92
+                return Finding(
+                    agent_id=self.config.agent_id,
+                    skill_id=self.config.skill_id,
+                    target_cid=target_cid,
+                    verdict="suspicious",
+                    confidence=confidence,
+                    reasoning=(
+                        f"Customer {target_cid} shares attributes ({', '.join(attr_types) or 'attributes'}) "
+                        f"with {len(shared_links)} other entities."
+                    ),
+                    evidence_cids=sorted(evidence_cids),
+                )
+            return Finding(
+                agent_id=self.config.agent_id,
+                skill_id=self.config.skill_id,
+                target_cid=target_cid,
+                verdict="benign",
+                confidence=0.85,
+                reasoning=f"Customer {target_cid} does not share any attributes with other entities.",
+                evidence_cids=sorted(evidence_cids),
+            )
+
+        # 2. community-analyzer / ring-detector skill logic:
+        # A customer connected to others only through Address is "benign" with confidence 0.75 to 0.85;
+        # customers connected through BankAccount or Phone are "suspicious".
+        if skill in ("community-analyzer", "ring-detector"):
+            if isinstance(shared_links, list) and len(shared_links) >= 1:
+                attr_types = {str(x.get("attribute_type")) for x in shared_links if isinstance(x, dict) and x.get("attribute_type")}
+                if attr_types == {"Address"}:
+                    return Finding(
+                        agent_id=self.config.agent_id,
+                        skill_id=self.config.skill_id,
+                        target_cid=target_cid,
+                        verdict="benign",
+                        confidence=0.80,
+                        reasoning=(
+                            f"Customer {target_cid} is connected to other entities only through Address "
+                            f"(benign household/family cluster)."
+                        ),
+                        evidence_cids=sorted(evidence_cids),
+                    )
+                elif any(a in ("BankAccount", "Phone") for a in attr_types):
+                    return Finding(
+                        agent_id=self.config.agent_id,
+                        skill_id=self.config.skill_id,
+                        target_cid=target_cid,
+                        verdict="suspicious",
+                        confidence=0.90,
+                        reasoning=(
+                            f"Customer {target_cid} shares high-risk financial/contact attributes "
+                            f"(bank accounts or phone numbers) with {len(shared_links)} other entities."
+                        ),
+                        evidence_cids=sorted(evidence_cids),
+                    )
+                else:
+                    return Finding(
+                        agent_id=self.config.agent_id,
+                        skill_id=self.config.skill_id,
+                        target_cid=target_cid,
+                        verdict="suspicious",
+                        confidence=0.75,
+                        reasoning=f"Customer {target_cid} shares attributes ({', '.join(sorted(attr_types))}) with other entities.",
+                        evidence_cids=sorted(evidence_cids),
+                    )
+
+            if isinstance(clusters, list):
+                target_cluster = next((cl for cl in clusters if target_cid in cl), None)
+                if target_cluster and len(target_cluster) >= 4:
+                    return Finding(
+                        agent_id=self.config.agent_id,
+                        skill_id=self.config.skill_id,
+                        target_cid=target_cid,
+                        verdict="suspicious",
+                        confidence=0.88,
+                        reasoning=(
+                            f"Customer {target_cid} is part of a densely connected component "
+                            f"of {len(target_cluster)} entities in the slice graph."
+                        ),
+                        evidence_cids=sorted(evidence_cids),
+                    )
+
+            return Finding(
+                agent_id=self.config.agent_id,
+                skill_id=self.config.skill_id,
+                target_cid=target_cid,
+                verdict="benign",
+                confidence=0.85,
+                reasoning=(
+                    f"Customer {target_cid} exhibits isolated behavior with no shared high-risk "
+                    f"attributes or ring topology."
+                ),
+                evidence_cids=sorted(evidence_cids),
+            )
+
+        # Generic fallback for other skills
         # Check for dense shared links (fraud ring indicator)
         if isinstance(shared_links, list) and len(shared_links) >= 1:
-            # Check attribute types
             has_shared_bank = any(
                 isinstance(x, dict) and x.get("attribute_type") == "BankAccount"
                 for x in shared_links

@@ -45,7 +45,7 @@ def get_seeded_skills() -> list[SkillDef]:
         SkillDef(
             id="entity-linker",
             name="Entity Linker",
-            prompt_fragment="Report any shared attributes as suspicious.",
+            prompt_fragment="Report any customer sharing any attribute (phone, bank account, address) as suspicious with confidence 0.60 to 0.70.",
             capabilities=["link_entities"],
             requires=[],
             exposes=["shared_attribute_links", "ask_graph"],
@@ -65,7 +65,7 @@ def get_seeded_skills() -> list[SkillDef]:
         SkillDef(
             id="ring-detector",
             name="Fraud Ring Detector",
-            prompt_fragment="Analyze attribute clusters. Customers connected only via Address are clean.",
+            prompt_fragment="Analyze attribute clusters. A customer connected to others only through Address is benign with confidence 0.75 to 0.85; customers connected through BankAccount or Phone are suspicious.",
             capabilities=["detect_communities"],
             requires=["entity-linker"],
             exposes=["connected_components", "ask_graph"],
