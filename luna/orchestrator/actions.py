@@ -455,31 +455,65 @@ def execute_action(
 def evaluate_outcomes(
     store: GraphStore,
     domain_graph_name: str,
-    ground_truth: GroundTruth,
-) -> EvaluationMetrics:
+    ground_truth: Optional[GroundTruth] = None,
+    run_id: Optional[str] = None,
+    run_graph_name: Optional[str] = None,
+    truth: Optional[GroundTruth] = None,
+    domain: Optional[str] = None,
+) -> Optional[EvaluationMetrics]:
     """Evaluate domain customer flagging against ground truth ring and decoy sets.
 
-    Args:
-        store: GraphStore connection
-        domain_graph_name: Operational domain graph
-        ground_truth: GroundTruth containing known ring_cids and decoy_cids
-
-    Returns:
-        EvaluationMetrics with TP, FP, TN, FN, precision, recall, and F1.
+    Run-scoped metrics (H5):
+    - If run_id is provided, counts only customers with flag_run == run_id.
+    - Positives = ring members, all other customers = negative.
+    - Stores tp, fp, fn, precision, recall, f1 on the Outcome node in run memory (null when no truth supplied).
     """
-    flagged_query = (
-        f"MATCH (c:{LABEL_CUSTOMER} {{flagged: true}}) "
-        "RETURN c.cid AS cid"
-    )
-    records = store.query(domain_graph_name, flagged_query)
+    domain_name = domain or domain_graph_name
+    gt = truth if truth is not None else ground_truth
+
+    # Target run memory graph for Outcome node property update
+    effective_run_graph = run_graph_name or (f"run_{run_id}" if run_id else None)
+
+    if gt is None:
+        # Null out metrics on Outcome node when no truth is supplied
+        if effective_run_graph:
+            try:
+                store.query(
+                    effective_run_graph,
+                    f"MATCH (o:{LABEL_OUTCOME}) "
+                    "SET o.tp = null, o.fp = null, o.fn = null, "
+                    "    o.precision = null, o.recall = null, o.f1 = null",
+                )
+            except Exception:
+                pass
+        return None
+
+    # Query flagged customers in domain graph (scoped to run_id if provided)
+    if run_id:
+        flagged_query = (
+            f"MATCH (c:{LABEL_CUSTOMER} {{flagged: true, flag_run: $run_id}}) "
+            "RETURN c.cid AS cid"
+        )
+        records = store.query(domain_name, flagged_query, {"run_id": run_id})
+    else:
+        flagged_query = (
+            f"MATCH (c:{LABEL_CUSTOMER} {{flagged: true}}) "
+            "RETURN c.cid AS cid"
+        )
+        records = store.query(domain_name, flagged_query)
+
     flagged_cids = {r["cid"] for r in records}
 
-    ring_cids = set(ground_truth.ring_cids)
-    decoy_cids = set(ground_truth.decoy_cids)
+    # Query all customers in domain to identify total negative population
+    all_cust_records = store.query(domain_name, f"MATCH (c:{LABEL_CUSTOMER}) RETURN c.cid AS cid")
+    all_cids = {r["cid"] for r in all_cust_records} if all_cust_records else set()
+
+    ring_cids = set(gt.ring_cids)
+    all_negative_cids = (all_cids | set(gt.decoy_cids)) - ring_cids
 
     tp = len(flagged_cids & ring_cids)
     fp = len(flagged_cids - ring_cids)
-    tn = len(decoy_cids - flagged_cids)
+    tn = len(all_negative_cids - flagged_cids)
     fn = len(ring_cids - flagged_cids)
 
     precision = float(tp) / (tp + fp) if (tp + fp) > 0 else 0.0
@@ -490,6 +524,26 @@ def evaluate_outcomes(
         else 0.0
     )
 
+    # Store tp, fp, fn, precision, recall, f1 on Outcome node
+    if effective_run_graph:
+        try:
+            store.query(
+                effective_run_graph,
+                f"MATCH (o:{LABEL_OUTCOME}) "
+                "SET o.tp = $tp, o.fp = $fp, o.fn = $fn, "
+                "    o.precision = $precision, o.recall = $recall, o.f1 = $f1",
+                {
+                    "tp": tp,
+                    "fp": fp,
+                    "fn": fn,
+                    "precision": precision,
+                    "recall": recall,
+                    "f1": f1,
+                },
+            )
+        except Exception:
+            pass
+
     return EvaluationMetrics(
         true_positives=tp,
         false_positives=fp,
@@ -499,3 +553,38 @@ def evaluate_outcomes(
         recall=recall,
         f1=f1,
     )
+
+
+def reset_flags(
+    store: GraphStore,
+    domain_graph_name: str,
+    run_id: Optional[str] = None,
+) -> int:
+    """Reset customer flagged state in the domain graph, optionally scoped to a run_id.
+
+    Args:
+        store: GraphStore connection
+        domain_graph_name: Target operational domain graph
+        run_id: Optional run_id to scope flag reset. If None, resets all flagged customers.
+
+    Returns:
+        Number of customers whose flags were cleared.
+    """
+    if run_id:
+        cypher = (
+            f"MATCH (c:{LABEL_CUSTOMER} {{flag_run: $run_id}}) "
+            "SET c.flagged = false, c.flag_run = null, c.flagged_at = null "
+            "RETURN count(c) AS reset_count"
+        )
+        recs = store.query(domain_graph_name, cypher, {"run_id": run_id})
+    else:
+        cypher = (
+            f"MATCH (c:{LABEL_CUSTOMER}) "
+            "WHERE c.flagged = true OR c.flag_run IS NOT NULL "
+            "SET c.flagged = false, c.flag_run = null, c.flagged_at = null "
+            "RETURN count(c) AS reset_count"
+        )
+        recs = store.query(domain_graph_name, cypher)
+
+    return int(recs[0]["reset_count"]) if recs else 0
+
