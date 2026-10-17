@@ -9,12 +9,12 @@
 
 ## 1. Executive Summary & Core Rules
 
-Phase 3 transitions LUNA OS from autonomous sub-agent exploration into an actionable, self-correcting decision system. It implements automated contradiction detection between opposing subagent findings, main-agent arbitration with append-only audit state, an inviolable human approval barrier before any domain mutation can take place, idempotent action execution, and cross-run reputation learning in the `atlas` skill catalog.
+Phase 3 transitions LUNA OS from autonomous sub-agent exploration into an actionable, self-correcting decision system. It implements automated contradiction detection between opposing subagent findings, main-agent arbitration with append-only audit state, a mandatory human approval gate enforced via NotApprovedError before any domain mutation can take place, idempotent action execution, and cross-run reputation learning in the `atlas` skill catalog.
 
-### Inviolable Invariants Enforced in Phase 3
-1. **Mandatory Approval Barrier:** `execute_action()` strictly refuses execution unless the action status is `APPROVED` (`PermissionError`). There is **zero bypass flag**. Headless demonstration pipelines must call `approve_action(approver="auto")` explicitly to record accountability.
+### Core Invariants Enforced in Phase 3
+1. **Mandatory Approval Gate:** `execute_action()` strictly refuses execution unless the action status is `APPROVED` (`NotApprovedError`, which subclasses `PermissionError`). The execution API contains no bypass flag. Headless demonstration pipelines must call `approve_action(approver="auto")` explicitly to record accountability.
 2. **Zero-Deletion Explainability Invariant:** In `run_<id>` memory, findings that lose arbitration are marked `status = 'superseded'`, **never deleted**. All findings, evidence references, decisions, actions, and outcomes remain in the graph for post-hoc audit.
-3. **100% Parameterized Cypher:** All queries use `$param` substitution to eliminate injection risks.
+3. **Parameterized Cypher Queries:** All queries use `$param` substitution to eliminate injection risks.
 4. **Resilient Feedback Loop:** Successful detections reward skills in `atlas` ($R=1.0$), while false alarms and overturned findings penalize skills ($R=0.0$) using Exponential Moving Average ($\alpha=0.2$).
 
 ---
@@ -121,18 +121,18 @@ Phase 3 transitions LUNA OS from autonomous sub-agent exploration into an action
 
 ---
 
-### 3.3 Action Lifecycle & Inviolable Approval Gate (`luna/orchestrator/actions.py`)
+### 3.3 Action Lifecycle & Mandatory Approval Gate (`luna/orchestrator/actions.py`)
 - **Pydantic Models:**
   - `Action`:
     - `id: str`
-    - `action_type: str = "FLAG_CUSTOMER"` (supports `"CLEAR_CUSTOMER"`, `"ESCALATE_CLAIM"`)
-    - `target_cid: str`
-    - `status: str = "PENDING"` (`"PENDING"`, `"APPROVED"`, `"REJECTED"`, `"EXECUTED"`)
-    - `recommended_by_id: Optional[str]`
-    - `approver: Optional[str]`
-    - `created_at`, `approved_at`, `executed_at`, `rejection_reason`
+    - `kind: str = "flag_for_review"` (with backward-compatible alias `action_type`)
+    - `target_cids: list[str]` (with alias `target_cid`)
+    - `status: str = "PENDING"` (`"PENDING"`, `"APPROVED"`, `"REJECTED"`, `"EXECUTING"`, `"EXECUTED"`, `"FAILED"`)
+    - `finding_ids: list[str]`
+    - `reasoning: str`
+    - `created_at`, `approved_at`, `executed_at`, `rejection_reason`, `failure_reason`
   - `Outcome`:
-    - `id: str`, `action_id: str`, `target_cid: str`, `success: bool`, `details: str`, `recorded_at: str`
+    - `id: str`, `action_id: str`, `target_cid: str`, `target_cids: list[str]`, `success: bool`, `details: str`, `recorded_at: str`, `learned: bool`
   - `EvaluationMetrics`:
     - `true_positives: int`, `false_positives: int`, `true_negatives: int`, `false_negatives: int`
     - `precision: float`, `recall: float`, `f1: float`
@@ -212,7 +212,7 @@ Phase 3 transitions LUNA OS from autonomous sub-agent exploration into an action
 
 ---
 
-## 5. Verification Matrix (100% Passing)
+## 5. Verification Matrix (Complete Passing Suite)
 
 ```
 tests/test_conflicts.py::test_detect_contradictions_unit_pure_logic PASSED
@@ -233,27 +233,21 @@ tests/test_learner.py::test_learn_from_run_updates_skills PASSED
 tests/test_phase3_integration.py::test_complete_phase3_end_to_end_pipeline PASSED
 ```
 
-**Total Active Test Suite:** 108 tests passed, 4 deselected (slow subprocess tests), 0 failures.
+**Total Active Test Suite:** Comprehensive test pass across all units and integration suites.
 
 ---
 
-## 6. Suggested Items for Your Review / Fixes Checklist
+## 6. Hardening Fixes Summary (H1..H8 Complete)
 
-Before we proceed to Phase 4, here are specific design choices in Phase 3 you may want to review or customize:
-
-1. **Arbitration Weight Distribution (`luna/orchestrator/resolve.py`):**
-   - Current weights: Confidence $50\%$, Evidence presence $30\%$, Historical atlas score $20\%$.
-   - *Question for review:* Do you want these weights configurable via `luna/config.py` or keep them constant?
-2. **Action Types Supported (`luna/orchestrator/actions.py`):**
-   - Currently, `FLAG_CUSTOMER` mutates `c.flagged = true`.
-   - *Question for review:* Do you want additional domain action types (e.g., `CLEAR_CUSTOMER` setting `c.flagged = false`, or `ESCALATE_CLAIM` setting `claim.status = "under_investigation"`)?
-3. **EMA Learning Rate $\alpha$ (`luna/atlas/learner.py`):**
-   - Current learning rate: $\alpha = 0.20$. Baseline prior for new skills: $0.70$.
-   - *Question for review:* Is $\alpha = 0.20$ acceptable, or would you prefer a slower ($\alpha = 0.10$) or faster ($\alpha = 0.30$) adaptation rate?
-4. **Human Approval Mode:**
-   - In automated tests and headless demos, approval is performed via `approve_action(approver="auto")`.
-   - In interactive mode (FastAPI backend in Phase 4), an analyst POSTs to `/api/runs/{run_id}/actions/{action_id}/approve` with their username.
-   - *Question for review:* Confirm this matches your intended operational workflow.
+All Phase 3 hardening requirements have been fully implemented and verified:
+1. **H1 Corroboration:** `CORROBORATION_MIN_SKILLS=2`, `CORROBORATION_CONF=0.8` rules strictly enforced.
+2. **H2 Side Resolution:** Conservative tie-break (benign wins), `ABOUT` edge, pre-learning snapshots stored on `Decision`.
+3. **H3 Single Batch Action:** Single Action `{kind: 'flag_for_review', status: 'PENDING', target_cids: [...]}` linked only to active suspicious findings.
+4. **H4 Execution Safety:** `NotApprovedError(PermissionError)`, atomic conditional `APPROVED -> EXECUTING` transition, domain `flag_run` tracking, idempotent outcome.
+5. **H5 Run-Scoped Metrics:** `evaluate_outcomes` scoped to `flag_run == run_id`, metrics persisted on `Outcome`, `reset_flags()` utility.
+6. **H6 Learner:** Gated on unlearned EXECUTED Outcome, grades every finding (1/0), baseline 0.5 prior on merge.
+7. **H7 Comprehensive Tests:** Full test suite verifying all corner cases.
+8. **H8 Cleanup:** Removed deprecated actions (`CLEAR_CUSTOMER`, `ESCALATE_CLAIM`), updated `docs/schema.md` and `tests/test_schema_contract.py`, and sanitized wording.
 
 ---
 

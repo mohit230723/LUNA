@@ -50,6 +50,10 @@
   - `TREATED_BY` (`(:InsuranceClaim)-[:TREATED_BY]->(:Provider)`)
   - `REPORTED_ACCIDENT` (`(:InsuranceClaim)-[:REPORTED_ACCIDENT]->(:AccidentReport)`)
   - Aliases in schema: `HOLDS`, `FILED`, `USES_PHONE`, `PAYS_FROM`
+- **Domain Operational Properties:**
+  - `Customer.flagged`: boolean indicating operational flag status.
+  - `Customer.flag_run`: run ID string attributing the flagging execution.
+  - `Customer.flagged_at`: ISO 8601 UTC timestamp of execution.
 
 ### 2.3 `run_<id>` Graph
 - **Node Labels:**
@@ -77,7 +81,8 @@
   - `CONFLICTS_WITH` (`(:Finding)-[:CONFLICTS_WITH]->(:Finding)`)
   - `SUPERSEDES` (`(:Decision)-[:SUPERSEDES]->(:Finding)`)
   - `UPHELD` (`(:Decision)-[:UPHELD]->(:Finding)`)
-  - `BASED_ON` (`(:Action)-[:BASED_ON]->(:Decision)`)
+  - `ABOUT` (`(:Decision)-[:ABOUT]->(:Customer)`)
+  - `BASED_ON` (`(:Action)-[:BASED_ON]->(:Finding)`) — Linked to active suspicious findings on targets; never to Decision.
   - `RESULTED_IN` (`(:Action)-[:RESULTED_IN]->(:Outcome)`)
 
 ### 2.4 `agent_<run>_<agent>` (Private Slice)
@@ -85,7 +90,9 @@
 
 ---
 
-## 3. Finding Data Model Schema (`luna.agents.models.Finding`)
+## 3. Core Data Model Schemas
+
+### 3.1 Finding Schema (`luna.agents.models.Finding`)
 
 | Field | Type | Description |
 |---|---|---|
@@ -95,17 +102,76 @@
 | `target_cid` | `str` | Unique CID of the target customer/entity being evaluated. |
 | `verdict` | `Literal["suspicious", "benign"]` | Evaluation verdict. |
 | `confidence` | `float` | Confidence score between `0.0` and `1.0`. |
-| `reasoning` | `str` | Free-text explanation and justification. |
+| `reasoning` | `str` | Text explanation and justification. |
 | `evidence_cids` | `list[str]` | List of genuine entity CIDs supporting the verdict. |
 | `timestamp` | `str` | UTC timestamp in ISO 8601 format. |
 | `backend` | `Literal["llm", "rules", "scripted"]` | Origin of the finding logic (default: `"llm"`). |
 | `fallback_reason`| `str \| None` | Short reason if deterministic rules were used (e.g. `"invalid_json"`, `"timeout"`). |
 
+### 3.2 Decision Schema (`luna.orchestrator.resolve.Decision`)
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `str` | Unique decision identifier (e.g. `dec-a1b2c3d4`). |
+| `target_cid` | `str` | Target customer CID being arbitrated. |
+| `chosen_verdict` | `Literal["suspicious", "benign"]` | Winning verdict for the customer. |
+| `confidence` | `float` | Confidence score of the best winning finding. |
+| `reasoning` | `str` | Arbitration synthesis and explanation. |
+| `winning_finding_id` | `str` | ID of the best winning finding upheld. |
+| `superseded_finding_ids` | `list[str]` | IDs of all losing-side findings marked superseded. |
+| `resolved_at` | `str` | UTC timestamp in ISO 8601 format. |
+| `backend` | `str` | Arbitration engine (`"rule"`). |
+| `component_scores` | `str \| None` | JSON string snapshot of side scores and component breakdown. |
+| `weights` | `str \| None` | JSON string snapshot of arbitration weights (`w_conf`, `w_evid`, `w_skill`). |
+| `skill_scores_json` | `str \| None` | JSON string snapshot of skill scores read prior to learning. |
+
+### 3.3 Action Schema (`luna.orchestrator.actions.Action`)
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `str` | Unique action identifier (e.g. `act-a1b2c3d4`). |
+| `kind` | `str` | Canonical action type (`"flag_for_review"`). |
+| `action_type` | `str` | Backward-compatible alias for `kind`. |
+| `target_cids` | `list[str]` | List of corroborated customer CIDs targeted by the run action. |
+| `target_cid` | `str \| None` | Backward-compatible alias for single target customer. |
+| `status` | `str` | Execution state: `"PENDING"`, `"APPROVED"`, `"REJECTED"`, `"EXECUTING"`, `"EXECUTED"`, `"FAILED"`. |
+| `finding_ids` | `list[str]` | IDs of active suspicious findings supporting this action. |
+| `reasoning` | `str` | Rationale for the proposed action. |
+| `created_at` | `str` | Creation UTC timestamp in ISO 8601 format. |
+| `approved_at` | `str \| None` | Timestamp when approved by human or auto authority. |
+| `executed_at` | `str \| None` | Timestamp when domain execution finished. |
+| `approver` | `str \| None` | Identifier of approving authority. |
+| `rejection_reason` | `str \| None` | Reason provided if action was rejected. |
+| `failure_reason` | `str \| None` | Failure exception message if execution failed. |
+
+### 3.4 Outcome Schema & Run Metrics (`luna.orchestrator.actions.Outcome`)
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `str` | Unique outcome identifier (e.g. `out-a1b2c3d4`). |
+| `action_id` | `str` | Identifier of executed Action node. |
+| `target_cid` | `str` | Primary customer CID target. |
+| `target_cids` | `list[str]` | All customer CIDs targeted and mutated. |
+| `success` | `bool` | Execution status flag. |
+| `details` | `str` | Human-readable outcome description. |
+| `recorded_at` | `str` | ISO 8601 UTC timestamp of execution record. |
+| `learned` | `bool` | Idempotency flag; `true` once cross-run learner has processed the outcome. |
+
+#### Outcome Graph Node Metrics Properties (Scoped to `flag_run == run_id`)
+When evaluated against ground truth, the `Outcome` node stores:
+- `tp`: True positive customer count (ring members correctly flagged).
+- `fp`: False positive customer count (non-ring customers flagged).
+- `fn`: False negative customer count (ring members not flagged).
+- `precision`: Precision float score ($tp / (tp + fp)$).
+- `recall`: Recall float score ($tp / (tp + fn)$).
+- `f1`: Harmonic mean F1 score ($2 \cdot (P \cdot R) / (P + R)$).
+*(All metric properties are set to null when evaluation is performed without ground truth).*
+
 ---
 
 ## 4. Atlas Seeded Skill IDs
 
-| Skill ID | Capability Provided | Tool Exposed | Default Score | Notes |
+| Skill ID | Capability Provided | Tool Exposed | Default Prior | Notes |
 |---|---|---|---|---|
 | `entity-linker` | `link_entities` | `shared_attribute_links`, `ask_graph` | 0.70 | Base attribute linkage |
 | `community-analyzer` | `detect_communities` | `connected_components`, `ask_graph` | 0.80 | Requires `entity-linker` |
@@ -118,8 +184,6 @@
 ---
 
 ## 5. Plan-to-Code Name Map
-
-Where early plan/spec drafts used alternate names, this table documents the definitive mappings in active code:
 
 | Plan / Spec Term | Code Implementation Term | Context |
 |---|---|---|
