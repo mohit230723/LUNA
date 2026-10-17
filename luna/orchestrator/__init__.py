@@ -29,8 +29,18 @@ from luna.orchestrator.actions import (
     evaluate_outcomes,
     reset_flags,
     CORROBORATION_MIN_SKILLS,
+
     CORROBORATION_CONF,
     check_corroboration,
+)
+from luna.orchestrator.explain import (
+    SkillChoiceView,
+    FindingView,
+    DecisionView,
+    CustomerExplanation,
+    ExplainResult,
+    explain_customer,
+    explain_action,
 )
 
 __all__ = [
@@ -58,4 +68,12 @@ __all__ = [
     "CORROBORATION_MIN_SKILLS",
     "CORROBORATION_CONF",
     "check_corroboration",
+    "SkillChoiceView",
+    "FindingView",
+    "DecisionView",
+    "CustomerExplanation",
+    "ExplainResult",
+    "explain_customer",
+    "explain_action",
 ]
+

@@ -152,3 +152,50 @@ def test_orchestrator_decision_action_outcome_schema_contract(live_store, tmp_gr
 
     finally:
         live_store.delete_graph(run_graph)
+
+
+@pytest.mark.integration
+def test_skill_assignment_decision_schema_contract(live_store, tmp_graph: str) -> None:
+    """Assert that skill assignment decisions and equipping strictly adhere to frozen schema."""
+    from luna.graph.schema import (
+        LABEL_SUBTASK,
+        LABEL_SKILL_REF,
+        REL_FOR,
+        REL_CHOSE,
+        REL_REJECTED,
+        REL_EQUIPPED,
+    )
+    from luna.atlas.assign import equip_agent_with_skill
+
+    run_graph = f"{tmp_graph}_skill_schema"
+    try:
+        live_store.query(
+            run_graph,
+            f"CREATE (sub:{LABEL_SUBTASK} {{id: 'sub-01', capability: 'link_entities'}}) "
+            f"CREATE (d:{LABEL_DECISION} {{id: 'dec-s-01', kind: 'skill_assignment', backend: 'rules', confidence: 1.0}}) "
+            f"CREATE (s_chose:{LABEL_SKILL_REF} {{id: 'entity-linker'}}) "
+            f"CREATE (s_rej:{LABEL_SKILL_REF} {{id: 'bulk-linker'}}) "
+            f"CREATE (d)-[:{REL_FOR}]->(sub) "
+            f"CREATE (d)-[:{REL_CHOSE}]->(s_chose) "
+            f"CREATE (d)-[:{REL_REJECTED} {{reason: 'Policy restriction'}}]->(s_rej)",
+        )
+        equip_agent_with_skill(live_store, run_graph, "agent-01", "entity-linker")
+
+        raw_labels = live_store.query(run_graph, "CALL db.labels()")
+        labels = {row.get("label") or list(row.values())[0] for row in raw_labels}
+
+        raw_rels = live_store.query(run_graph, "CALL db.relationshipTypes()")
+        rels = {row.get("relationshipType") or list(row.values())[0] for row in raw_rels}
+
+        assert LABEL_DECISION in labels
+        assert LABEL_SUBTASK in labels
+        assert LABEL_SKILL_REF in labels
+        assert LABEL_AGENT in labels
+        assert REL_FOR in rels
+        assert REL_CHOSE in rels
+        assert REL_REJECTED in rels
+        assert REL_EQUIPPED in rels
+
+    finally:
+        live_store.delete_graph(run_graph)
+

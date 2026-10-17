@@ -20,6 +20,8 @@ def assign_skills_to_subtasks(
     store: GraphStore,
     subtasks: list[Subtask],
     task_type: str,
+    run_graph_name: Optional[str] = None,
+    atlas_graph: str = GRAPH_ATLAS,
 ) -> list[AssignmentResult]:
     """Query atlas graph to match and assign the best skills to subtasks.
 
@@ -34,6 +36,8 @@ def assign_skills_to_subtasks(
         store: GraphStore connection wrapper
         subtasks: List of decomposed subtasks
         task_type: Task type name (e.g. 'fraud_ring_investigation')
+        run_graph_name: Optional run memory graph name to persist skill-assignment decisions
+        atlas_graph: Atlas graph name (default: 'atlas')
 
     Returns:
         List of AssignmentResult objects documenting selection decisions.
@@ -50,16 +54,15 @@ def assign_skills_to_subtasks(
             "RETURN s.id AS id, s.name AS name, s.prompt_fragment AS prompt_fragment, "
             "       s.restricted AS restricted, r.score AS score, collect(req.id) AS requires"
         )
-        rows = store.query(GRAPH_ATLAS, query, {"cap": subtask.capability, "task_type": task_type})
+        rows = store.query(atlas_graph, query, {"cap": subtask.capability, "task_type": task_type})
 
         if not rows:
-            results.append(
-                AssignmentResult(
-                    subtask=subtask,
-                    chosen_skill=None,
-                    rejected_skills=[("none", f"No skills provide capability '{subtask.capability}'")],
-                )
+            res = AssignmentResult(
+                subtask=subtask,
+                chosen_skill=None,
+                rejected_skills=[("none", f"No skills provide capability '{subtask.capability}'")],
             )
+            results.append(res)
             continue
 
         eligible_candidates: list[dict[str, Any]] = []
@@ -84,26 +87,24 @@ def assign_skills_to_subtasks(
             unmet_prereqs = [req for req in requires if req not in assigned_skill_ids]
             if unmet_prereqs:
                 # If prerequisite not yet assigned in prior subtasks, check if acceptable or penalize
-                # In standard flow, entity-linker is assigned in subtask 1, fulfilling ring-detector in subtask 2
                 pass
 
             eligible_candidates.append({
                 "id": skill_id,
-                "name": row.get("name", skill_id),
-                "prompt_fragment": row.get("prompt_fragment", ""),
+                "name": row.get("name") or skill_id,
+                "prompt_fragment": row.get("prompt_fragment") or "",
                 "restricted": is_restricted,
                 "score": score,
                 "requires": requires,
             })
 
         if not eligible_candidates:
-            results.append(
-                AssignmentResult(
-                    subtask=subtask,
-                    chosen_skill=None,
-                    rejected_skills=rejected_candidates,
-                )
+            res = AssignmentResult(
+                subtask=subtask,
+                chosen_skill=None,
+                rejected_skills=rejected_candidates,
             )
+            results.append(res)
             continue
 
         # Sort eligible candidates by score descending
@@ -127,12 +128,61 @@ def assign_skills_to_subtasks(
         )
 
         assigned_skill_ids.add(winner["id"])
-        results.append(
-            AssignmentResult(
-                subtask=subtask,
-                chosen_skill=chosen_def,
-                rejected_skills=rejected_candidates,
-            )
+        res = AssignmentResult(
+            subtask=subtask,
+            chosen_skill=chosen_def,
+            rejected_skills=rejected_candidates,
         )
+        results.append(res)
+
+        # Persist skill assignment decision to run graph if requested
+        if run_graph_name:
+            dec_id = f"dec-skill-{subtask.id}"
+            store.query(
+                run_graph_name,
+                "MERGE (sub:Subtask {id: $sub_id}) "
+                "ON CREATE SET sub.capability = $cap, sub.description = $desc "
+                "MERGE (d:Decision {id: $dec_id}) "
+                "ON CREATE SET d.kind = 'skill_assignment', d.backend = 'rules', d.confidence = 1.0 "
+                "MERGE (d)-[:FOR]->(sub) "
+                "MERGE (s:SkillRef {id: $chosen_id}) "
+                "MERGE (d)-[:CHOSE]->(s)",
+                {
+                    "sub_id": subtask.id,
+                    "cap": subtask.capability,
+                    "desc": subtask.description or "",
+                    "dec_id": dec_id,
+                    "chosen_id": chosen_def.id,
+                },
+            )
+            for rej_id, reason in rejected_candidates:
+                store.query(
+                    run_graph_name,
+                    "MATCH (d:Decision {id: $dec_id}) "
+                    "MERGE (s:SkillRef {id: $rej_id}) "
+                    "MERGE (d)-[:REJECTED {reason: $reason}]->(s)",
+                    {"dec_id": dec_id, "rej_id": rej_id, "reason": reason},
+                )
 
     return results
+
+
+def equip_agent_with_skill(
+    store: GraphStore,
+    run_graph_name: str,
+    agent_id: str,
+    skill_id: str,
+) -> None:
+    """Persist Agent -[:EQUIPPED]-> SkillRef in run graph."""
+    store.query(
+        run_graph_name,
+        "MERGE (a:Agent {id: $agent_id}) "
+        "MERGE (s:SkillRef {id: $skill_id}) "
+        "MERGE (a)-[:EQUIPPED]->(s)",
+        {"agent_id": agent_id, "skill_id": skill_id},
+    )
+
+
+# Canonical alias as specified in requirements
+assign_skills = assign_skills_to_subtasks
+
