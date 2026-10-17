@@ -1,12 +1,12 @@
 ---
 milestone: v1.0
 version: 1.0.0
-updated: 2026-10-15T22:15:00+05:30
+updated: 2026-10-18T01:18:00+05:30
 ---
 
 # Roadmap
 
-> **Current Phase:** 1 - Foundation & Graph Infrastructure
+> **Current Phase:** 4 - Explainability & Backend API
 > **Status:** planning
 
 ## Must-Haves (from SPEC)
@@ -18,8 +18,8 @@ updated: 2026-10-15T22:15:00+05:30
 - [x] FastMCP per-agent tool scoping over stdio.
 - [x] Private sub-graph slice extraction and sub-agent execution loop drafting findings.
 - [x] Finding promotion validating evidence against private slices into shared run memory.
-- [ ] Contradiction detection (`CONFLICTS_WITH`) and resolution with superseded audit state.
-- [ ] Human approval gate, idempotent domain action execution, and cross-run learning score update.
+- [x] Contradiction detection (`CONFLICTS_WITH`) and resolution with superseded audit state.
+- [x] Human approval gate, idempotent domain action execution, and cross-run learning score update.
 - [ ] Cypher "Why?" path query tracing complete decision justifications.
 - [ ] FastAPI backend with SSE event streaming and headless CLI runner.
 - [ ] Hyperstudio/Obsidian-aesthetic Cytoscape.js interactive graph dashboard.
@@ -57,16 +57,16 @@ updated: 2026-10-15T22:15:00+05:30
 ---
 
 ### Phase 3: Conflict Resolution & Action Lifecycle
-**Status:** ⬜ Not Started  
+**Status:** ✅ Complete  
 **Objective:** Automated contradiction detection between promoted findings, main-agent conflict resolution marking losers as `superseded`, human approval gate, idempotent action execution in domain graph, and cross-run learning updates in `atlas`.  
 **Requirements:** REQ-13, REQ-14, REQ-15, REQ-16  
 **Depends on:** Phase 2  
 
 **Plans:**
-- [ ] Plan 3.1: Contradiction detection engine identifying opposing verdicts on identical entities and creating `[:CONFLICTS_WITH]` edges.
-- [ ] Plan 3.2: Main agent conflict resolution logic creating `Decision` nodes and marking superseded findings.
-- [ ] Plan 3.3: Action proposal, human approval barrier, idempotent customer flagging execution, and ground truth precision/recall evaluation.
-- [ ] Plan 3.4: Cross-run learner updating `SUCCEEDED_ON` edge scores in `atlas` based on action outcomes.
+- [x] Plan 3.1: Contradiction detection engine identifying opposing verdicts on identical entities and creating `[:CONFLICTS_WITH]` edges.
+- [x] Plan 3.2: Main agent conflict resolution logic creating `Decision` nodes and marking superseded findings.
+- [x] Plan 3.3: Action proposal, human approval barrier, idempotent customer flagging execution, and ground truth precision/recall evaluation.
+- [x] Plan 3.4: Cross-run learner updating `SUCCEEDED_ON` edge scores in `atlas` based on action outcomes.
 
 ---
 
@@ -103,7 +103,7 @@ updated: 2026-10-15T22:15:00+05:30
 |-------|--------|-------|----------|
 | 1: Foundation & Graph Infrastructure | ✅ Complete | 5/5 | 100% |
 | 2: Execution, Isolation & Promotion | ✅ Complete | 4/4 | 100% |
-| 3: Conflict Resolution & Action Lifecycle | ⬜ Not Started | 0/4 | 0% |
+| 3: Conflict Resolution & Action Lifecycle | ✅ Complete | 4/4 | 100% |
 | 4: Explainability & Backend API | ⬜ Not Started | 0/3 | 0% |
 | 5: Obsidian UI & Final Polish | ⬜ Not Started | 0/4 | 0% |
 

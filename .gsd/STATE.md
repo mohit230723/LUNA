@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-15T23:43:00+05:30
+updated: 2026-10-18T01:18:00+05:30
 ---
 
 # Project State
@@ -7,20 +7,25 @@ updated: 2026-10-15T23:43:00+05:30
 ## Current Position
 
 **Milestone:** v1.0  
-**Phase:** 3 - Conflict Resolution & Action Lifecycle  
-**Status:** executing  
-**Plan:** 3.1 - Contradiction Detection Engine  
+**Phase:** 4 - Explainability & Backend API  
+**Status:** planning  
+**Plan:** 4.1 - "Why?" Path Query Module  
 
 ## Last Action
 
-Completed all pre-Phase 3 hardening fixes (F1 through F14) with 96 tests passing across integration and unit suites, verified against live FalkorDB, and committed/pushed to GitHub repository. Finalized Phase 3 plans (3.1, 3.2, 3.3, 3.4).
+Completed Phase 3 ("Conflict Resolution & Action Lifecycle") with all 4 plans executed and verified:
+- Plan 3.1: Contradiction detection engine (`[:CONFLICTS_WITH]`)
+- Plan 3.2: Main-agent conflict resolution (`[:UPHELD]`, `[:SUPERSEDES]`, append-only audit trail)
+- Plan 3.3: Action proposal, human approval barrier (`PermissionError` refusal), idempotent customer flagging execution, and precision/recall evaluation against ground truth
+- Plan 3.4: Atlas cross-run learner with Exponential Moving Average (EMA, $\alpha=0.2$) and full Phase 3 end-to-end integration test
+- Complete test suite: 108/108 passing on live FalkorDB.
 
 ## Next Steps
 
-1. Execute Plan 3.1: Contradiction detection engine (`luna/orchestrator/conflicts.py`, `tests/test_conflicts.py`).
-2. Execute Plan 3.2: Main agent conflict resolution logic (`luna/orchestrator/resolve.py`, `tests/test_resolve.py`).
-3. Execute Plan 3.3: Action proposal, human approval barrier, idempotent customer flagging execution, and ground truth evaluation (`luna/orchestrator/actions.py`, `tests/test_actions.py`).
-4. Execute Plan 3.4: Cross-run learner in atlas (`luna/atlas/learner.py`, `tests/test_learner.py`, `tests/test_phase3_integration.py`).
+1. Plan and execute Phase 4 ("Explainability & Backend API"):
+   - Plan 4.1: "Why?" Path query module tracing decisions, findings, evidence, and skill justifications.
+   - Plan 4.2: Headless CLI orchestrator runner (`scripts/demo.py`) with replay recording fallback.
+   - Plan 4.3: FastAPI application exposing run lifecycle endpoints, human approval controls, and SSE stream.
 
 ## Active Decisions
 
