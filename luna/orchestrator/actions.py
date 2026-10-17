@@ -30,6 +30,11 @@ STATUS_EXECUTED = "EXECUTED"
 STATUS_FAILED = "FAILED"
 
 
+class NotApprovedError(PermissionError):
+    """Raised when an attempt is made to execute an action that is not in APPROVED status."""
+    pass
+
+
 def check_corroboration(
     findings: list[dict[str, Any]],
     min_skills: int = CORROBORATION_MIN_SKILLS,
@@ -296,19 +301,40 @@ def execute_action(
     run_graph_name: str,
     domain_graph_name: str,
     action_id: str,
+    run_id: Optional[str] = None,
 ) -> Outcome:
     """Execute an approved action against the domain graph and record the outcome in run memory.
 
-    Args:
-        store: GraphStore connection
-        run_graph_name: Target run memory graph
-        domain_graph_name: Operational domain graph
-        action_id: Action identifier to execute
-
-    Returns:
-        Outcome object recording execution results.
+    Execution Safety (H4):
+    - Raises NotApprovedError unless status is 'APPROVED'.
+    - Uses an atomic conditional status update (APPROVED -> EXECUTING).
+    - Sets c.flagged = true, c.flag_run = $run_id, and c.flagged_at on targets.
+    - On exception, marks the Action as FAILED with failure_reason.
+    - Idempotent: Subsequent calls return the existing Outcome node.
     """
-    # 1. Inspect Action in run memory
+    effective_run_id = run_id or (run_graph_name[4:] if run_graph_name.startswith("run_") else run_graph_name)
+
+    # 1. Idempotency Check: Return existing Outcome if already executed
+    existing_outcome_cypher = (
+        f"MATCH (a:{LABEL_ACTION} {{id: $action_id}})-[:{REL_RESULTED_IN}]->(o:{LABEL_OUTCOME}) "
+        "RETURN o.id AS id, o.action_id AS action_id, o.target_cid AS target_cid, "
+        "       o.success AS success, o.details AS details, o.recorded_at AS recorded_at, "
+        "       coalesce(o.learned, false) AS learned"
+    )
+    existing_recs = store.query(run_graph_name, existing_outcome_cypher, {"action_id": action_id})
+    if existing_recs:
+        r = existing_recs[0]
+        return Outcome(
+            id=r["id"],
+            action_id=r["action_id"],
+            target_cid=r.get("target_cid") or "",
+            success=bool(r.get("success", True)),
+            details=r.get("details") or "",
+            recorded_at=r.get("recorded_at") or "",
+            learned=bool(r.get("learned", False)),
+        )
+
+    # 2. Inspect Action in run memory
     check_cypher = (
         f"MATCH (a:{LABEL_ACTION} {{id: $action_id}}) "
         "RETURN a.id AS id, a.status AS status, a.target_cid AS target_cid, "
@@ -320,70 +346,110 @@ def execute_action(
 
     act_data = recs[0]
     status = act_data["status"]
-    action_type = act_data.get("kind") or act_data.get("action_type") or ACTION_FLAG_FOR_REVIEW
-    target_cids = act_data.get("target_cids") or []
-    if not target_cids and act_data.get("target_cid"):
-        target_cids = [act_data["target_cid"]]
-
-    primary_cid = target_cids[0] if target_cids else ""
-
-    # 2. APPROVAL BARRIER
     if status != STATUS_APPROVED:
-        raise PermissionError(
+        raise NotApprovedError(
             f"Action '{action_id}' cannot be executed: status is '{status}', requires 'APPROVED'."
         )
 
+    # 3. Atomic Conditional Status Update: APPROVED -> EXECUTING
+    conditional_cypher = (
+        f"MATCH (a:{LABEL_ACTION} {{id: $action_id}}) "
+        "WHERE a.status = 'APPROVED' "
+        "SET a.status = 'EXECUTING' "
+        "RETURN a.id AS id, a.kind AS kind, a.action_type AS action_type, "
+        "       coalesce(a.target_cids, []) AS target_cids, a.target_cid AS target_cid"
+    )
+    locked_recs = store.query(run_graph_name, conditional_cypher, {"action_id": action_id})
+    if not locked_recs:
+        # Re-check if already executed concurrently
+        existing_recs = store.query(run_graph_name, existing_outcome_cypher, {"action_id": action_id})
+        if existing_recs:
+            r = existing_recs[0]
+            return Outcome(
+                id=r["id"],
+                action_id=r["action_id"],
+                target_cid=r.get("target_cid") or "",
+                success=bool(r.get("success", True)),
+                details=r.get("details") or "",
+                recorded_at=r.get("recorded_at") or "",
+                learned=bool(r.get("learned", False)),
+            )
+        raise NotApprovedError(
+            f"Action '{action_id}' cannot be executed: concurrent transition from 'APPROVED'."
+        )
+
+    target_cids = locked_recs[0].get("target_cids") or []
+    if not target_cids and locked_recs[0].get("target_cid"):
+        target_cids = [locked_recs[0]["target_cid"]]
+    primary_cid = target_cids[0] if target_cids else ""
+
     now = datetime.now(timezone.utc).isoformat()
 
-    # 3. Apply Domain Graph Mutation to all targets
-    for cid in target_cids:
-        mutate_cypher = (
-            f"MATCH (c:{LABEL_CUSTOMER} {{cid: $cid}}) "
-            "SET c.flagged = true, c.flagged_at = $timestamp "
-            "RETURN c.cid AS cid"
+    try:
+        # 4. Apply Domain Graph Mutation to all targets
+        for cid in target_cids:
+            mutate_cypher = (
+                f"MATCH (c:{LABEL_CUSTOMER} {{cid: $cid}}) "
+                "SET c.flagged = true, c.flag_run = $run_id, c.flagged_at = $timestamp "
+                "RETURN c.cid AS cid"
+            )
+            store.query(
+                domain_graph_name,
+                mutate_cypher,
+                {"cid": cid, "run_id": effective_run_id, "timestamp": now},
+            )
+        details = f"Flagged {len(target_cids)} customer(s) in operational domain graph (run {effective_run_id}): {', '.join(target_cids)}."
+
+        # 5. Record Outcome in Run Memory and update Action status to EXECUTED
+        outcome = Outcome(
+            action_id=action_id,
+            target_cid=primary_cid,
+            success=True,
+            details=details,
+            recorded_at=now,
         )
-        store.query(domain_graph_name, mutate_cypher, {"cid": cid, "timestamp": now})
-    details = f"Flagged {len(target_cids)} customer(s) in operational domain graph: {', '.join(target_cids)}."
 
-    # 4. Record Outcome in Run Memory and update Action status to EXECUTED
-    outcome = Outcome(
-        action_id=action_id,
-        target_cid=primary_cid,
-        success=True,
-        details=details,
-        recorded_at=now,
-    )
+        create_outcome_cypher = (
+            f"CREATE (o:{LABEL_OUTCOME} {{"
+            f"  id: $out_id, "
+            f"  action_id: $action_id, "
+            f"  target_cid: $cid, "
+            f"  target_cids: $target_cids, "
+            f"  success: true, "
+            f"  details: $details, "
+            f"  recorded_at: $timestamp, "
+            f"  learned: false"
+            f"}})"
+            f"WITH o "
+            f"MATCH (a:{LABEL_ACTION} {{id: $action_id}}) "
+            f"CREATE (a)-[:{REL_RESULTED_IN}]->(o) "
+            f"SET a.status = 'EXECUTED', a.executed_at = $timestamp"
+        )
+        store.query(
+            run_graph_name,
+            create_outcome_cypher,
+            {
+                "out_id": outcome.id,
+                "action_id": action_id,
+                "cid": primary_cid,
+                "target_cids": target_cids,
+                "details": details,
+                "timestamp": now,
+            },
+        )
+        return outcome
 
-    create_outcome_cypher = (
-        f"CREATE (o:{LABEL_OUTCOME} {{"
-        f"  id: $out_id, "
-        f"  action_id: $action_id, "
-        f"  target_cid: $cid, "
-        f"  target_cids: $target_cids, "
-        f"  success: true, "
-        f"  details: $details, "
-        f"  recorded_at: $timestamp, "
-        f"  learned: false"
-        f"}})"
-        f"WITH o "
-        f"MATCH (a:{LABEL_ACTION} {{id: $action_id}}) "
-        f"CREATE (a)-[:{REL_RESULTED_IN}]->(o) "
-        f"SET a.status = 'EXECUTED', a.executed_at = $timestamp"
-    )
-    store.query(
-        run_graph_name,
-        create_outcome_cypher,
-        {
-            "out_id": outcome.id,
-            "action_id": action_id,
-            "cid": primary_cid,
-            "target_cids": target_cids,
-            "details": details,
-            "timestamp": now,
-        },
-    )
-
-    return outcome
+    except Exception as err:
+        try:
+            store.query(
+                run_graph_name,
+                f"MATCH (a:{LABEL_ACTION} {{id: $action_id}}) "
+                "SET a.status = 'FAILED', a.failure_reason = $reason",
+                {"action_id": action_id, "reason": str(err)},
+            )
+        except Exception:
+            pass
+        raise
 
 
 def evaluate_outcomes(
