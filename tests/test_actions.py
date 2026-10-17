@@ -16,30 +16,39 @@ from luna.domain.seed import GroundTruth
 
 @pytest.mark.integration
 def test_propose_actions_from_decisions(live_store, tmp_graph: str) -> None:
-    """Verify actions are proposed for suspicious decisions with PENDING status."""
-    # Seed decision in tmp_graph
+    """Verify single batch action proposed for corroborated findings linked to Finding (never to Decision)."""
+    # Seed customer, active suspicious finding (conf >= 0.8), and Decision in tmp_graph
     live_store.query(
         tmp_graph,
-        "CREATE (d:Decision {id: 'dec-01', target_cid: 'cust-ring-01', chosen_verdict: 'suspicious', confidence: 0.95})",
+        "CREATE (c:Customer {cid: 'cust-ring-01'}) "
+        "CREATE (f:Finding {id: 'find-01', target_cid: 'cust-ring-01', verdict: 'suspicious', skill_id: 's1', confidence: 0.85}) "
+        "CREATE (d:Decision {id: 'dec-01', target_cid: 'cust-ring-01', chosen_verdict: 'suspicious', confidence: 0.85}) "
+        "CREATE (f)-[:ASSESSES]->(c) "
+        "CREATE (d)-[:UPHELD]->(f)",
     )
 
     actions = propose_actions(live_store, tmp_graph)
     assert len(actions) == 1
     act = actions[0]
     assert isinstance(act, Action)
-    assert act.target_cid == "cust-ring-01"
+    assert act.kind == "flag_for_review"
+    assert "cust-ring-01" in act.target_cids
     assert act.status == "PENDING"
-    assert act.action_type == "FLAG_CUSTOMER"
-    assert act.recommended_by_id == "dec-01"
 
-    # Check graph edge
-    links = live_store.query(
+    # Check graph edge: BASED_ON links to Finding, never to Decision
+    f_links = live_store.query(
         tmp_graph,
-        "MATCH (a:Action {id: $aid})-[:BASED_ON]->(d:Decision {id: 'dec-01'}) RETURN a.status AS status",
+        "MATCH (a:Action {id: $aid})-[:BASED_ON]->(f:Finding {id: 'find-01'}) RETURN a.status AS status",
         {"aid": act.id},
     )
-    assert len(links) == 1
-    assert links[0]["status"] == "PENDING"
+    assert len(f_links) == 1
+
+    d_links = live_store.query(
+        tmp_graph,
+        "MATCH (a:Action {id: $aid})-[:BASED_ON]->(d:Decision) RETURN d.id AS did",
+        {"aid": act.id},
+    )
+    assert len(d_links) == 0
 
 
 @pytest.mark.integration

@@ -162,7 +162,7 @@ def test_complete_phase3_end_to_end_pipeline(live_store, tmp_graph: str) -> None
         action = actions[0]
         assert isinstance(action, Action)
         assert action.target_cid == target_ring_cid
-        assert action.action_type == "FLAG_CUSTOMER"
+        assert action.kind == "flag_for_review"
         assert action.status == "PENDING"
         assert action.recommended_by_id is None or action.recommended_by_id == "find-ring-tp"
 
