@@ -115,14 +115,14 @@ def get_seeded_skills() -> list[SkillDef]:
     ]
 
 
-def seed_atlas(store: GraphStore) -> None:
+def seed_atlas(store: GraphStore, atlas_graph: str = GRAPH_ATLAS) -> None:
     """Recreate and seed the atlas skill catalog graph in FalkorDB."""
-    store.delete_graph(GRAPH_ATLAS)
+    store.delete_graph(atlas_graph)
 
     # 1. Create Capabilities
     caps = get_seeded_capabilities()
     store.query(
-        GRAPH_ATLAS,
+        atlas_graph,
         f"UNWIND $batch AS c CREATE (n:{LABEL_CAPABILITY}) SET n += c",
         {"batch": [c.model_dump() for c in caps]},
     )
@@ -130,14 +130,14 @@ def seed_atlas(store: GraphStore) -> None:
     # 2. Create Tools
     tools = get_seeded_tools()
     store.query(
-        GRAPH_ATLAS,
+        atlas_graph,
         f"UNWIND $batch AS t CREATE (n:{LABEL_TOOL}) SET n += t",
         {"batch": [t.model_dump() for t in tools]},
     )
 
     # 3. Create TaskType
     store.query(
-        GRAPH_ATLAS,
+        atlas_graph,
         f"MERGE (t:{LABEL_TASK_TYPE} {{name: $name}})",
         {"name": "fraud_ring_investigation"},
     )
@@ -173,14 +173,14 @@ def seed_atlas(store: GraphStore) -> None:
 
     # Batch write Skill nodes
     store.query(
-        GRAPH_ATLAS,
+        atlas_graph,
         f"UNWIND $batch AS s CREATE (n:{LABEL_SKILL}) SET n += s",
         {"batch": skill_nodes},
     )
 
     # Batch write PROVIDES edges
     store.query(
-        GRAPH_ATLAS,
+        atlas_graph,
         f"UNWIND $batch AS item "
         f"MATCH (s:{LABEL_SKILL} {{id: item.skill_id}}), (c:{LABEL_CAPABILITY} {{name: item.cap_name}}) "
         f"CREATE (s)-[:{REL_PROVIDES}]->(c)",
@@ -190,7 +190,7 @@ def seed_atlas(store: GraphStore) -> None:
     # Batch write REQUIRES edges
     if requires_edges:
         store.query(
-            GRAPH_ATLAS,
+            atlas_graph,
             f"UNWIND $batch AS item "
             f"MATCH (s:{LABEL_SKILL} {{id: item.skill_id}}), (req:{LABEL_SKILL} {{id: item.req_id}}) "
             f"CREATE (s)-[:{REL_REQUIRES}]->(req)",
@@ -199,7 +199,7 @@ def seed_atlas(store: GraphStore) -> None:
 
     # Batch write EXPOSES edges
     store.query(
-        GRAPH_ATLAS,
+        atlas_graph,
         f"UNWIND $batch AS item "
         f"MATCH (s:{LABEL_SKILL} {{id: item.skill_id}}), (t:{LABEL_TOOL} {{name: item.tool_name}}) "
         f"CREATE (s)-[:{REL_EXPOSES}]->(t)",
@@ -208,7 +208,7 @@ def seed_atlas(store: GraphStore) -> None:
 
     # Batch write SUCCEEDED_ON edges
     store.query(
-        GRAPH_ATLAS,
+        atlas_graph,
         f"UNWIND $batch AS item "
         f"MATCH (s:{LABEL_SKILL} {{id: item.skill_id}}), (t:{LABEL_TASK_TYPE} {{name: item.task_type}}) "
         f"CREATE (s)-[:{REL_SUCCEEDED_ON} {{score: item.score, runs: item.runs}}]->(t)",

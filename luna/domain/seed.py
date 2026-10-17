@@ -10,12 +10,13 @@ def seed_domain(
     store: GraphStore,
     seed: int = 42,
     profile: Literal["small", "demo"] = "small",
+    domain_graph: str = GRAPH_DOMAIN,
 ) -> GroundTruth:
     """Populate domain graph in FalkorDB with synthetic insurance data."""
     dataset, ground_truth = generate_domain(seed=seed, profile=profile)
 
     # Recreate clean domain graph
-    store.delete_graph(GRAPH_DOMAIN)
+    store.delete_graph(domain_graph)
 
     # Group nodes by label for parameterized batch creation
     nodes_by_label: dict[str, list[dict[str, Any]]] = {}
@@ -26,7 +27,7 @@ def seed_domain(
     for label, batch in nodes_by_label.items():
         # Parameterized query using $batch
         query = f"UNWIND $batch AS props CREATE (n:{label}) SET n += props"
-        store.query(GRAPH_DOMAIN, query, {"batch": batch})
+        store.query(domain_graph, query, {"batch": batch})
 
     # Group edges by relationship type for parameterized batch creation
     edges_by_rel: dict[str, list[dict[str, Any]]] = {}
@@ -44,6 +45,6 @@ def seed_domain(
             f"MATCH (a {{cid: item.source}}), (b {{cid: item.target}}) "
             f"CREATE (a)-[r:{rel}]->(b) SET r += item.props"
         )
-        store.query(GRAPH_DOMAIN, query, {"batch": batch})
+        store.query(domain_graph, query, {"batch": batch})
 
     return ground_truth
