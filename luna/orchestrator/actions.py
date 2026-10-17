@@ -16,6 +16,7 @@ from luna.graph.schema import (
     REL_RESULTED_IN,
     REL_CONFLICTS_WITH,
     REL_UPHELD,
+    REL_ASSESSES,
 )
 from luna.domain.seed import GroundTruth
 
@@ -121,7 +122,8 @@ def propose_actions(store: GraphStore, run_graph_name: str) -> list[Action]:
         f"  AND NOT (f)-[:{REL_CONFLICTS_WITH}]-() "
         f"  AND NOT (f)<-[:{REL_UPHELD}]-(:{LABEL_DECISION}) "
         f"  AND NOT (f)<-[:{REL_BASED_ON}]-(:{LABEL_ACTION}) "
-        "RETURN f.id AS id, f.target_cid AS cid"
+        f"OPTIONAL MATCH (f)-[:{REL_ASSESSES}]->(c:{LABEL_CUSTOMER}) "
+        "RETURN f.id AS id, coalesce(f.target_cid, c.cid) AS cid"
     )
     uncontested_findings = store.query(run_graph_name, find_query)
 
