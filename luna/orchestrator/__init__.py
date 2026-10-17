@@ -1,4 +1,4 @@
-"""Orchestrator modules for slice extraction, promotion, conflict management, and resolution."""
+"""Orchestrator modules for slice extraction, promotion, conflict management, resolution, and action lifecycle."""
 
 from luna.orchestrator.slice import extract_subgraph_slice
 from luna.orchestrator.promote import (
@@ -14,6 +14,16 @@ from luna.orchestrator.resolve import (
     resolve_conflicts,
     Decision,
 )
+from luna.orchestrator.actions import (
+    Action,
+    Outcome,
+    EvaluationMetrics,
+    propose_actions,
+    approve_action,
+    reject_action,
+    execute_action,
+    evaluate_outcomes,
+)
 
 __all__ = [
     "extract_subgraph_slice",
@@ -24,4 +34,12 @@ __all__ = [
     "Contradiction",
     "resolve_conflicts",
     "Decision",
+    "Action",
+    "Outcome",
+    "EvaluationMetrics",
+    "propose_actions",
+    "approve_action",
+    "reject_action",
+    "execute_action",
+    "evaluate_outcomes",
 ]
