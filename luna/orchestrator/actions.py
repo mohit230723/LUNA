@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Any
 from pydantic import BaseModel, Field
 
 from luna.graph.store import GraphStore
@@ -19,6 +19,22 @@ from luna.graph.schema import (
     REL_ASSESSES,
 )
 from luna.domain.seed import GroundTruth
+
+CORROBORATION_MIN_SKILLS: int = 2
+CORROBORATION_CONF: float = 0.8
+
+
+def check_corroboration(
+    findings: list[dict[str, Any]],
+    min_skills: int = CORROBORATION_MIN_SKILLS,
+    min_conf: float = CORROBORATION_CONF,
+) -> bool:
+    """Check if active suspicious findings meet corroboration criteria."""
+    if not findings:
+        return False
+    distinct_skills = {f["skill_id"] for f in findings if f.get("skill_id")}
+    best_conf = max((float(f.get("confidence") or 0.0) for f in findings), default=0.0)
+    return len(distinct_skills) >= min_skills or best_conf >= min_conf
 
 
 class Action(BaseModel):
@@ -72,17 +88,40 @@ def propose_actions(store: GraphStore, run_graph_name: str) -> list[Action]:
     actions: list[Action] = []
     now = datetime.now(timezone.utc).isoformat()
 
+    # Query all active suspicious findings grouped by customer to check corroboration
+    active_sus_query = (
+        f"MATCH (f:{LABEL_FINDING} {{verdict: 'suspicious'}}) "
+        "WHERE (f.status IS NULL OR f.status <> 'superseded') "
+        f"OPTIONAL MATCH (f)-[:{REL_ASSESSES}]->(c:{LABEL_CUSTOMER}) "
+        "RETURN f.id AS id, coalesce(f.target_cid, c.cid) AS cid, f.skill_id AS skill_id, f.confidence AS confidence"
+    )
+    active_findings_rows = store.query(run_graph_name, active_sus_query)
+    findings_by_cid: dict[str, list[dict[str, Any]]] = {}
+    for r in active_findings_rows:
+        cid = r.get("cid")
+        if cid:
+            findings_by_cid.setdefault(cid, []).append(r)
+
+    corroborated_cids = {
+        cid for cid, f_list in findings_by_cid.items()
+        if check_corroboration(f_list)
+    }
+
     # 1. Propose actions based on suspicious Decisions
     dec_query = (
         f"MATCH (d:{LABEL_DECISION} {{chosen_verdict: 'suspicious'}}) "
         f"WHERE NOT (d)<-[:{REL_BASED_ON}]-(:{LABEL_ACTION}) "
-        "RETURN d.id AS id, d.target_cid AS cid"
+        "RETURN d.id AS id, d.target_cid AS cid, d.confidence AS confidence"
     )
     suspicious_decisions = store.query(run_graph_name, dec_query)
 
     for row in suspicious_decisions:
+        cid = row["cid"]
+        conf = float(row.get("confidence") or 0.0)
+        if cid not in corroborated_cids and conf < CORROBORATION_CONF:
+            continue
         action = Action(
-            target_cid=row["cid"],
+            target_cid=cid,
             action_type="FLAG_CUSTOMER",
             status="PENDING",
             recommended_by_id=row["id"],
@@ -128,6 +167,9 @@ def propose_actions(store: GraphStore, run_graph_name: str) -> list[Action]:
     uncontested_findings = store.query(run_graph_name, find_query)
 
     for row in uncontested_findings:
+        cid = row["cid"]
+        if cid not in corroborated_cids:
+            continue
         action = Action(
             target_cid=row["cid"],
             action_type="FLAG_CUSTOMER",
