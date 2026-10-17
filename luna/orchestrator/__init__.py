@@ -13,6 +13,9 @@ from luna.orchestrator.conflicts import (
 from luna.orchestrator.resolve import (
     resolve_conflicts,
     Decision,
+    W_CONF,
+    W_EVID,
+    W_SKILL,
 )
 from luna.orchestrator.actions import (
     Action,
@@ -37,6 +40,9 @@ __all__ = [
     "Contradiction",
     "resolve_conflicts",
     "Decision",
+    "W_CONF",
+    "W_EVID",
+    "W_SKILL",
     "Action",
     "Outcome",
     "EvaluationMetrics",

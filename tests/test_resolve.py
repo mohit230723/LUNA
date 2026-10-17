@@ -43,7 +43,9 @@ def test_resolve_conflicts_unit_arbitration() -> None:
         [],
         # 6. Create UPHELD edge
         [],
-        # 7. Create SUPERSEDES edge and set status
+        # 7. Create ABOUT edge
+        [],
+        # 8. Create SUPERSEDES edge and set status
         [],
     ]
 
