@@ -10,8 +10,11 @@ from luna.graph.schema import (
     LABEL_TASK_TYPE,
     LABEL_FINDING,
     LABEL_CUSTOMER,
+    LABEL_OUTCOME,
+    LABEL_ACTION,
     REL_SUCCEEDED_ON,
     REL_ASSESSES,
+    REL_RESULTED_IN,
 )
 from luna.domain.seed import GroundTruth
 
@@ -27,7 +30,7 @@ def update_skill_score(
     """Update a skill's SUCCEEDED_ON edge score using Exponential Moving Average.
 
     Formula: S_new = (1.0 - alpha) * S_old + alpha * reward
-    where alpha is the learning rate (default 0.2).
+    where alpha is the learning rate (default 0.2). Missing relations merge at 0.5.
 
     Args:
         store: GraphStore connection
@@ -72,8 +75,8 @@ def update_skill_score(
             },
         )
     else:
-        # Create relation if not found with 0.70 baseline prior
-        default_prior = 0.70
+        # H6: MERGE a missing SUCCEEDED_ON at 0.5 baseline prior
+        default_prior = 0.50
         new_score = (1.0 - alpha) * default_prior + (alpha * reward)
         new_runs = 1
         create_query = (
@@ -113,7 +116,13 @@ def learn_from_run(
     alpha: float = 0.2,
     task_type: str = "fraud_ring_investigation",
 ) -> list[dict[str, Any]]:
-    """Inspect all decisions and findings in run memory, compute rewards, and update atlas skill scores.
+    """Inspect all findings in run memory, compute rewards against ground truth, and update atlas skill scores.
+
+    H6 Learner:
+    - Learn only for an EXECUTED Outcome with learned=false; set learned=true afterwards (no-op if already true).
+    - Grade EVERY finding (active or superseded, contested or not) against truth:
+      suspicious on ring=1, benign on ring=0, benign on non-ring=1, suspicious on non-ring=0.
+    - One EMA update per skill per run using the mean reward (alpha=0.2); MERGE a missing SUCCEEDED_ON at 0.5.
 
     Args:
         store: GraphStore connection
@@ -126,14 +135,32 @@ def learn_from_run(
     Returns:
         List of updated skill score dictionaries.
     """
-    ring_cids = set(ground_truth.ring_cids)
-    decoy_cids = set(ground_truth.decoy_cids)
+    # 1. Gate: Learn only for an EXECUTED Outcome with learned=false
+    outcome_query = (
+        f"MATCH (o:{LABEL_OUTCOME}) "
+        f"OPTIONAL MATCH (a:{LABEL_ACTION})-[:{REL_RESULTED_IN}]->(o) "
+        "RETURN o.id AS id, o.learned AS learned, a.status AS act_status"
+    )
+    outcome_rows = store.query(run_graph_name, outcome_query)
+    if not outcome_rows:
+        return []
 
-    # Fetch all findings in the run graph with their target customer, verdict, skill_id, and status
+    unlearned_outcomes = [
+        o for o in outcome_rows
+        if (o.get("learned") is not True) and (o.get("act_status") in ("EXECUTED", None))
+    ]
+    if not unlearned_outcomes:
+        # Already learned or no executed outcome -> idempotent no-op
+        return []
+
+    ring_cids = set(ground_truth.ring_cids)
+
+    # 2. Grade EVERY finding (active or superseded, contested or not)
     findings_query = (
-        f"MATCH (f:{LABEL_FINDING})-[:{REL_ASSESSES}]->(c:{LABEL_CUSTOMER}) "
+        f"MATCH (f:{LABEL_FINDING}) "
+        f"OPTIONAL MATCH (f)-[:{REL_ASSESSES}]->(c:{LABEL_CUSTOMER}) "
         "RETURN f.id AS finding_id, f.skill_id AS skill_id, f.verdict AS verdict, "
-        "       f.status AS status, c.cid AS target_cid"
+        "       f.status AS status, coalesce(f.target_cid, c.cid) AS target_cid"
     )
     findings = store.query(run_graph_name, findings_query)
 
@@ -144,52 +171,52 @@ def learn_from_run(
         if not skill_id:
             continue
 
-        verdict = f.get("verdict")
-        status = f.get("status")
+        verdict = (f.get("verdict") or "").lower()
         target_cid = f.get("target_cid")
-
-        is_superseded = (status == "superseded")
         is_ring = target_cid in ring_cids
-        is_decoy = target_cid in decoy_cids
 
-        # Compute outcome reward R
+        # H6 grading rules:
+        # suspicious on ring = 1
+        # benign on ring = 0
+        # benign on non-ring = 1
+        # suspicious on non-ring = 0
         if is_ring:
-            if verdict == "suspicious" and not is_superseded:
-                reward = 1.0  # True positive detection
-            elif verdict == "benign" and not is_superseded:
-                reward = 0.0  # Missed fraud ring entity (false negative)
-            elif is_superseded and verdict == "benign":
-                reward = 0.0  # Erroneous finding correctly overturned
-            else:
-                reward = 0.5
-        elif is_decoy:
-            if verdict == "benign" and not is_superseded:
-                reward = 1.0  # Correct benign evaluation
-            elif verdict == "suspicious" and not is_superseded:
-                reward = 0.0  # False alarm on decoy (false positive)
-            elif is_superseded and verdict == "suspicious":
-                reward = 0.0  # False alarm overturned
+            if verdict == "suspicious":
+                reward = 1.0
+            elif verdict == "benign":
+                reward = 0.0
             else:
                 reward = 0.5
         else:
-            reward = 0.8 if not is_superseded else 0.2
+            if verdict == "benign":
+                reward = 1.0
+            elif verdict == "suspicious":
+                reward = 0.0
+            else:
+                reward = 0.5
 
-        if skill_id not in skill_rewards:
-            skill_rewards[skill_id] = []
-        skill_rewards[skill_id].append(reward)
+        skill_rewards.setdefault(skill_id, []).append(reward)
 
-    # Apply updates per skill
+    # 3. Apply one EMA update per skill per run using mean reward
     updates = []
     for skill_id, rewards in skill_rewards.items():
-        avg_reward = sum(rewards) / len(rewards)
+        mean_reward = sum(rewards) / len(rewards)
         upd = update_skill_score(
             store=store,
             skill_id=skill_id,
             task_type=task_type,
-            reward=avg_reward,
+            reward=mean_reward,
             alpha=alpha,
             atlas_graph=atlas_graph,
         )
         updates.append(upd)
+
+    # 4. Set learned = true on all processed Outcome nodes
+    for o in unlearned_outcomes:
+        store.query(
+            run_graph_name,
+            f"MATCH (o:{LABEL_OUTCOME} {{id: $oid}}) SET o.learned = true",
+            {"oid": o["id"]},
+        )
 
     return updates

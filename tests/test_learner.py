@@ -83,12 +83,13 @@ def test_learn_from_run_updates_skills(live_store, tmp_graph: str) -> None:
             "CREATE (s2)-[:SUCCEEDED_ON {score: 0.80, runs: 1}]->(t)",
         )
 
-        # 2. Setup run graph with a true positive decision on ring member
+        # 2. Setup run graph with a true positive decision on ring member and executed outcome
         live_store.query(
             run_graph,
             "CREATE (c:Customer {cid: 'cust-ring-00'}) "
             "CREATE (f:Finding {id: 'f-ring', skill_id: 'entity-linker', verdict: 'suspicious'}) "
             "CREATE (d:Decision {id: 'd-ring', target_cid: 'cust-ring-00', chosen_verdict: 'suspicious'}) "
+            "CREATE (o:Outcome {id: 'out-01', success: true, learned: false}) "
             "CREATE (f)-[:ASSESSES]->(c) "
             "CREATE (d)-[:UPHELD]->(f)",
         )
