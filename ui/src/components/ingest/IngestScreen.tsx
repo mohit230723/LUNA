@@ -102,6 +102,8 @@ export const IngestScreen: React.FC<IngestScreenProps> = ({
     }
   };
 
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+
   const processFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
     setUploadError(null);
@@ -122,10 +124,13 @@ export const IngestScreen: React.FC<IngestScreenProps> = ({
       validFiles.push(file);
     }
 
+    setIsUploadingFiles(true);
     try {
       await onUploadFiles(validFiles);
     } catch (err: any) {
       setUploadError(err?.message || 'Failed to upload files');
+    } finally {
+      setIsUploadingFiles(false);
     }
   };
 
@@ -147,7 +152,8 @@ export const IngestScreen: React.FC<IngestScreenProps> = ({
   const isRemote = llmInfo?.remote ?? false;
   const canBuild =
     sources.length > 0 &&
-    !sources.some((s) => s.status === 'pending') &&
+    !isSubmittingText &&
+    !isUploadingFiles &&
     (!isRemote || remoteAcknowledged);
 
   return (

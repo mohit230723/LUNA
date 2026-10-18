@@ -22,6 +22,12 @@ def get_llm(
 
     Supported providers: 'ollama', 'openai_compatible' (or 'openai'), 'anthropic', 'gemini', 'mock'.
     """
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+    except Exception:
+        pass
+
     raw_prov = provider or os.getenv("LUNA_LLM_PROVIDER", "ollama")
     prov = raw_prov.lower().strip()
 

@@ -109,8 +109,19 @@ def extract_chunk(
             except Exception:
                 pass
 
-    entities_raw = raw_res.get("entities", [])
-    relations_raw = raw_res.get("relations", [])
+    if isinstance(raw_res, dict):
+        if not raw_res.get("entities") and isinstance(raw_res.get("properties"), dict):
+            raw_res = raw_res["properties"]
+        entities_raw = raw_res.get("entities", [])
+        relations_raw = raw_res.get("relations", [])
+    else:
+        entities_raw = []
+        relations_raw = []
+
+    if not isinstance(entities_raw, list):
+        entities_raw = []
+    if not isinstance(relations_raw, list):
+        relations_raw = []
 
     norm_chunk_text = normalize_ws(chunk.text)
     locator = f"{chunk.source_name} chars {chunk.char_start}-{chunk.char_end}, line {chunk.line_start}"
@@ -120,6 +131,9 @@ def extract_chunk(
     valid_keys = set()
 
     for ent in entities_raw:
+        if not isinstance(ent, dict):
+            dropped_entities += 1
+            continue
         quote = (ent.get("quote") or "").strip()[:200]
         name = (ent.get("name") or "").strip()
         key = ent.get("key") or ""
@@ -158,6 +172,9 @@ def extract_chunk(
     dropped_relations = 0
 
     for rel in relations_raw:
+        if not isinstance(rel, dict):
+            dropped_relations += 1
+            continue
         src = rel.get("src")
         dst = rel.get("dst")
         quote = (rel.get("quote") or "").strip()[:200]
