@@ -43,6 +43,7 @@ from luna.forge.mcp_server import (
     forge_asgi_app,
     start_lease_sweep,
 )
+from luna.forge.routes import register_forge_routes
 from luna.forge.skill_import import import_repo_skills
 from luna.forge.vocab import seed_forge_vocabulary
 
@@ -1332,6 +1333,9 @@ def create_app(
 
         app.router.routes.append(Route("/mcp", endpoint=forge_endpoint))
         app.mount("/mcp", forge_endpoint, name="forge_mcp")
+
+    if forge_enabled:
+        register_forge_routes(app, graph_store, forge_bus, forge_sessions, atlas_graph, forge_skills_dir)
 
     ui_dist_dir = Path("ui/dist")
     if ui_dist_dir.is_dir():
