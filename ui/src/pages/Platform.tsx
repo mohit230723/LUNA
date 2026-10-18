@@ -73,9 +73,9 @@ export const Platform: React.FC = () => {
         const api = getApi();
         const conv = await api.getConversation(activeConvId);
         dispatchConv({ type: 'LOAD_CONVERSATION', conversation: conv });
-        // Find latest streaming or active run id if any
+        // Find latest run id if any
         const lastMsg = conv.messages[conv.messages.length - 1];
-        if (lastMsg && lastMsg.run_id && lastMsg.status === 'streaming') {
+        if (lastMsg && lastMsg.run_id) {
           setActiveRunId(lastMsg.run_id);
         }
       } catch {
@@ -170,6 +170,10 @@ export const Platform: React.FC = () => {
     try {
       const api = getApi();
       await api.answerRun(activeRunId, choice);
+      if (activeConvId) {
+        const conv = await api.getConversation(activeConvId);
+        dispatchConv({ type: 'LOAD_CONVERSATION', conversation: conv });
+      }
     } catch {
       //
     }

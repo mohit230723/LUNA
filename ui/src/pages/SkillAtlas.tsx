@@ -235,8 +235,6 @@ export const SkillAtlas: React.FC = () => {
                     setPromptOpen(false);
                   }}
                   tabIndex={0}
-                  role="button"
-                  aria-label={`View skill ${skill.name}`}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       setSelectedSkill(skill);
@@ -279,7 +277,7 @@ export const SkillAtlas: React.FC = () => {
                   <td className={styles.td}>
                     <div className={styles.scoreContainer}>
                       <div className={styles.scoreRow}>
-                        <div className={styles.scoreBar} aria-label={`Score: ${skill.score}`}>
+                        <div className={styles.scoreBar} role="img" aria-label={`Score: ${skill.score}`}>
                           <div
                             className={styles.scoreFill}
                             style={{ flex: skill.score }}

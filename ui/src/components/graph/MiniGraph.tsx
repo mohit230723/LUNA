@@ -71,7 +71,7 @@ export const MiniGraph: React.FC<MiniGraphProps> = ({
       className={`${styles.container} ${className}`}
       style={{ height }}
       onClick={onClick}
-      role={onClick ? 'button' : undefined}
+      role={onClick ? 'button' : 'img'}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
       aria-label="Mini Graph visualization"

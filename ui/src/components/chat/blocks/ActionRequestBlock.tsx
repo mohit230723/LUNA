@@ -20,18 +20,33 @@ export const ActionRequestBlock: React.FC<ActionRequestBlockProps> = ({
 }) => {
   const [modalMode, setModalMode] = useState<'approve' | 'reject' | null>(null);
   const [loading, setLoading] = useState(false);
+  const [localStatus, setLocalStatus] = useState<ActionRequest['status'] | null>(null);
+  const [localApprover, setLocalApprover] = useState<string | null>(null);
+  const [localResult, setLocalResult] = useState<ActionResult | null>(null);
 
-  const isPending = action.status === 'PENDING';
-  const isRejected = action.status === 'REJECTED';
+  const currentStatus = localStatus || action.status;
+  const currentApprover = localApprover || action.approver;
+  const currentResult = localResult || action.result;
+
+  const isPending = currentStatus === 'PENDING';
+  const isApproved = currentStatus === 'APPROVED' || currentStatus === 'EXECUTED';
+  const isRejected = currentStatus === 'REJECTED';
 
   const handleModalSubmit = async (val: string) => {
     setLoading(true);
     try {
       if (modalMode === 'approve') {
-        await onApprove(val);
+        const res = await onApprove(val);
+        setLocalStatus('EXECUTED');
+        setLocalApprover(val);
+        if (res) {
+          setLocalResult(res);
+        }
       } else if (modalMode === 'reject') {
         const approverName = localStorage.getItem('luna.approver') || 'User';
         await onReject(approverName, val);
+        setLocalStatus('REJECTED');
+        setLocalApprover(approverName);
       }
     } finally {
       setLoading(false);
@@ -43,11 +58,11 @@ export const ActionRequestBlock: React.FC<ActionRequestBlockProps> = ({
     <div className={styles.actionCard}>
       <div className={styles.blockHeader}>
         <h4 className={styles.blockTitle}>
-          {isPending ? 'APPROVAL NEEDED' : `ACTION ${action.status}`}
+          {isPending ? 'APPROVAL NEEDED' : `ACTION ${currentStatus}`}
         </h4>
-        {action.approver && (
+        {currentApprover && (
           <span className={styles.monoMeta}>
-            BY {action.approver.toUpperCase()}
+            BY {currentApprover.toUpperCase()}
           </span>
         )}
       </div>
@@ -107,7 +122,7 @@ export const ActionRequestBlock: React.FC<ActionRequestBlockProps> = ({
       )}
 
       {/* Execution Results */}
-      {action.status === 'EXECUTED' && action.result && (
+      {isApproved && currentResult && (
         <div
           style={{
             marginTop: 8,
@@ -118,24 +133,24 @@ export const ActionRequestBlock: React.FC<ActionRequestBlockProps> = ({
           }}
         >
           <span className={styles.monoMeta} style={{ display: 'block', marginBottom: 6 }}>
-            EXECUTION RESULT
+            EXECUTION RESULT: EXECUTED
           </span>
 
-          {action.result.metrics ? (
+          {currentResult.metrics ? (
             <div style={{ display: 'flex', gap: 16, fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
-              <span>Precision: {action.result.metrics.precision.toFixed(3)}</span>
-              <span>Recall: {action.result.metrics.recall.toFixed(3)}</span>
-              <span>F1: {action.result.metrics.f1.toFixed(3)}</span>
+              <span>Precision: {currentResult.metrics.precision.toFixed(3)}</span>
+              <span>Recall: {currentResult.metrics.recall.toFixed(3)}</span>
+              <span>F1: {currentResult.metrics.f1.toFixed(3)}</span>
             </div>
-          ) : action.result.metrics === null ? (
+          ) : currentResult.metrics === null ? (
             <span style={{ fontSize: '12px', color: 'var(--color-smoke)', fontFamily: 'var(--font-mono)' }}>
               metrics not available
             </span>
           ) : null}
 
-          {action.result.commands && (
+          {currentResult.commands && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-              {action.result.commands.map((c) => (
+              {currentResult.commands.map((c) => (
                 <div key={c.cmd} style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
                   {c.executed ? (
                     <div>

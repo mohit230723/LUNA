@@ -246,7 +246,7 @@ export const ConstellationCanvas: React.FC = () => {
 
   return (
     <div className={styles.wrapper} ref={containerRef} aria-hidden="true">
-      <canvas ref={canvasRef} className={styles.canvas} />
+      <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
     </div>
   );
 };

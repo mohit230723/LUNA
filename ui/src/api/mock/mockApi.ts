@@ -64,6 +64,22 @@ export class MockApi implements Api {
     this.initDefaultFixtures();
   }
 
+  public getSpeedMultiplier(): number {
+    try {
+      const prefs = localStorage.getItem('luna.prefs');
+      if (prefs) {
+        const parsed = JSON.parse(prefs);
+        if (parsed.mockSpeed !== undefined) {
+          const s = Number(parsed.mockSpeed);
+          if (!isNaN(s) && s >= 0) return s;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return this.mockSpeedMultiplier;
+  }
+
   private initDefaultFixtures() {
     this.runEventsMap.set(F1_RUN_ID, F1_EVENTS);
     this.runEventsMap.set(F2_RUN_ID, F2_EVENTS);
@@ -236,15 +252,21 @@ export class MockApi implements Api {
     }
   ): () => void {
     const events = this.runEventsMap.get(runId) || F1_EVENTS;
-    return createMockEventSource(events, opts, this.mockSpeedMultiplier);
+    return createMockEventSource(events, opts, this.getSpeedMultiplier());
   }
 
   async answerRun(runId: string, choice: string): Promise<void> {
     // Resume run after clarification
-    if (/investigate/i.test(choice)) {
-      this.runEventsMap.set(runId, F1_EVENTS);
-    } else {
-      this.runEventsMap.set(runId, F2_EVENTS);
+    const chosenBlocks = /investigate/i.test(choice) ? F1_BLOCKS : F2_BLOCKS;
+    const chosenEvents = /investigate/i.test(choice) ? F1_EVENTS : F2_EVENTS;
+    this.runEventsMap.set(runId, chosenEvents);
+
+    for (const conv of this.conversations.values()) {
+      const msg = conv.messages.find((m) => m.run_id === runId);
+      if (msg) {
+        msg.status = 'done';
+        msg.blocks = chosenBlocks;
+      }
     }
   }
 
