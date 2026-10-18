@@ -340,3 +340,86 @@
   padding: var(--spacing-12);
   font-size: var(--text-caption);
 }
+
+/* ---- Skills tab ---- */
+.forge-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-12);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  min-width: 0;
+}
+
+.forge-field select,
+.forge-field input {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-chalk);
+  background-color: var(--color-obsidian);
+  border: 1px solid var(--color-iron);
+  border-radius: var(--radius-tag);
+  padding: 4px 8px;
+  max-width: 100%;
+}
+
+.forge-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-16);
+}
+
+.forge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-8);
+}
+
+.forge-warnings {
+  margin: var(--spacing-8) 0 0;
+  padding-left: var(--spacing-16);
+  border-left: 2px solid var(--color-compass-gold);
+  color: var(--color-chalk);
+  font-size: var(--text-caption);
+}
+
+.forge-table-wrap {
+  overflow-x: auto;
+}
+
+.forge-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-caption);
+}
+
+.forge-table th,
+.forge-table td {
+  text-align: left;
+  font-weight: 400;
+  padding: var(--spacing-8);
+  border-bottom: 1px solid var(--color-graphite);
+  vertical-align: top;
+}
+
+.forge-table thead th {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-smoke);
+}
+
+.forge-table tr.is-selected {
+  background-color: var(--color-obsidian);
+}
+
+.forge-neighbourhood {
+  height: 200px;
+}
+
+.forge-section p {
+  color: var(--color-ash);
+  white-space: pre-wrap;
+}

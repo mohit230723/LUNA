@@ -1,5 +1,6 @@
 import type { Api } from './contract';
 import { liveApi } from './live';
+import { mockApi } from '../dev/mockApi';
 
 export * from './contract';
 export * from './guards';
@@ -22,13 +23,8 @@ export function getApi(): Api {
     import.meta.env.DEV &&
     window.location.search.includes('mock=1')
   ) {
-    // Lazy require/import of dev mock
-    try {
-      const { mockApi } = require('../dev/mockApi');
-      return mockApi;
-    } catch {
-      // fallback to liveApi
-    }
+    // Static import: `require` does not exist in the browser ESM bundle.
+    return mockApi;
   }
   return liveApi;
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { PageShell } from '../components/layout/PageShell';
 import { AgentsTab } from '../components/forge/AgentsTab';
+import { SkillsTab } from '../components/forge/SkillsTab';
 import CaseWorkspace from './platform/CaseWorkspace';
 import '../components/forge/forge.css';
 
@@ -89,9 +90,7 @@ export const Platform: React.FC = () => {
         >
           {active === 'agents' && <AgentsTab />}
           {active === 'cases' && <CaseWorkspace />}
-          {active === 'skills' && (
-            <p className="platform-placeholder">The skill library is coming to this tab.</p>
-          )}
+          {active === 'skills' && <SkillsTab />}
         </div>
       </div>
     </PageShell>
