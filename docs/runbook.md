@@ -269,12 +269,12 @@ With a token add `"headers": {"Authorization": "Bearer <token>"}` inside the `lu
 
 ### 5. Use it
 
-In the agent run the `luna-build` prompt (Claude Code: `/luna-build build me a portfolio website with React`). It calls `luna_plan`, then `luna_get_skill` and `luna_submit` per task wave by wave (parallel subagents if the agent supports them, otherwise sequential), then `luna_assemble`. Watch the run in the Platform page, Agents tab.
+In the agent run the `luna-build` prompt (Claude Code may list it as `/mcp__luna__luna-build`; check the exact slash name in the `/` menu, then give it `build me a portfolio website with React`). It calls `luna_plan`, then `luna_get_skill` and `luna_submit` per task wave by wave (parallel subagents if the agent supports them, otherwise sequential), then `luna_assemble`. Watch the run in the Platform page, Agents tab.
 
 ### 6. Scripted smoke
 
 ```bash
-python scripts/forge_smoke.py --url http://127.0.0.1:8000/mcp   # add --token if LUNA_MCP_TOKEN is set
+python scripts/forge_smoke.py --url http://127.0.0.1:8000/mcp   # reads LUNA_MCP_TOKEN from the environment; --token overrides it; --timeout N (default 600s)
 ```
 
 Uses the real MCP Python client, exits non-zero on failure, and creates one real run.
@@ -284,7 +284,7 @@ Uses the real MCP Python client, exits non-zero on failure, and creates one real
 | Agent | Version | Connected | Mode used | Run id | Result | Notes |
 |-------|---------|-----------|-----------|--------|--------|-------|
 | forge_smoke.py (MCP Python client) | mcp client 0.1 | yes | sequential | f6d3372fb1d2 | pass: 6 tools, `luna-build` prompt, 3 tasks in 3 waves done, report `complete`, agent and run listed | 2026-10-19, backend on :8765. Each call was slow (about 5 min total) against the local FalkorDB; lease sweep logged "Query timed out" warnings. A first aborted attempt left run 397a96cbc5d9 in `planned`. |
-| Claude Code | pending | pending | pending | pending | pending - run by user | Run `claude mcp add --transport http luna http://localhost:8000/mcp`; in a scratch folder run `/luna-build build me a portfolio website with React`; confirm Agents tab shows `claude-code` connected and the DAG reaches all-done with a report. |
+| Claude Code | pending | pending | pending | pending | pending - run by user | Run `claude mcp add --transport http luna http://localhost:8000/mcp`; in a scratch folder run the `luna-build` prompt (check its exact name in the `/` menu, possibly `/mcp__luna__luna-build`) with `build me a portfolio website with React`; confirm Agents tab shows `claude-code` connected and the DAG reaches all-done with a report. |
 | Antigravity | pending | pending | pending | pending | pending - run by user | Add the raw config above via Manage MCP Servers, ask the agent to use the `luna-build` prompt with the same request, record whether it used parallel or sequential mode. |
 
 ---
