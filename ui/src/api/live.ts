@@ -6,6 +6,14 @@ import {
   CaseSummary,
   Conversation,
   FileNode,
+  ForgeAgent,
+  ForgeConnectInfo,
+  ForgeEvent,
+  ForgeImportResult,
+  ForgeRunDetail,
+  ForgeRunSummary,
+  ForgeSkillDetail,
+  ForgeSkillSummary,
   GraphData,
   Health,
   Pack,
@@ -385,6 +393,102 @@ export class LiveApi implements Api {
       url += `&conversation_id=${encodeURIComponent(conversationId)}`;
     }
     return this.request<GraphData>(url);
+  }
+  // ---- LUNA Forge ----
+
+  forgeConnect(): Promise<ForgeConnectInfo> {
+    return this.request<ForgeConnectInfo>('/forge/connect');
+  }
+
+  forgeAgents(): Promise<ForgeAgent[]> {
+    return this.request<ForgeAgent[]>('/forge/agents');
+  }
+
+  forgeRuns(): Promise<ForgeRunSummary[]> {
+    return this.request<ForgeRunSummary[]>('/forge/runs');
+  }
+
+  forgeRun(runId: string): Promise<ForgeRunDetail> {
+    return this.request<ForgeRunDetail>(`/forge/runs/${encodeURIComponent(runId)}`);
+  }
+
+  subscribeForge(opts: {
+    lastEventId?: number;
+    onEvent: (e: ForgeEvent) => void;
+    onState: (s: 'open' | 'reconnecting' | 'closed') => void;
+  }): () => void {
+    let urlStr = `${this.baseUrl}/forge/events`;
+    if (opts.lastEventId !== undefined) {
+      urlStr += `?after=${encodeURIComponent(String(opts.lastEventId))}`;
+    }
+    const fullUrl = urlStr.startsWith('http') ? urlStr : `${window.location.origin}${urlStr}`;
+    const es = new EventSource(fullUrl);
+
+    es.onopen = () => opts.onState('open');
+    es.onerror = () => {
+      opts.onState(es.readyState === EventSource.CLOSED ? 'closed' : 'reconnecting');
+    };
+
+    const handleEvent = (e: MessageEvent) => {
+      try {
+        const parsed = JSON.parse(e.data) as ForgeEvent;
+        if (parsed && typeof parsed.seq === 'number' && parsed.type) {
+          opts.onEvent(parsed);
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.warn('Failed to parse forge SSE event:', e.data, err);
+        }
+      }
+    };
+
+    // Frames carry a named `event:` field, so each type needs its own listener.
+    for (const t of [
+      'agent_connected',
+      'agent_seen',
+      'run_created',
+      'task_updated',
+      'task_stalled',
+      'run_assembled',
+      'skill_imported',
+      'message',
+    ]) {
+      es.addEventListener(t, handleEvent as EventListener);
+    }
+
+    return () => {
+      es.close();
+      opts.onState('closed');
+    };
+  }
+
+  forgeSkills(): Promise<ForgeSkillSummary[]> {
+    return this.request<ForgeSkillSummary[]>('/forge/skills');
+  }
+
+  forgeSkill(id: string): Promise<ForgeSkillDetail> {
+    return this.request<ForgeSkillDetail>(`/forge/skills/${encodeURIComponent(id)}`);
+  }
+
+  uploadForgeSkill(skill: File, references: File[]): Promise<ForgeImportResult> {
+    const form = new FormData();
+    form.append('skill', skill);
+    for (const r of references) {
+      form.append('references', r);
+    }
+    return this.request<ForgeImportResult>('/forge/skills/upload', { method: 'POST', body: form });
+  }
+
+  async approveForgeSkill(id: string): Promise<void> {
+    await this.request<void>(`/forge/skills/${encodeURIComponent(id)}/approve`, { method: 'POST' });
+  }
+
+  async rejectForgeSkill(id: string): Promise<void> {
+    await this.request<void>(`/forge/skills/${encodeURIComponent(id)}/reject`, { method: 'POST' });
+  }
+
+  reimportForgeSkills(): Promise<ForgeImportResult[]> {
+    return this.request<ForgeImportResult[]>('/forge/skills/reimport', { method: 'POST' });
   }
 }
 

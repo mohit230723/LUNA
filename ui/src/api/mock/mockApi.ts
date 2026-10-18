@@ -14,6 +14,7 @@ import {
   TraceResponse,
   WhyResponse,
 } from '../contract';
+import { forgeMockMethods } from './forgeMock';
 import { createMockEventSource } from './mockEventSource';
 import {
   F1_ACTION_RESULT,
@@ -45,6 +46,18 @@ import {
 import { ATLAS_GRAPH_FIXTURE, ATLAS_SKILLS_FIXTURE } from './fixtures/atlas_skills';
 
 export class MockApi implements Api {
+  forgeConnect = forgeMockMethods.forgeConnect;
+  forgeAgents = forgeMockMethods.forgeAgents;
+  forgeRuns = forgeMockMethods.forgeRuns;
+  forgeRun = forgeMockMethods.forgeRun;
+  subscribeForge = forgeMockMethods.subscribeForge;
+  forgeSkills = forgeMockMethods.forgeSkills;
+  forgeSkill = forgeMockMethods.forgeSkill;
+  uploadForgeSkill = forgeMockMethods.uploadForgeSkill;
+  approveForgeSkill = forgeMockMethods.approveForgeSkill;
+  rejectForgeSkill = forgeMockMethods.rejectForgeSkill;
+  reimportForgeSkills = forgeMockMethods.reimportForgeSkills;
+
   private conversations: Map<string, Conversation> = new Map();
   private runEventsMap: Map<string, RunEvent[]> = new Map();
   private runActionStatus: Map<string, ActionRequest['status']> = new Map();

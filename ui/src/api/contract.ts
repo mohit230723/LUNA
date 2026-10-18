@@ -321,6 +321,111 @@ export interface WhyResponse {
   chain_node_ids: string[];
 }
 
+// ---- LUNA Forge (MCP orchestration) ----
+
+export interface ForgeConnectInfo {
+  mcp_url: string;
+  token_required: boolean;
+  snippets: {
+    claude_code: string;
+    antigravity: string;
+    claude_code_token: string;
+    antigravity_token: string;
+  };
+}
+
+export interface ForgeAgent {
+  session_id: string;
+  client_name: string;
+  client_version: string;
+  first_seen: string;
+  last_seen: string;
+  connected: boolean;
+}
+
+export interface ForgeRunSummary {
+  run_id: string;
+  prompt: string;
+  status: string;
+  created_at: string;
+  task_count: number;
+}
+
+export interface ForgeTask {
+  task_id: string;
+  title: string;
+  capability: string;
+  skill_id: string;
+  depends_on: string[];
+  wave: number;
+  status: string;
+  claimed_by: string;
+  agent_label: string;
+  lease_expires_at: string;
+  assignment: Record<string, unknown> | null;
+  candidates: Record<string, unknown>[];
+  result: Record<string, unknown> | null;
+}
+
+export interface ForgeReport {
+  run_id: string;
+  status: 'complete' | 'incomplete';
+  missing: string[];
+  tasks: Record<string, unknown>[];
+  overlaps: Record<string, string[]>;
+  gaps: Record<string, unknown>[];
+  summary: string;
+}
+
+export interface ForgeRunDetail {
+  run: { run_id: string; prompt?: string; status?: string; [key: string]: unknown };
+  tasks: ForgeTask[];
+  report: ForgeReport | null;
+}
+
+export interface ForgeEvent {
+  seq: number;
+  ts: string;
+  type: string;
+  data: Record<string, unknown>;
+}
+
+export interface ForgeSkillSummary {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  source: string;
+  capabilities: string[];
+  technologies: string[];
+  warnings_count: number;
+}
+
+export interface ForgeSkillDetail {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  source: string;
+  body: string;
+  capabilities: string[];
+  technologies: string[];
+  sections: { slug: string; title: string; content: string; order: number }[];
+  checklist: { id: string; text: string }[];
+  requires: string[];
+  required_by: string[];
+  neighbourhood: {
+    nodes: { id: string; label: string; type: string }[];
+    edges: { source: string; target: string; type: string }[];
+  };
+}
+
+export interface ForgeImportResult {
+  skill_id: string;
+  status: string;
+  warnings: string[];
+}
+
 export interface SendOptions {
   max_hops: number;
   investigators: number;
@@ -379,4 +484,21 @@ export interface Api {
   getAtlasSkills(pack?: Pack): Promise<SkillInfo[]>;
   getAtlasGraph(): Promise<GraphData>;
   expandNode(cid: string, hops: number, conversationId?: string): Promise<GraphData>;
+
+  // LUNA Forge
+  forgeConnect(): Promise<ForgeConnectInfo>;
+  forgeAgents(): Promise<ForgeAgent[]>;
+  forgeRuns(): Promise<ForgeRunSummary[]>;
+  forgeRun(runId: string): Promise<ForgeRunDetail>;
+  subscribeForge(opts: {
+    lastEventId?: number;
+    onEvent: (e: ForgeEvent) => void;
+    onState: (s: 'open' | 'reconnecting' | 'closed') => void;
+  }): () => void;
+  forgeSkills(): Promise<ForgeSkillSummary[]>;
+  forgeSkill(id: string): Promise<ForgeSkillDetail>;
+  uploadForgeSkill(skill: File, references: File[]): Promise<ForgeImportResult>;
+  approveForgeSkill(id: string): Promise<void>;
+  rejectForgeSkill(id: string): Promise<void>;
+  reimportForgeSkills(): Promise<ForgeImportResult[]>;
 }

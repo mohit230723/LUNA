@@ -209,4 +209,30 @@ describe('API Mode Switching', () => {
     expect(getApiMode()).toBe('mock');
     expect(getApi()).toBe(mockApi);
   });
+
+  it('forge: forgeRun GETs the run and uploadForgeSkill posts multipart', async () => {
+    const api = new LiveApi('/api');
+    const mockFetch = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve(url.endsWith('/upload') ? { skill_id: 's', status: 'pending_review', warnings: [] } : { run: {}, tasks: [], report: null }),
+      })
+    );
+    global.fetch = mockFetch as unknown as typeof fetch;
+
+    await api.forgeRun('r1');
+    expect(mockFetch.mock.calls[0]![0]).toBe('/api/forge/runs/r1');
+
+    const skill = new File(['x'], 'SKILL.md');
+    const ref = new File(['y'], 'ref.md');
+    await api.uploadForgeSkill(skill, [ref, ref]);
+    const [url, init] = mockFetch.mock.calls[1]!;
+    expect(url).toBe('/api/forge/skills/upload');
+    expect(init.method).toBe('POST');
+    const body = init.body as FormData;
+    expect(body.get('skill')).toBeInstanceOf(File);
+    expect(body.getAll('references')).toHaveLength(2);
+  });
 });
