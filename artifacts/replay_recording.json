@@ -1,0 +1,3117 @@
+{
+  "recorded_at": "2026-10-18T08:00:16.350562+00:00",
+  "mode": "scripted",
+  "runs": [
+    {
+      "run_id": "demo_run_1_1792310412",
+      "events": [
+        {
+          "step": "init",
+          "message": "Initializing run 'demo_run_1_1792310412'",
+          "data": {
+            "run_id": "demo_run_1_1792310412"
+          },
+          "timestamp": "2026-10-18T08:00:12.948614+00:00",
+          "seq": 1,
+          "rel_time_seconds": 0.0
+        },
+        {
+          "step": "decompose",
+          "message": "Decomposing task requirements into subtasks",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:12.956745+00:00",
+          "seq": 2,
+          "rel_time_seconds": 0.008
+        },
+        {
+          "step": "assign_skills",
+          "message": "Assigning skills for 2 subtask(s)",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:12.958378+00:00",
+          "seq": 3,
+          "rel_time_seconds": 0.01
+        },
+        {
+          "step": "equip_agents",
+          "message": "Equipping sub-agents with selected skills and tool permissions",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:12.969398+00:00",
+          "seq": 4,
+          "rel_time_seconds": 0.021
+        },
+        {
+          "step": "seeds",
+          "message": "Identifying seed entities and extracting isolated slices",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:12.978030+00:00",
+          "seq": 5,
+          "rel_time_seconds": 0.029
+        },
+        {
+          "step": "run_agents",
+          "message": "Executing 2 sub-agents in parallel (max_workers=3)",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:13.051708+00:00",
+          "seq": 6,
+          "rel_time_seconds": 0.103
+        },
+        {
+          "step": "promote",
+          "message": "Validating evidence and promoting findings to run memory",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:15.559462+00:00",
+          "seq": 7,
+          "rel_time_seconds": 2.611
+        },
+        {
+          "step": "detect_contradictions",
+          "message": "Scanning for contradictory verdicts",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:16.105658+00:00",
+          "seq": 8,
+          "rel_time_seconds": 3.157
+        },
+        {
+          "step": "resolve_conflicts",
+          "message": "Resolving 4 contradiction(s)",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:16.107970+00:00",
+          "seq": 9,
+          "rel_time_seconds": 3.159
+        },
+        {
+          "step": "propose",
+          "message": "Synthesizing corroborated findings and proposing action",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:16.152037+00:00",
+          "seq": 10,
+          "rel_time_seconds": 3.203
+        },
+        {
+          "step": "approve",
+          "message": "Approving action 'act-ee1ac5dd' by approver 'auto'",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:16.174766+00:00",
+          "seq": 11,
+          "rel_time_seconds": 3.226
+        },
+        {
+          "step": "execute",
+          "message": "Executing domain mutation for action 'act-ee1ac5dd'",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:16.176767+00:00",
+          "seq": 12,
+          "rel_time_seconds": 3.228
+        },
+        {
+          "step": "evaluate",
+          "message": "Evaluating run-scoped detection accuracy",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:16.198960+00:00",
+          "seq": 13,
+          "rel_time_seconds": 3.251
+        },
+        {
+          "step": "learn",
+          "message": "Updating atlas skill reputation scores via EMA",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:16.205891+00:00",
+          "seq": 14,
+          "rel_time_seconds": 3.257
+        },
+        {
+          "step": "explain",
+          "message": "Generating comprehensive 'Why?' provenance audit trail",
+          "data": {},
+          "timestamp": "2026-10-18T08:00:16.217114+00:00",
+          "seq": 15,
+          "rel_time_seconds": 3.269
+        }
+      ],
+      "graph_snapshots": {
+        "run": {
+          "nodes": [
+            {
+              "id": "task-demo_run_1_1792310412",
+              "labels": [
+                "Task"
+              ],
+              "properties": {
+                "id": "task-demo_run_1_1792310412",
+                "description": "Investigate suspected auto insurance fraud ring and suspicious cluster anomalies",
+                "status": "completed",
+                "task_type": "fraud_ring_investigation",
+                "created_at": "2026-10-18T08:00:12.948614+00:00"
+              }
+            },
+            {
+              "id": "subtask_1",
+              "labels": [
+                "Subtask"
+              ],
+              "properties": {
+                "id": "subtask_1",
+                "description": "Link customers sharing bank accounts, phone numbers, or addresses",
+                "capability": "link_entities"
+              }
+            },
+            {
+              "id": "dec-skill-subtask_1",
+              "labels": [
+                "Decision"
+              ],
+              "properties": {
+                "id": "dec-skill-subtask_1",
+                "kind": "skill_assignment",
+                "backend": "rules",
+                "confidence": 1.0
+              }
+            },
+            {
+              "id": "entity-linker",
+              "labels": [
+                "SkillRef"
+              ],
+              "properties": {
+                "id": "entity-linker"
+              }
+            },
+            {
+              "id": "bulk-linker",
+              "labels": [
+                "SkillRef"
+              ],
+              "properties": {
+                "id": "bulk-linker"
+              }
+            },
+            {
+              "id": "subtask_2",
+              "labels": [
+                "Subtask"
+              ],
+              "properties": {
+                "id": "subtask_2",
+                "description": "Analyze connected clusters to detect the organized fraud ring and separate decoys",
+                "capability": "detect_communities"
+              }
+            },
+            {
+              "id": "dec-skill-subtask_2",
+              "labels": [
+                "Decision"
+              ],
+              "properties": {
+                "id": "dec-skill-subtask_2",
+                "kind": "skill_assignment",
+                "backend": "rules",
+                "confidence": 1.0
+              }
+            },
+            {
+              "id": "ring-detector",
+              "labels": [
+                "SkillRef"
+              ],
+              "properties": {
+                "id": "ring-detector"
+              }
+            },
+            {
+              "id": "ring-detector-lite",
+              "labels": [
+                "SkillRef"
+              ],
+              "properties": {
+                "id": "ring-detector-lite"
+              }
+            },
+            {
+              "id": "agent_link_entities_0",
+              "labels": [
+                "Agent"
+              ],
+              "properties": {
+                "id": "agent_link_entities_0"
+              }
+            },
+            {
+              "id": "agent_detect_communities_1",
+              "labels": [
+                "Agent"
+              ],
+              "properties": {
+                "id": "agent_detect_communities_1"
+              }
+            },
+            {
+              "id": "find-8d5a2029",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-8d5a2029",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.8,
+                "target_cid": "cust_decoy_1",
+                "verdict": "benign",
+                "reasoning": "Customer cust_decoy_1 is connected to other entities only through Address (benign household/family cluster).",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:14.975464+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_decoy_1",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_decoy_1"
+              }
+            },
+            {
+              "id": "cust_decoy_1",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_decoy_1"
+              }
+            },
+            {
+              "id": "cust_decoy_2",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_decoy_2"
+              }
+            },
+            {
+              "id": "cust_decoy_3",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_decoy_3"
+              }
+            },
+            {
+              "id": "cust_decoy_4",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_decoy_4"
+              }
+            },
+            {
+              "id": "find-15e2e79d",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-15e2e79d",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.8,
+                "target_cid": "cust_decoy_2",
+                "verdict": "benign",
+                "reasoning": "Customer cust_decoy_2 is connected to other entities only through Address (benign household/family cluster).",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.010794+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_decoy_2",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_decoy_2"
+              }
+            },
+            {
+              "id": "find-94649ef1",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-94649ef1",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.8,
+                "target_cid": "cust_decoy_3",
+                "verdict": "benign",
+                "reasoning": "Customer cust_decoy_3 is connected to other entities only through Address (benign household/family cluster).",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.045980+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_decoy_3",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_decoy_3"
+              }
+            },
+            {
+              "id": "find-15f8c730",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-15f8c730",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.8,
+                "target_cid": "cust_decoy_4",
+                "verdict": "benign",
+                "reasoning": "Customer cust_decoy_4 is connected to other entities only through Address (benign household/family cluster).",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.076397+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_decoy_4",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_decoy_4"
+              }
+            },
+            {
+              "id": "find-57b935fa",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-57b935fa",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.9,
+                "target_cid": "cust_ring_1",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_1 is part of a financial/contact sharing cluster of 8 entities in the slice graph.",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.114412+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_ring_1",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_ring_1"
+              }
+            },
+            {
+              "id": "cust_ring_1",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_ring_1"
+              }
+            },
+            {
+              "id": "cust_ring_2",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_ring_2"
+              }
+            },
+            {
+              "id": "cust_ring_3",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_ring_3"
+              }
+            },
+            {
+              "id": "cust_ring_4",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_ring_4"
+              }
+            },
+            {
+              "id": "cust_ring_5",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_ring_5"
+              }
+            },
+            {
+              "id": "cust_ring_6",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_ring_6"
+              }
+            },
+            {
+              "id": "cust_ring_7",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_ring_7"
+              }
+            },
+            {
+              "id": "cust_ring_8",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "cust_ring_8"
+              }
+            },
+            {
+              "id": "find-9fbd1b1c",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-9fbd1b1c",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.9,
+                "target_cid": "cust_ring_2",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_2 is part of a financial/contact sharing cluster of 8 entities in the slice graph.",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.150084+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_ring_2",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_ring_2"
+              }
+            },
+            {
+              "id": "find-60549941",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-60549941",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.9,
+                "target_cid": "cust_ring_3",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_3 is part of a financial/contact sharing cluster of 8 entities in the slice graph.",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.184676+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_ring_3",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_ring_3"
+              }
+            },
+            {
+              "id": "find-903e3203",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-903e3203",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.9,
+                "target_cid": "cust_ring_4",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_4 is part of a financial/contact sharing cluster of 8 entities in the slice graph.",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.217472+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_ring_4",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_ring_4"
+              }
+            },
+            {
+              "id": "find-f1567dbc",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-f1567dbc",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.9,
+                "target_cid": "cust_ring_5",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_5 is part of a financial/contact sharing cluster of 8 entities in the slice graph.",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.253269+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_ring_5",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_ring_5"
+              }
+            },
+            {
+              "id": "find-14138d83",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-14138d83",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.9,
+                "target_cid": "cust_ring_6",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_6 is part of a financial/contact sharing cluster of 8 entities in the slice graph.",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.284005+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_ring_6",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_ring_6"
+              }
+            },
+            {
+              "id": "find-38f2752b",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-38f2752b",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.9,
+                "target_cid": "cust_ring_7",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_7 is part of a financial/contact sharing cluster of 8 entities in the slice graph.",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.315458+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_ring_7",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_ring_7"
+              }
+            },
+            {
+              "id": "find-19924287",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-19924287",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.9,
+                "target_cid": "cust_ring_8",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_8 is part of a financial/contact sharing cluster of 8 entities in the slice graph.",
+                "skill_id": "ring-detector",
+                "agent_id": "agent_detect_communities_1",
+                "timestamp": "2026-10-18T08:00:15.344679+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "cust_ring_8",
+              "labels": [
+                "Customer"
+              ],
+              "properties": {
+                "cid": "cust_ring_8"
+              }
+            },
+            {
+              "id": "find-eac3426f",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-eac3426f",
+                "status": "superseded",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_decoy_1",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_decoy_1 shares attributes (Address) with 3 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:14.993629+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "addr_decoy",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "addr_decoy"
+              }
+            },
+            {
+              "id": "find-3e7dd63f",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-3e7dd63f",
+                "status": "superseded",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_decoy_2",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_decoy_2 shares attributes (Address) with 3 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.017011+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "find-7882e81b",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-7882e81b",
+                "status": "superseded",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_decoy_3",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_decoy_3 shares attributes (Address) with 3 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.039891+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "find-74d3ee36",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-74d3ee36",
+                "status": "superseded",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_decoy_4",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_decoy_4 shares attributes (Address) with 3 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.061308+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "find-df284181",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-df284181",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_ring_1",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_1 shares attributes (BankAccount, Phone) with 10 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.083088+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "ba_ring",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "ba_ring"
+              }
+            },
+            {
+              "id": "ph_ring_1",
+              "labels": [
+                "Entity"
+              ],
+              "properties": {
+                "cid": "ph_ring_1"
+              }
+            },
+            {
+              "id": "find-7b277805",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-7b277805",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_ring_2",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_2 shares attributes (BankAccount, Phone) with 10 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.104134+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "find-6d47ce62",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-6d47ce62",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_ring_3",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_3 shares attributes (BankAccount, Phone) with 10 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.126915+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "find-ea8846ba",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-ea8846ba",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_ring_4",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_4 shares attributes (BankAccount, Phone) with 10 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.147416+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "find-1e17affb",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-1e17affb",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_ring_5",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_5 shares attributes (BankAccount) with 7 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.168637+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "find-665557cc",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-665557cc",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_ring_6",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_6 shares attributes (BankAccount) with 7 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.190282+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "find-59be473e",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-59be473e",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_ring_7",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_7 shares attributes (BankAccount) with 7 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.210280+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "find-1ab70dc2",
+              "labels": [
+                "Finding"
+              ],
+              "properties": {
+                "id": "find-1ab70dc2",
+                "status": "promoted",
+                "backend": "rules",
+                "confidence": 0.65,
+                "target_cid": "cust_ring_8",
+                "verdict": "suspicious",
+                "reasoning": "Customer cust_ring_8 shares attributes (BankAccount) with 7 other entities.",
+                "skill_id": "entity-linker",
+                "agent_id": "agent_link_entities_0",
+                "timestamp": "2026-10-18T08:00:15.233451+00:00",
+                "fallback_reason": "invalid_json"
+              }
+            },
+            {
+              "id": "dec-19f5e4e7",
+              "labels": [
+                "Decision"
+              ],
+              "properties": {
+                "id": "dec-19f5e4e7",
+                "backend": "rule",
+                "confidence": 0.8,
+                "target_cid": "cust_decoy_1",
+                "reasoning": "Arbitrated conflict on cust_decoy_1 in favor of side 'benign' (best finding: find-8d5a2029, score: 0.6400, confidence: 0.80, evidence: 0, skill: 'ring-detector' reputation: 0.80). Superseded contradictory findings: find-eac3426f.",
+                "chosen_verdict": "benign",
+                "winning_finding_id": "find-8d5a2029",
+                "resolved_at": "2026-10-18T08:00:16.113241+00:00",
+                "component_scores": "{\"suspicious\": {\"best_finding_id\": \"find-eac3426f\", \"score\": 0.535, \"confidence\": 0.65, \"evidence_factor\": 0.0, \"skill_score\": 0.7}, \"benign\": {\"best_finding_id\": \"find-8d5a2029\", \"score\": 0.64, \"confidence\": 0.8, \"evidence_factor\": 0.0, \"skill_score\": 0.8}}",
+                "weights": "{\"w_conf\": 0.5, \"w_evid\": 0.2, \"w_skill\": 0.3}",
+                "skill_scores_json": "{\"ring-detector\": 0.8, \"entity-linker\": 0.7}"
+              }
+            },
+            {
+              "id": "dec-2aa3c9b3",
+              "labels": [
+                "Decision"
+              ],
+              "properties": {
+                "id": "dec-2aa3c9b3",
+                "backend": "rule",
+                "confidence": 0.8,
+                "target_cid": "cust_decoy_2",
+                "reasoning": "Arbitrated conflict on cust_decoy_2 in favor of side 'benign' (best finding: find-15e2e79d, score: 0.6400, confidence: 0.80, evidence: 0, skill: 'ring-detector' reputation: 0.80). Superseded contradictory findings: find-3e7dd63f.",
+                "chosen_verdict": "benign",
+                "winning_finding_id": "find-15e2e79d",
+                "resolved_at": "2026-10-18T08:00:16.122284+00:00",
+                "component_scores": "{\"suspicious\": {\"best_finding_id\": \"find-3e7dd63f\", \"score\": 0.535, \"confidence\": 0.65, \"evidence_factor\": 0.0, \"skill_score\": 0.7}, \"benign\": {\"best_finding_id\": \"find-15e2e79d\", \"score\": 0.64, \"confidence\": 0.8, \"evidence_factor\": 0.0, \"skill_score\": 0.8}}",
+                "weights": "{\"w_conf\": 0.5, \"w_evid\": 0.2, \"w_skill\": 0.3}",
+                "skill_scores_json": "{\"ring-detector\": 0.8, \"entity-linker\": 0.7}"
+              }
+            },
+            {
+              "id": "dec-c92e8d35",
+              "labels": [
+                "Decision"
+              ],
+              "properties": {
+                "id": "dec-c92e8d35",
+                "backend": "rule",
+                "confidence": 0.8,
+                "target_cid": "cust_decoy_3",
+                "reasoning": "Arbitrated conflict on cust_decoy_3 in favor of side 'benign' (best finding: find-94649ef1, score: 0.6400, confidence: 0.80, evidence: 0, skill: 'ring-detector' reputation: 0.80). Superseded contradictory findings: find-7882e81b.",
+                "chosen_verdict": "benign",
+                "winning_finding_id": "find-94649ef1",
+                "resolved_at": "2026-10-18T08:00:16.130712+00:00",
+                "component_scores": "{\"suspicious\": {\"best_finding_id\": \"find-7882e81b\", \"score\": 0.535, \"confidence\": 0.65, \"evidence_factor\": 0.0, \"skill_score\": 0.7}, \"benign\": {\"best_finding_id\": \"find-94649ef1\", \"score\": 0.64, \"confidence\": 0.8, \"evidence_factor\": 0.0, \"skill_score\": 0.8}}",
+                "weights": "{\"w_conf\": 0.5, \"w_evid\": 0.2, \"w_skill\": 0.3}",
+                "skill_scores_json": "{\"ring-detector\": 0.8, \"entity-linker\": 0.7}"
+              }
+            },
+            {
+              "id": "dec-9c3c8b05",
+              "labels": [
+                "Decision"
+              ],
+              "properties": {
+                "id": "dec-9c3c8b05",
+                "backend": "rule",
+                "confidence": 0.8,
+                "target_cid": "cust_decoy_4",
+                "reasoning": "Arbitrated conflict on cust_decoy_4 in favor of side 'benign' (best finding: find-15f8c730, score: 0.6400, confidence: 0.80, evidence: 0, skill: 'ring-detector' reputation: 0.80). Superseded contradictory findings: find-74d3ee36.",
+                "chosen_verdict": "benign",
+                "winning_finding_id": "find-15f8c730",
+                "resolved_at": "2026-10-18T08:00:16.138180+00:00",
+                "component_scores": "{\"suspicious\": {\"best_finding_id\": \"find-74d3ee36\", \"score\": 0.535, \"confidence\": 0.65, \"evidence_factor\": 0.0, \"skill_score\": 0.7}, \"benign\": {\"best_finding_id\": \"find-15f8c730\", \"score\": 0.64, \"confidence\": 0.8, \"evidence_factor\": 0.0, \"skill_score\": 0.8}}",
+                "weights": "{\"w_conf\": 0.5, \"w_evid\": 0.2, \"w_skill\": 0.3}",
+                "skill_scores_json": "{\"ring-detector\": 0.8, \"entity-linker\": 0.7}"
+              }
+            },
+            {
+              "id": "act-ee1ac5dd",
+              "labels": [
+                "Action"
+              ],
+              "properties": {
+                "id": "act-ee1ac5dd",
+                "status": "EXECUTED",
+                "created_at": "2026-10-18T08:00:16.152037+00:00",
+                "kind": "flag_for_review",
+                "target_cid": "cust_ring_1",
+                "reasoning": "Corroborated suspicious findings on 8 customer(s): cust_ring_1, cust_ring_2, cust_ring_3, cust_ring_4, cust_ring_5, cust_ring_6, cust_ring_7, cust_ring_8.",
+                "action_type": "flag_for_review",
+                "target_cids": [
+                  "cust_ring_1",
+                  "cust_ring_2",
+                  "cust_ring_3",
+                  "cust_ring_4",
+                  "cust_ring_5",
+                  "cust_ring_6",
+                  "cust_ring_7",
+                  "cust_ring_8"
+                ],
+                "approver": "auto",
+                "approved_at": "2026-10-18T08:00:16.174766+00:00",
+                "executed_at": "2026-10-18T08:00:16.181288+00:00"
+              }
+            },
+            {
+              "id": "out-1b4530ae",
+              "labels": [
+                "Outcome"
+              ],
+              "properties": {
+                "id": "out-1b4530ae",
+                "target_cid": "cust_ring_1",
+                "target_cids": [
+                  "cust_ring_1",
+                  "cust_ring_2",
+                  "cust_ring_3",
+                  "cust_ring_4",
+                  "cust_ring_5",
+                  "cust_ring_6",
+                  "cust_ring_7",
+                  "cust_ring_8"
+                ],
+                "action_id": "act-ee1ac5dd",
+                "success": true,
+                "details": "Flagged 8 customer(s) in operational domain graph (run demo_run_1_1792310412): cust_ring_1, cust_ring_2, cust_ring_3, cust_ring_4, cust_ring_5, cust_ring_6, cust_ring_7, cust_ring_8.",
+                "recorded_at": "2026-10-18T08:00:16.181288+00:00",
+                "learned": true,
+                "tp": 8,
+                "fp": 0,
+                "fn": 0,
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "0",
+              "source": "dec-skill-subtask_1",
+              "target": "subtask_1",
+              "rel": "FOR",
+              "properties": {}
+            },
+            {
+              "id": "1",
+              "source": "dec-skill-subtask_1",
+              "target": "entity-linker",
+              "rel": "CHOSE",
+              "properties": {}
+            },
+            {
+              "id": "2",
+              "source": "dec-skill-subtask_1",
+              "target": "bulk-linker",
+              "rel": "REJECTED",
+              "properties": {
+                "reason": "Policy restriction: skill 'bulk-linker' is marked restricted"
+              }
+            },
+            {
+              "id": "3",
+              "source": "dec-skill-subtask_2",
+              "target": "subtask_2",
+              "rel": "FOR",
+              "properties": {}
+            },
+            {
+              "id": "4",
+              "source": "dec-skill-subtask_2",
+              "target": "ring-detector",
+              "rel": "CHOSE",
+              "properties": {}
+            },
+            {
+              "id": "5",
+              "source": "dec-skill-subtask_2",
+              "target": "ring-detector-lite",
+              "rel": "REJECTED",
+              "properties": {
+                "reason": "Lower historical track record score: 0.50 vs 0.80"
+              }
+            },
+            {
+              "id": "6",
+              "source": "agent_link_entities_0",
+              "target": "entity-linker",
+              "rel": "EQUIPPED",
+              "properties": {}
+            },
+            {
+              "id": "7",
+              "source": "agent_detect_communities_1",
+              "target": "ring-detector",
+              "rel": "EQUIPPED",
+              "properties": {}
+            },
+            {
+              "id": "8",
+              "source": "find-8d5a2029",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "9",
+              "source": "find-8d5a2029",
+              "target": "cust_decoy_1",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "10",
+              "source": "find-8d5a2029",
+              "target": "cust_decoy_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "11",
+              "source": "find-8d5a2029",
+              "target": "cust_decoy_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "12",
+              "source": "find-8d5a2029",
+              "target": "cust_decoy_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "13",
+              "source": "find-8d5a2029",
+              "target": "cust_decoy_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "220",
+              "source": "find-8d5a2029",
+              "target": "find-eac3426f",
+              "rel": "CONFLICTS_WITH",
+              "properties": {
+                "detected_at": "2026-10-18T08:00:16.105658+00:00"
+              }
+            },
+            {
+              "id": "14",
+              "source": "find-15e2e79d",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "16",
+              "source": "find-15e2e79d",
+              "target": "cust_decoy_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "17",
+              "source": "find-15e2e79d",
+              "target": "cust_decoy_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "18",
+              "source": "find-15e2e79d",
+              "target": "cust_decoy_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "19",
+              "source": "find-15e2e79d",
+              "target": "cust_decoy_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "15",
+              "source": "find-15e2e79d",
+              "target": "cust_decoy_2",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "221",
+              "source": "find-15e2e79d",
+              "target": "find-3e7dd63f",
+              "rel": "CONFLICTS_WITH",
+              "properties": {
+                "detected_at": "2026-10-18T08:00:16.105658+00:00"
+              }
+            },
+            {
+              "id": "20",
+              "source": "find-94649ef1",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "22",
+              "source": "find-94649ef1",
+              "target": "cust_decoy_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "23",
+              "source": "find-94649ef1",
+              "target": "cust_decoy_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "24",
+              "source": "find-94649ef1",
+              "target": "cust_decoy_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "25",
+              "source": "find-94649ef1",
+              "target": "cust_decoy_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "21",
+              "source": "find-94649ef1",
+              "target": "cust_decoy_3",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "26",
+              "source": "find-15f8c730",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "28",
+              "source": "find-15f8c730",
+              "target": "cust_decoy_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "29",
+              "source": "find-15f8c730",
+              "target": "cust_decoy_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "30",
+              "source": "find-15f8c730",
+              "target": "cust_decoy_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "31",
+              "source": "find-15f8c730",
+              "target": "cust_decoy_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "27",
+              "source": "find-15f8c730",
+              "target": "cust_decoy_4",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "222",
+              "source": "find-15f8c730",
+              "target": "find-74d3ee36",
+              "rel": "CONFLICTS_WITH",
+              "properties": {
+                "detected_at": "2026-10-18T08:00:16.105658+00:00"
+              }
+            },
+            {
+              "id": "32",
+              "source": "find-57b935fa",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "33",
+              "source": "find-57b935fa",
+              "target": "cust_ring_1",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "34",
+              "source": "find-57b935fa",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "35",
+              "source": "find-57b935fa",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "36",
+              "source": "find-57b935fa",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "37",
+              "source": "find-57b935fa",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "38",
+              "source": "find-57b935fa",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "39",
+              "source": "find-57b935fa",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "40",
+              "source": "find-57b935fa",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "41",
+              "source": "find-57b935fa",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "42",
+              "source": "find-9fbd1b1c",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "44",
+              "source": "find-9fbd1b1c",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "45",
+              "source": "find-9fbd1b1c",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "46",
+              "source": "find-9fbd1b1c",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "47",
+              "source": "find-9fbd1b1c",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "48",
+              "source": "find-9fbd1b1c",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "49",
+              "source": "find-9fbd1b1c",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "50",
+              "source": "find-9fbd1b1c",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "51",
+              "source": "find-9fbd1b1c",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "43",
+              "source": "find-9fbd1b1c",
+              "target": "cust_ring_2",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "52",
+              "source": "find-60549941",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "54",
+              "source": "find-60549941",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "55",
+              "source": "find-60549941",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "56",
+              "source": "find-60549941",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "57",
+              "source": "find-60549941",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "58",
+              "source": "find-60549941",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "59",
+              "source": "find-60549941",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "60",
+              "source": "find-60549941",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "61",
+              "source": "find-60549941",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "53",
+              "source": "find-60549941",
+              "target": "cust_ring_3",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "62",
+              "source": "find-903e3203",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "64",
+              "source": "find-903e3203",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "65",
+              "source": "find-903e3203",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "66",
+              "source": "find-903e3203",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "67",
+              "source": "find-903e3203",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "68",
+              "source": "find-903e3203",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "69",
+              "source": "find-903e3203",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "70",
+              "source": "find-903e3203",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "71",
+              "source": "find-903e3203",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "63",
+              "source": "find-903e3203",
+              "target": "cust_ring_4",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "72",
+              "source": "find-f1567dbc",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "74",
+              "source": "find-f1567dbc",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "75",
+              "source": "find-f1567dbc",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "76",
+              "source": "find-f1567dbc",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "77",
+              "source": "find-f1567dbc",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "78",
+              "source": "find-f1567dbc",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "79",
+              "source": "find-f1567dbc",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "80",
+              "source": "find-f1567dbc",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "81",
+              "source": "find-f1567dbc",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "73",
+              "source": "find-f1567dbc",
+              "target": "cust_ring_5",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "82",
+              "source": "find-14138d83",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "84",
+              "source": "find-14138d83",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "85",
+              "source": "find-14138d83",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "86",
+              "source": "find-14138d83",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "87",
+              "source": "find-14138d83",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "88",
+              "source": "find-14138d83",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "89",
+              "source": "find-14138d83",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "90",
+              "source": "find-14138d83",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "91",
+              "source": "find-14138d83",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "83",
+              "source": "find-14138d83",
+              "target": "cust_ring_6",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "92",
+              "source": "find-38f2752b",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "94",
+              "source": "find-38f2752b",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "95",
+              "source": "find-38f2752b",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "96",
+              "source": "find-38f2752b",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "97",
+              "source": "find-38f2752b",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "98",
+              "source": "find-38f2752b",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "99",
+              "source": "find-38f2752b",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "100",
+              "source": "find-38f2752b",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "101",
+              "source": "find-38f2752b",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "93",
+              "source": "find-38f2752b",
+              "target": "cust_ring_7",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "102",
+              "source": "find-19924287",
+              "target": "agent_detect_communities_1",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "104",
+              "source": "find-19924287",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "105",
+              "source": "find-19924287",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "106",
+              "source": "find-19924287",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "107",
+              "source": "find-19924287",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "108",
+              "source": "find-19924287",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "109",
+              "source": "find-19924287",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "110",
+              "source": "find-19924287",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "111",
+              "source": "find-19924287",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "103",
+              "source": "find-19924287",
+              "target": "cust_ring_8",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "112",
+              "source": "find-eac3426f",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "113",
+              "source": "find-eac3426f",
+              "target": "cust_decoy_1",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "115",
+              "source": "find-eac3426f",
+              "target": "cust_decoy_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "116",
+              "source": "find-eac3426f",
+              "target": "cust_decoy_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "117",
+              "source": "find-eac3426f",
+              "target": "cust_decoy_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "114",
+              "source": "find-eac3426f",
+              "target": "addr_decoy",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "118",
+              "source": "find-3e7dd63f",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "121",
+              "source": "find-3e7dd63f",
+              "target": "cust_decoy_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "122",
+              "source": "find-3e7dd63f",
+              "target": "cust_decoy_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "123",
+              "source": "find-3e7dd63f",
+              "target": "cust_decoy_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "119",
+              "source": "find-3e7dd63f",
+              "target": "cust_decoy_2",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "120",
+              "source": "find-3e7dd63f",
+              "target": "addr_decoy",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "124",
+              "source": "find-7882e81b",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "127",
+              "source": "find-7882e81b",
+              "target": "cust_decoy_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "128",
+              "source": "find-7882e81b",
+              "target": "cust_decoy_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "129",
+              "source": "find-7882e81b",
+              "target": "cust_decoy_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "223",
+              "source": "find-7882e81b",
+              "target": "find-94649ef1",
+              "rel": "CONFLICTS_WITH",
+              "properties": {
+                "detected_at": "2026-10-18T08:00:16.105658+00:00"
+              }
+            },
+            {
+              "id": "125",
+              "source": "find-7882e81b",
+              "target": "cust_decoy_3",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "126",
+              "source": "find-7882e81b",
+              "target": "addr_decoy",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "130",
+              "source": "find-74d3ee36",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "133",
+              "source": "find-74d3ee36",
+              "target": "cust_decoy_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "134",
+              "source": "find-74d3ee36",
+              "target": "cust_decoy_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "135",
+              "source": "find-74d3ee36",
+              "target": "cust_decoy_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "131",
+              "source": "find-74d3ee36",
+              "target": "cust_decoy_4",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "132",
+              "source": "find-74d3ee36",
+              "target": "addr_decoy",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "136",
+              "source": "find-df284181",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "137",
+              "source": "find-df284181",
+              "target": "cust_ring_1",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "139",
+              "source": "find-df284181",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "140",
+              "source": "find-df284181",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "141",
+              "source": "find-df284181",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "142",
+              "source": "find-df284181",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "143",
+              "source": "find-df284181",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "144",
+              "source": "find-df284181",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "145",
+              "source": "find-df284181",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "138",
+              "source": "find-df284181",
+              "target": "ba_ring",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "146",
+              "source": "find-df284181",
+              "target": "ph_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "147",
+              "source": "find-7b277805",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "150",
+              "source": "find-7b277805",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "151",
+              "source": "find-7b277805",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "152",
+              "source": "find-7b277805",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "153",
+              "source": "find-7b277805",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "154",
+              "source": "find-7b277805",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "155",
+              "source": "find-7b277805",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "156",
+              "source": "find-7b277805",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "148",
+              "source": "find-7b277805",
+              "target": "cust_ring_2",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "149",
+              "source": "find-7b277805",
+              "target": "ba_ring",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "157",
+              "source": "find-7b277805",
+              "target": "ph_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "158",
+              "source": "find-6d47ce62",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "161",
+              "source": "find-6d47ce62",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "162",
+              "source": "find-6d47ce62",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "163",
+              "source": "find-6d47ce62",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "164",
+              "source": "find-6d47ce62",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "165",
+              "source": "find-6d47ce62",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "166",
+              "source": "find-6d47ce62",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "167",
+              "source": "find-6d47ce62",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "159",
+              "source": "find-6d47ce62",
+              "target": "cust_ring_3",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "160",
+              "source": "find-6d47ce62",
+              "target": "ba_ring",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "168",
+              "source": "find-6d47ce62",
+              "target": "ph_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "169",
+              "source": "find-ea8846ba",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "172",
+              "source": "find-ea8846ba",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "173",
+              "source": "find-ea8846ba",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "174",
+              "source": "find-ea8846ba",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "175",
+              "source": "find-ea8846ba",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "176",
+              "source": "find-ea8846ba",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "177",
+              "source": "find-ea8846ba",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "178",
+              "source": "find-ea8846ba",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "170",
+              "source": "find-ea8846ba",
+              "target": "cust_ring_4",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "171",
+              "source": "find-ea8846ba",
+              "target": "ba_ring",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "179",
+              "source": "find-ea8846ba",
+              "target": "ph_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "180",
+              "source": "find-1e17affb",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "183",
+              "source": "find-1e17affb",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "184",
+              "source": "find-1e17affb",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "185",
+              "source": "find-1e17affb",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "186",
+              "source": "find-1e17affb",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "187",
+              "source": "find-1e17affb",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "188",
+              "source": "find-1e17affb",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "189",
+              "source": "find-1e17affb",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "181",
+              "source": "find-1e17affb",
+              "target": "cust_ring_5",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "182",
+              "source": "find-1e17affb",
+              "target": "ba_ring",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "190",
+              "source": "find-665557cc",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "193",
+              "source": "find-665557cc",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "194",
+              "source": "find-665557cc",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "195",
+              "source": "find-665557cc",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "196",
+              "source": "find-665557cc",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "197",
+              "source": "find-665557cc",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "198",
+              "source": "find-665557cc",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "199",
+              "source": "find-665557cc",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "191",
+              "source": "find-665557cc",
+              "target": "cust_ring_6",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "192",
+              "source": "find-665557cc",
+              "target": "ba_ring",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "200",
+              "source": "find-59be473e",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "203",
+              "source": "find-59be473e",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "204",
+              "source": "find-59be473e",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "205",
+              "source": "find-59be473e",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "206",
+              "source": "find-59be473e",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "207",
+              "source": "find-59be473e",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "208",
+              "source": "find-59be473e",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "209",
+              "source": "find-59be473e",
+              "target": "cust_ring_8",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "201",
+              "source": "find-59be473e",
+              "target": "cust_ring_7",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "202",
+              "source": "find-59be473e",
+              "target": "ba_ring",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "210",
+              "source": "find-1ab70dc2",
+              "target": "agent_link_entities_0",
+              "rel": "PROMOTED_FROM",
+              "properties": {}
+            },
+            {
+              "id": "213",
+              "source": "find-1ab70dc2",
+              "target": "cust_ring_1",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "214",
+              "source": "find-1ab70dc2",
+              "target": "cust_ring_2",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "215",
+              "source": "find-1ab70dc2",
+              "target": "cust_ring_3",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "216",
+              "source": "find-1ab70dc2",
+              "target": "cust_ring_4",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "217",
+              "source": "find-1ab70dc2",
+              "target": "cust_ring_5",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "218",
+              "source": "find-1ab70dc2",
+              "target": "cust_ring_6",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "219",
+              "source": "find-1ab70dc2",
+              "target": "cust_ring_7",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "211",
+              "source": "find-1ab70dc2",
+              "target": "cust_ring_8",
+              "rel": "ASSESSES",
+              "properties": {}
+            },
+            {
+              "id": "212",
+              "source": "find-1ab70dc2",
+              "target": "ba_ring",
+              "rel": "SUPPORTED_BY",
+              "properties": {}
+            },
+            {
+              "id": "224",
+              "source": "dec-19f5e4e7",
+              "target": "find-8d5a2029",
+              "rel": "UPHELD",
+              "properties": {}
+            },
+            {
+              "id": "225",
+              "source": "dec-19f5e4e7",
+              "target": "cust_decoy_1",
+              "rel": "ABOUT",
+              "properties": {}
+            },
+            {
+              "id": "226",
+              "source": "dec-19f5e4e7",
+              "target": "find-eac3426f",
+              "rel": "SUPERSEDES",
+              "properties": {}
+            },
+            {
+              "id": "227",
+              "source": "dec-2aa3c9b3",
+              "target": "find-15e2e79d",
+              "rel": "UPHELD",
+              "properties": {}
+            },
+            {
+              "id": "228",
+              "source": "dec-2aa3c9b3",
+              "target": "cust_decoy_2",
+              "rel": "ABOUT",
+              "properties": {}
+            },
+            {
+              "id": "229",
+              "source": "dec-2aa3c9b3",
+              "target": "find-3e7dd63f",
+              "rel": "SUPERSEDES",
+              "properties": {}
+            },
+            {
+              "id": "230",
+              "source": "dec-c92e8d35",
+              "target": "find-94649ef1",
+              "rel": "UPHELD",
+              "properties": {}
+            },
+            {
+              "id": "231",
+              "source": "dec-c92e8d35",
+              "target": "cust_decoy_3",
+              "rel": "ABOUT",
+              "properties": {}
+            },
+            {
+              "id": "232",
+              "source": "dec-c92e8d35",
+              "target": "find-7882e81b",
+              "rel": "SUPERSEDES",
+              "properties": {}
+            },
+            {
+              "id": "233",
+              "source": "dec-9c3c8b05",
+              "target": "find-15f8c730",
+              "rel": "UPHELD",
+              "properties": {}
+            },
+            {
+              "id": "234",
+              "source": "dec-9c3c8b05",
+              "target": "cust_decoy_4",
+              "rel": "ABOUT",
+              "properties": {}
+            },
+            {
+              "id": "235",
+              "source": "dec-9c3c8b05",
+              "target": "find-74d3ee36",
+              "rel": "SUPERSEDES",
+              "properties": {}
+            },
+            {
+              "id": "241",
+              "source": "act-ee1ac5dd",
+              "target": "find-57b935fa",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "248",
+              "source": "act-ee1ac5dd",
+              "target": "find-9fbd1b1c",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "243",
+              "source": "act-ee1ac5dd",
+              "target": "find-60549941",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "247",
+              "source": "act-ee1ac5dd",
+              "target": "find-903e3203",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "251",
+              "source": "act-ee1ac5dd",
+              "target": "find-f1567dbc",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "236",
+              "source": "act-ee1ac5dd",
+              "target": "find-14138d83",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "240",
+              "source": "act-ee1ac5dd",
+              "target": "find-38f2752b",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "237",
+              "source": "act-ee1ac5dd",
+              "target": "find-19924287",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "249",
+              "source": "act-ee1ac5dd",
+              "target": "find-df284181",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "246",
+              "source": "act-ee1ac5dd",
+              "target": "find-7b277805",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "245",
+              "source": "act-ee1ac5dd",
+              "target": "find-6d47ce62",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "250",
+              "source": "act-ee1ac5dd",
+              "target": "find-ea8846ba",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "239",
+              "source": "act-ee1ac5dd",
+              "target": "find-1e17affb",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "244",
+              "source": "act-ee1ac5dd",
+              "target": "find-665557cc",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "242",
+              "source": "act-ee1ac5dd",
+              "target": "find-59be473e",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "238",
+              "source": "act-ee1ac5dd",
+              "target": "find-1ab70dc2",
+              "rel": "BASED_ON",
+              "properties": {}
+            },
+            {
+              "id": "252",
+              "source": "act-ee1ac5dd",
+              "target": "out-1b4530ae",
+              "rel": "RESULTED_IN",
+              "properties": {}
+            }
+          ]
+        }
+      },
+      "metrics": {
+        "true_positives": 8,
+        "false_positives": 0,
+        "true_negatives": 292,
+        "false_negatives": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "skill_scores_before": {
+        "entity-linker": 0.7,
+        "bulk-linker": 0.95,
+        "ring-detector": 0.8,
+        "ring-detector-lite": 0.5,
+        "influence-ranker": 0.6,
+        "path-explainer": 0.6,
+        "anomaly-scout": 0.6
+      },
+      "skill_scores_after": {
+        "entity-linker": 0.693333333333333,
+        "bulk-linker": 0.95,
+        "ring-detector": 0.84,
+        "ring-detector-lite": 0.5,
+        "influence-ranker": 0.6,
+        "path-explainer": 0.6,
+        "anomaly-scout": 0.6
+      },
+      "explain_result": {
+        "cust_ring_1": {
+          "target_cid": "cust_ring_1",
+          "final_verdict": "suspicious",
+          "findings": [
+            {
+              "id": "find-57b935fa",
+              "agent_id": "agent_detect_communities_1",
+              "skill_id": "ring-detector",
+              "verdict": "suspicious",
+              "confidence": 0.9,
+              "status": "promoted",
+              "backend": "rules",
+              "fallback_reason": "invalid_json",
+              "reasoning": "Customer cust_ring_1 is part of a financial/contact sharing cluster of 8 entities in the slice graph.",
+              "evidence_cids": []
+            },
+            {
+              "id": "find-df284181",
+              "agent_id": "agent_link_entities_0",
+              "skill_id": "entity-linker",
+              "verdict": "suspicious",
+              "confidence": 0.65,
+              "status": "promoted",
+              "backend": "rules",
+              "fallback_reason": "invalid_json",
+              "reasoning": "Customer cust_ring_1 shares attributes (BankAccount, Phone) with 10 other entities.",
+              "evidence_cids": []
+            }
+          ],
+          "decision": null,
+          "evidence": [
+            {
+              "cid": "cust_ring_1",
+              "label": "Entity"
+            },
+            {
+              "cid": "cust_ring_2",
+              "label": "Entity"
+            },
+            {
+              "cid": "cust_ring_3",
+              "label": "Entity"
+            },
+            {
+              "cid": "cust_ring_4",
+              "label": "Entity"
+            },
+            {
+              "cid": "cust_ring_5",
+              "label": "Entity"
+            },
+            {
+              "cid": "cust_ring_6",
+              "label": "Entity"
+            },
+            {
+              "cid": "cust_ring_7",
+              "label": "Entity"
+            },
+            {
+              "cid": "cust_ring_8",
+              "label": "Entity"
+            },
+            {
+              "cid": "ba_ring",
+              "label": "Entity"
+            },
+            {
+              "cid": "ph_ring_1",
+              "label": "Entity"
+            }
+          ],
+          "skill_choices": [
+            {
+              "subtask_id": "subtask_1",
+              "capability": "link_entities",
+              "chosen_skill_id": "entity-linker",
+              "rejected": [
+                {
+                  "skill_id": "bulk-linker",
+                  "reason": "Policy restriction: skill 'bulk-linker' is marked restricted"
+                }
+              ],
+              "confidence": 1.0,
+              "backend": "rules"
+            },
+            {
+              "subtask_id": "subtask_2",
+              "capability": "detect_communities",
+              "chosen_skill_id": "ring-detector",
+              "rejected": [
+                {
+                  "skill_id": "ring-detector-lite",
+                  "reason": "Lower historical track record score: 0.50 vs 0.80"
+                }
+              ],
+              "confidence": 1.0,
+              "backend": "rules"
+            }
+          ],
+          "narrative": "Customer 'cust_ring_1' evaluated as 'suspicious' (confidence: 0.90) based on uncontested finding(s) by agent(s) ['agent_detect_communities_1', 'agent_link_entities_0'] using skill(s) ['entity-linker', 'ring-detector']. Evidence items: [cust_ring_1 (Entity), cust_ring_2 (Entity), cust_ring_3 (Entity), cust_ring_4 (Entity), cust_ring_5 (Entity), cust_ring_6 (Entity), cust_ring_7 (Entity), cust_ring_8 (Entity), ba_ring (Entity), ph_ring_1 (Entity)]."
+        },
+        "cust_decoy_1": {
+          "target_cid": "cust_decoy_1",
+          "final_verdict": "benign",
+          "findings": [
+            {
+              "id": "find-8d5a2029",
+              "agent_id": "agent_detect_communities_1",
+              "skill_id": "ring-detector",
+              "verdict": "benign",
+              "confidence": 0.8,
+              "status": "promoted",
+              "backend": "rules",
+              "fallback_reason": "invalid_json",
+              "reasoning": "Customer cust_decoy_1 is connected to other entities only through Address (benign household/family cluster).",
+              "evidence_cids": []
+            },
+            {
+              "id": "find-eac3426f",
+              "agent_id": "agent_link_entities_0",
+              "skill_id": "entity-linker",
+              "verdict": "suspicious",
+              "confidence": 0.65,
+              "status": "superseded",
+              "backend": "rules",
+              "fallback_reason": "invalid_json",
+              "reasoning": "Customer cust_decoy_1 shares attributes (Address) with 3 other entities.",
+              "evidence_cids": []
+            }
+          ],
+          "decision": {
+            "id": "dec-19f5e4e7",
+            "chosen_verdict": "benign",
+            "confidence": 0.8,
+            "components": {
+              "suspicious": {
+                "best_finding_id": "find-eac3426f",
+                "score": 0.535,
+                "confidence": 0.65,
+                "evidence_factor": 0.0,
+                "skill_score": 0.7
+              },
+              "benign": {
+                "best_finding_id": "find-8d5a2029",
+                "score": 0.64,
+                "confidence": 0.8,
+                "evidence_factor": 0.0,
+                "skill_score": 0.8
+              }
+            },
+            "weights": {
+              "w_conf": 0.5,
+              "w_evid": 0.2,
+              "w_skill": 0.3
+            },
+            "skill_scores": {
+              "ring-detector": 0.8,
+              "entity-linker": 0.7
+            },
+            "upheld_finding_id": "find-8d5a2029",
+            "superseded_finding_ids": [
+              "find-eac3426f"
+            ]
+          },
+          "evidence": [
+            {
+              "cid": "cust_decoy_1",
+              "label": "Entity"
+            },
+            {
+              "cid": "cust_decoy_2",
+              "label": "Entity"
+            },
+            {
+              "cid": "cust_decoy_3",
+              "label": "Entity"
+            },
+            {
+              "cid": "cust_decoy_4",
+              "label": "Entity"
+            },
+            {
+              "cid": "addr_decoy",
+              "label": "Entity"
+            }
+          ],
+          "skill_choices": [
+            {
+              "subtask_id": "subtask_1",
+              "capability": "link_entities",
+              "chosen_skill_id": "entity-linker",
+              "rejected": [
+                {
+                  "skill_id": "bulk-linker",
+                  "reason": "Policy restriction: skill 'bulk-linker' is marked restricted"
+                }
+              ],
+              "confidence": 1.0,
+              "backend": "rules"
+            },
+            {
+              "subtask_id": "subtask_2",
+              "capability": "detect_communities",
+              "chosen_skill_id": "ring-detector",
+              "rejected": [
+                {
+                  "skill_id": "ring-detector-lite",
+                  "reason": "Lower historical track record score: 0.50 vs 0.80"
+                }
+              ],
+              "confidence": 1.0,
+              "backend": "rules"
+            }
+          ],
+          "narrative": "Customer 'cust_decoy_1' was contested and arbitrated to final verdict 'benign' (confidence: 0.80). Upheld winning finding 'find-8d5a2029' by skill 'ring-detector' (agent: agent_detect_communities_1). Superseded 1 conflicting alternative finding(s) (find-eac3426f). Score components: {'suspicious': {'best_finding_id': 'find-eac3426f', 'score': 0.535, 'confidence': 0.65, 'evidence_factor': 0.0, 'skill_score': 0.7}, 'benign': {'best_finding_id': 'find-8d5a2029', 'score': 0.64, 'confidence': 0.8, 'evidence_factor': 0.0, 'skill_score': 0.8}}. Evidence items: [cust_decoy_1 (Entity), cust_decoy_2 (Entity), cust_decoy_3 (Entity), cust_decoy_4 (Entity), addr_decoy (Entity)]."
+        }
+      }
+    }
+  ]
+}

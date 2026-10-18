@@ -158,6 +158,7 @@ class LunaPipeline:
         self._seq_counter = 0
         self._event_lock = threading.Lock()
         self._subscribers: list[Callable[[PipelineEvent], None]] = []
+        self._scores_before: dict[str, float] = {}
 
     def subscribe(self, callback: Callable[[PipelineEvent], None]) -> None:
         """Register a subscriber callback for streaming pipeline events."""
@@ -278,6 +279,7 @@ class LunaPipeline:
             )
 
             scores_before = self._get_skill_scores()
+            self._scores_before = dict(scores_before)
 
             # Step 2: Decompose
             self.emit("decompose", "Decomposing task requirements into subtasks")
@@ -578,7 +580,7 @@ class LunaPipeline:
                 metrics=metrics,
                 backend_counts=b_counts,
                 events=list(self._events),
-                skill_scores_before={},
+                skill_scores_before=dict(self._scores_before) if self._scores_before else self._get_skill_scores(),
                 skill_scores_after=scores_after,
             )
 

@@ -117,3 +117,7 @@ class MockLLMClient:
                 return canned
 
         return self.default_response
+
+
+# Alias for backward compatibility
+OllamaClient = OllamaLLM
