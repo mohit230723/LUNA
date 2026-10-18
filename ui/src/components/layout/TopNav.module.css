@@ -1,0 +1,132 @@
+.nav {
+  width: 100%;
+  background-color: var(--color-obsidian);
+  border-bottom: 1px solid var(--color-graphite);
+  z-index: 100;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+}
+
+.inner {
+  max-width: var(--page-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 var(--spacing-24);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.compact .inner {
+  height: 56px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compassIcon {
+  stroke: var(--color-compass-gold);
+  fill: none;
+  flex-shrink: 0;
+}
+
+.wordmark {
+  font-family: var(--font-primary);
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--color-chalk);
+  letter-spacing: 0.5px;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.navLink {
+  font-family: var(--font-primary);
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-smoke);
+  padding: 6px 0;
+  position: relative;
+  transition: color 0.15s ease;
+}
+
+.navLink:hover {
+  color: var(--color-ash);
+}
+
+.activeLink {
+  color: var(--color-chalk);
+}
+
+.activeLink::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: var(--color-chalk);
+}
+
+.rightAction {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ctaButton {
+  padding: 8px 18px;
+  font-size: 13px;
+}
+
+.mobileMenuButton {
+  display: none;
+}
+
+.mobileMenu {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .links {
+    display: none;
+  }
+
+  .mobileMenuButton {
+    display: inline-flex;
+  }
+
+  .mobileMenu {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-carbon);
+    border-top: 1px solid var(--color-graphite);
+    width: 100%;
+  }
+
+  .mobileNavLink {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--color-graphite);
+    color: var(--color-smoke);
+    font-family: var(--font-primary);
+    font-size: 14px;
+    text-transform: uppercase;
+  }
+
+  .mobileActiveLink {
+    color: var(--color-chalk);
+  }
+}

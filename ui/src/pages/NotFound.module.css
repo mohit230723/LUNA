@@ -1,0 +1,27 @@
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 24px;
+}
+
+.code {
+  font-family: var(--font-primary);
+  font-size: var(--text-display);
+  line-height: 1.05;
+  letter-spacing: var(--tracking-display);
+  font-weight: 400;
+  color: var(--color-chalk);
+  margin-bottom: 12px;
+}
+
+.subline {
+  font-family: var(--font-primary);
+  font-size: var(--text-subheading);
+  font-weight: 400;
+  color: var(--color-smoke);
+  margin-bottom: 32px;
+}
