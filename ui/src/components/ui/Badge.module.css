@@ -1,0 +1,46 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--color-badge-bg);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-smoke);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 400;
+  line-height: 1;
+  user-select: none;
+}
+
+.compact {
+  padding: 4px 8px;
+  font-size: 11px;
+  gap: 6px;
+}
+
+.pulseDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-icon);
+  background-color: var(--color-pulse-green);
+  display: inline-block;
+  flex-shrink: 0;
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulseDot {
+    animation: none;
+    opacity: 1;
+  }
+}

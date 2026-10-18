@@ -1,0 +1,30 @@
+.ghostButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: transparent;
+  color: var(--color-signal-white);
+  border: 1px solid var(--color-signal-white);
+  border-radius: var(--radius-card);
+  padding: 10px 20px;
+  font-family: var(--font-primary);
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ghostButton:hover:not(:disabled) {
+  background-color: var(--color-graphite);
+}
+
+.ghostButton:disabled {
+  border-color: var(--color-iron);
+  color: var(--color-smoke);
+  cursor: not-allowed;
+}

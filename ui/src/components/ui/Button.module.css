@@ -1,0 +1,36 @@
+.pillButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--color-signal-white);
+  color: var(--color-obsidian);
+  border-radius: var(--radius-pill);
+  padding: 12px 24px;
+  font-family: var(--font-primary);
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.pillButton:hover:not(:disabled) {
+  background-color: var(--color-ash);
+}
+
+.pillButton:disabled {
+  background-color: var(--color-iron);
+  color: var(--color-smoke);
+  cursor: not-allowed;
+}
+
+.arrow {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1;
+}

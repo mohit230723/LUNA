@@ -1,0 +1,24 @@
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  border: 1px solid var(--color-graphite);
+  border-top-color: var(--color-chalk);
+  border-radius: var(--radius-icon);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+}

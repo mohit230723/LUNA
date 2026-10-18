@@ -1,0 +1,114 @@
+.markdown {
+  font-family: var(--font-primary);
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--color-smoke);
+}
+
+.heading1 {
+  font-size: var(--text-heading-sm);
+  font-weight: 400;
+  color: var(--color-chalk);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.heading2 {
+  font-size: var(--text-heading-xs);
+  font-weight: 400;
+  color: var(--color-chalk);
+  margin-top: 14px;
+  margin-bottom: 6px;
+}
+
+.heading3 {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--color-chalk);
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.paragraph {
+  margin-bottom: 12px;
+}
+
+.paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.link {
+  color: var(--color-chalk);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.link:hover {
+  color: var(--color-signal-white);
+}
+
+.inlineCode {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background-color: var(--color-carbon);
+  color: var(--color-chalk);
+  padding: 2px 6px;
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+}
+
+.cidChip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background-color: var(--color-badge-bg);
+  color: var(--color-chalk);
+  border: 1px solid var(--color-iron);
+  border-radius: var(--radius-tag);
+  padding: 2px 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.cidChip:hover {
+  background-color: var(--color-graphite);
+  border-color: var(--color-chalk);
+}
+
+.codeBlock {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background-color: var(--color-carbon);
+  color: var(--color-chalk);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  margin: 12px 0;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-graphite);
+  color: var(--color-smoke);
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-graphite);
+  color: var(--color-chalk);
+}

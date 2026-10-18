@@ -1,0 +1,59 @@
+.tabList {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid var(--color-graphite);
+}
+
+.boxedList {
+  gap: 0;
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  padding: 2px;
+  background-color: var(--color-carbon);
+}
+
+.tabButton {
+  font-family: var(--font-primary);
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-smoke);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 10px 0;
+  position: relative;
+  transition: color 0.15s ease;
+}
+
+.tabButton:hover:not(.activeTab) {
+  color: var(--color-ash);
+}
+
+.underlineTab.activeTab {
+  color: var(--color-chalk);
+}
+
+.underlineTab.activeTab::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: var(--color-chalk);
+}
+
+.boxedTab {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.boxedTab.activeTab {
+  background-color: var(--color-graphite);
+  color: var(--color-chalk);
+}

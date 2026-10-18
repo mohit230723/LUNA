@@ -1,0 +1,35 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.iconContainer {
+  margin-bottom: 16px;
+  color: var(--color-smoke);
+}
+
+.title {
+  font-family: var(--font-primary);
+  font-size: var(--text-heading-sm);
+  font-weight: 400;
+  color: var(--color-chalk);
+  margin-bottom: 8px;
+}
+
+.description {
+  font-family: var(--font-primary);
+  font-size: var(--text-body);
+  font-weight: 400;
+  color: var(--color-smoke);
+  max-width: 480px;
+  margin-bottom: 24px;
+}
+
+.action {
+  display: flex;
+  gap: 12px;
+}

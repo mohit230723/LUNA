@@ -1,0 +1,19 @@
+.card {
+  background-color: transparent;
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.carbon {
+  background-color: var(--color-carbon);
+}
+
+.failed {
+  border: 1px dashed var(--color-chalk);
+}
+
+.warning {
+  border-left: 1px solid var(--color-compass-gold);
+}

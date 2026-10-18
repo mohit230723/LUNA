@@ -1,0 +1,40 @@
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-graphite);
+  background-color: transparent;
+  color: var(--color-chalk);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-card);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.iconButton:hover:not(:disabled) {
+  background-color: var(--color-graphite);
+}
+
+.iconButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ghost {
+  border-radius: var(--radius-card);
+}
+
+.pill {
+  border-radius: var(--radius-pill);
+  background-color: var(--color-signal-white);
+  color: var(--color-obsidian);
+  border: none;
+}
+
+.pill:hover:not(:disabled) {
+  background-color: var(--color-ash);
+}
+
+.circle {
+  border-radius: var(--radius-icon);
+}

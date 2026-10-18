@@ -1,0 +1,75 @@
+.statusContainer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.statusText {
+  color: var(--color-chalk);
+}
+
+.pendingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-icon);
+  border: 1px solid var(--color-smoke);
+  background: transparent;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.pending .statusText {
+  color: var(--color-smoke);
+}
+
+.pulseDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-icon);
+  background-color: var(--color-pulse-green);
+  display: inline-block;
+  flex-shrink: 0;
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulseDot {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.chalkIcon {
+  color: var(--color-chalk);
+  flex-shrink: 0;
+}
+
+.goldIcon {
+  stroke: var(--color-compass-gold);
+  flex-shrink: 0;
+}
+
+.superseded, .skipped {
+  opacity: 0.6;
+}
+
+.superseded .statusText, .skipped .statusText {
+  color: var(--color-smoke);
+  text-decoration: line-through;
+}
+
+.supersededDash {
+  color: var(--color-smoke);
+}
