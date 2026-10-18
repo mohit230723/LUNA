@@ -32,6 +32,9 @@ if (typeof window !== 'undefined') {
   }
   window.IntersectionObserver = MockIntersectionObserver as any;
 
+  // JSDOM polyfill for scrollTo
+  Element.prototype.scrollTo = function () {};
+
   // JSDOM polyfill for HTMLCanvasElement.prototype.getContext
   const createMockContext2D = () => {
     return {

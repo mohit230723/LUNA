@@ -4,7 +4,6 @@ import dagre from 'cytoscape-dagre';
 import { Lock, Plus, Minus, Maximize2 } from 'lucide-react';
 import { PageShell } from '../components/layout/PageShell';
 import { Badge } from '../components/ui/Badge';
-import { GhostButton } from '../components/ui/GhostButton';
 import { IconButton } from '../components/ui/IconButton';
 import { Drawer } from '../components/ui/Drawer';
 import { Tabs } from '../components/ui/Tabs';
@@ -163,7 +162,7 @@ export const SkillAtlas: React.FC = () => {
         <div className={styles.toolbar}>
           <div className={styles.toolbarLeft}>
             <Tabs
-              activeTab={pack}
+              activeId={pack}
               onChange={(tab) => setPack(tab as 'all' | Pack)}
               tabs={[
                 { id: 'all', label: 'ALL' },
@@ -183,7 +182,7 @@ export const SkillAtlas: React.FC = () => {
 
           <div className={styles.toolbarRight}>
             <Tabs
-              activeTab={view}
+              activeId={view}
               onChange={(v) => setView(v as 'list' | 'graph')}
               tabs={[
                 { id: 'list', label: 'LIST' },
@@ -207,7 +206,7 @@ export const SkillAtlas: React.FC = () => {
           <ErrorState
             title="Could not load the atlas."
             message="An unexpected error occurred while communicating with the atlas API."
-            action={<GhostButton onClick={loadData}>RETRY</GhostButton>}
+            onRetry={loadData}
           />
         ) : filteredSkills.length === 0 ? (
           <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--color-smoke)' }}>

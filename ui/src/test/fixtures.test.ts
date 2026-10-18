@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mockApi } from '../api/mock/mockApi';
 import { F1_BLOCKS, F1_TRACE } from '../api/mock/fixtures/f1_investigate';
-import { F2_BLOCKS, F2_TRACE } from '../api/mock/fixtures/f2_build';
+import { F2_TRACE } from '../api/mock/fixtures/f2_build';
 import { F3_TRACE } from '../api/mock/fixtures/f3_followup';
 import { ATLAS_SKILLS_FIXTURE } from '../api/mock/fixtures/atlas_skills';
 

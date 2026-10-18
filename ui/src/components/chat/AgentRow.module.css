@@ -1,0 +1,41 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: var(--color-obsidian);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.leftCol {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skillName {
+  font-family: var(--font-primary);
+  font-size: 13px;
+  color: var(--color-chalk);
+}
+
+.counts {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-smoke);
+}
+
+.rightCol {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.failedReason {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-smoke);
+}

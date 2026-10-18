@@ -1,0 +1,93 @@
+.sidebar {
+  width: 280px;
+  height: 100%;
+  background-color: var(--color-obsidian);
+  border-right: 1px solid var(--color-graphite);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.topSection {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-graphite);
+}
+
+.newChatButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.listSection {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.recentLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  text-transform: uppercase;
+  padding: 0 16px 8px 16px;
+  display: block;
+}
+
+.convItem {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.convItem:hover {
+  background-color: var(--color-graphite);
+}
+
+.convItemActive {
+  background-color: var(--color-carbon);
+  border-left-color: var(--color-chalk);
+}
+
+.convTitle {
+  font-family: var(--font-primary);
+  font-size: 13px;
+  color: var(--color-chalk);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.convTime {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-smoke);
+}
+
+.bottomSection {
+  padding: 16px;
+  border-top: 1px solid var(--color-graphite);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modeIndicator {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-smoke);
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  padding: 2px 6px;
+}

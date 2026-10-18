@@ -1,4 +1,4 @@
-import { RunEvent, RunEventType } from '../api/contract';
+import type { RunEvent } from '../api/contract';
 
 export type StageName =
   | 'ROUTED'

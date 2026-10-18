@@ -54,6 +54,13 @@ export class MockApi implements Api {
   public devBuildCheckFail = false;
 
   constructor() {
+    const envSpeed =
+      typeof import.meta !== 'undefined' && import.meta.env?.VITE_MOCK_SPEED
+        ? Number(import.meta.env.VITE_MOCK_SPEED)
+        : typeof process !== 'undefined' && process.env?.NODE_ENV === 'test'
+        ? 0
+        : 1;
+    this.mockSpeedMultiplier = isNaN(envSpeed) ? 1 : envSpeed;
     this.initDefaultFixtures();
   }
 
@@ -254,7 +261,7 @@ export class MockApi implements Api {
     }
   }
 
-  async approveAction(runId: string, actionId: string, approver: string): Promise<ActionResult> {
+  async approveAction(runId: string, actionId: string, _approver: string): Promise<ActionResult> {
     this.runActionStatus.set(actionId, 'APPROVED');
     if (runId === F2_RUN_ID) {
       return this.devBuildCheckFail ? F2_ACTION_RESULT_NOT_EXECUTED : F2_ACTION_RESULT_SUCCESS;
@@ -262,7 +269,7 @@ export class MockApi implements Api {
     return F1_ACTION_RESULT;
   }
 
-  async rejectAction(runId: string, actionId: string, approver: string, reason: string): Promise<void> {
+  async rejectAction(_runId: string, actionId: string, _approver: string, _reason: string): Promise<void> {
     this.runActionStatus.set(actionId, 'REJECTED');
   }
 
@@ -272,7 +279,7 @@ export class MockApi implements Api {
     return F1_TRACE;
   }
 
-  async getWhy(runId: string, target: string): Promise<WhyResponse> {
+  async getWhy(_runId: string, target: string): Promise<WhyResponse> {
     if (F1_WHY[target]) {
       return F1_WHY[target];
     }
@@ -284,11 +291,11 @@ export class MockApi implements Api {
     };
   }
 
-  async getArtifacts(runId: string): Promise<FileNode[]> {
+  async getArtifacts(_runId: string): Promise<FileNode[]> {
     return F2_FILES_TREE;
   }
 
-  async getArtifactFile(runId: string, filePath: string): Promise<{ path: string; content: string; truncated: boolean }> {
+  async getArtifactFile(_runId: string, filePath: string): Promise<{ path: string; content: string; truncated: boolean }> {
     const content = F2_FILE_CONTENTS[filePath] || `// Content for ${filePath}\nexport default {};\n`;
     return {
       path: filePath,
@@ -312,7 +319,7 @@ export class MockApi implements Api {
     return ATLAS_GRAPH_FIXTURE;
   }
 
-  async expandNode(cid: string, hops: number): Promise<GraphData> {
+  async expandNode(cid: string, _hops: number): Promise<GraphData> {
     const trace = F1_TRACE;
     const connectedEdges = trace.edges.filter((e) => e.src === cid || e.dst === cid);
     const nodeIds = new Set<string>([cid]);

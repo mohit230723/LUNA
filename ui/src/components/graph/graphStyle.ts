@@ -1,8 +1,8 @@
-import type { Stylesheet } from 'cytoscape';
+import type { StylesheetStyle } from 'cytoscape';
 
 // Authoritative Hyperstudio Cytoscape stylesheet
 // Strictly uses ONLY allowed colors from Section 3.1
-export const cytoscapeStyles: Stylesheet[] = [
+export const cytoscapeStyles: StylesheetStyle[] = [
   // Core Node base
   {
     selector: 'node',

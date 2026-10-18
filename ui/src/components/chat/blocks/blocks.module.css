@@ -1,0 +1,178 @@
+.blockCard {
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.blockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.blockTitle {
+  font-family: var(--font-primary);
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--color-chalk);
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.monoMeta {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+}
+
+.chip {
+  background-color: var(--color-badge-bg);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ash);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-primary);
+  font-size: 13px;
+}
+
+.th {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-smoke);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-graphite);
+}
+
+.td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-graphite);
+  vertical-align: middle;
+  color: var(--color-chalk);
+}
+
+.supersededRow {
+  opacity: 0.6;
+  text-decoration: line-through;
+  color: var(--color-smoke);
+}
+
+/* Warning block: 1px Compass Gold left border */
+.warningCard {
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-left: 2px solid var(--color-compass-gold);
+  border-radius: var(--radius-card);
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.warningIcon {
+  stroke: var(--color-compass-gold);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.warningText {
+  font-family: var(--font-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-chalk);
+  margin: 0;
+}
+
+/* Action Request Block */
+.actionCard {
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.actionButtonRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.cidChip {
+  background-color: var(--color-badge-bg);
+  border: 1px solid var(--color-iron);
+  border-radius: var(--radius-tag);
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-chalk);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+  display: inline-block;
+  margin: 0 2px;
+}
+
+.cidChip:hover {
+  border-color: var(--color-chalk);
+}
+
+/* Needs Input Block */
+.needsInputCard {
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.optionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Answer Block */
+.answerCard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.answerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tracePreviewContainer {
+  margin-top: 8px;
+}

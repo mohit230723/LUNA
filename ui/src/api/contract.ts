@@ -116,6 +116,7 @@ export interface ViolationInfo {
 }
 
 export interface ActionRequest {
+  [key: string]: unknown;
   action_id: string;
   kind: 'flag_for_review' | 'run_build_check';
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXECUTED' | 'FAILED';
@@ -190,6 +191,7 @@ export interface TraceEdge {
 }
 
 export interface TraceStep {
+  [key: string]: unknown;
   seq: number;
   from: string;
   to: string;

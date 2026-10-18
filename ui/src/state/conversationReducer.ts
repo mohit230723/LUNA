@@ -15,6 +15,8 @@ export const INITIAL_CONVERSATION_STATE: ConversationState = {
   error: null,
 };
 
+export const initialConversationState = INITIAL_CONVERSATION_STATE;
+
 export type ConversationAction =
   | { type: 'LOAD_CONVERSATION'; conversation: Conversation }
   | { type: 'SEND_OPTIMISTIC'; userMessage: Message; assistantPlaceholder: Message }
