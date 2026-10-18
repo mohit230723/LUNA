@@ -65,3 +65,15 @@ def test_parse_rejects_too_many_references():
     refs = [(f"r{i}.md", "x") for i in range(21)]
     with pytest.raises(SkillParseError, match="20"):
         parse_skill_md(SAMPLE, references=refs)
+
+
+def test_parse_empty_slug_fallback():
+    text = "---\nname: X\n---\nbody\n\n## !!!\nstuff\n\n## Real\nmore\n"
+    doc = parse_skill_md(text, default_id="x")
+    assert [s.slug for s in doc.sections] == ["section-0", "real"]
+
+
+def test_parse_duplicate_slugs_suffixed():
+    text = "---\nname: X\n---\nbody\n\n## Setup\na\n\n## Setup\nb\n\n## Setup\nc\n"
+    doc = parse_skill_md(text, references=[("setup.md", "# Setup\nd")], default_id="x")
+    assert [s.slug for s in doc.sections] == ["setup", "setup-2", "setup-3", "setup-4"]

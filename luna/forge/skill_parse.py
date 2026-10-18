@@ -84,15 +84,27 @@ def parse_skill_md(
     parts = re.split(r"(?m)^## (.*)$", text[m.end():])
     body = parts[0]
     sections: list[SectionDef] = []
+    used: set[str] = set()
+
+    def _unique(base: str, order: int) -> str:
+        slug = base or f"section-{order}"
+        candidate, n = slug, 2
+        while candidate in used:
+            candidate = f"{slug}-{n}"
+            n += 1
+        used.add(candidate)
+        return candidate
+
     for i in range(1, len(parts), 2):
         title = parts[i].strip()
         sections.append(SectionDef(
-            slug=_slug(title), title=title, content=parts[i + 1].strip("\n"), order=len(sections)))
+            slug=_unique(_slug(title), len(sections)), title=title,
+            content=parts[i + 1].strip("\n"), order=len(sections)))
     for fname, content in refs:
         stem = fname.rsplit("/", 1)[-1].rsplit(".", 1)[0]
         t = re.search(r"(?m)^# (.*)$", content)
         sections.append(SectionDef(
-            slug=_slug(stem), title=t.group(1).strip() if t else stem,
+            slug=_unique(_slug(stem), len(sections)), title=t.group(1).strip() if t else stem,
             content=content, order=len(sections)))
 
     digest = hashlib.sha256(text.encode("utf-8"))
