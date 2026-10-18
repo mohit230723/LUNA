@@ -27,6 +27,7 @@ from luna.graph.schema import (
 
 __all__ = [
     "CAPABILITY_ROLES",
+    "import_repo_skills",
     "import_skill",
     "import_skill_dir",
     "set_skill_status",
@@ -225,12 +226,7 @@ def import_skill(
     return ImportResult(skill_id=doc.id, status=status, warnings=warnings, changed=changed)
 
 
-def import_skill_dir(
-    store,
-    path: Path,
-    source: str = "repo",
-    atlas_graph: str = GRAPH_ATLAS,
-) -> ImportResult:
+def _load_skill_dir(path: Path) -> SkillDoc:
     path = Path(path)
     skill_file = path / "SKILL.md"
     if not skill_file.is_file():
@@ -241,12 +237,74 @@ def import_skill_dir(
         for f in sorted(ref_dir.glob("*.md")):
             refs.append((f.name, f.read_text(encoding="utf-8")))
     try:
-        doc = parse_skill_md(
+        return parse_skill_md(
             skill_file.read_text(encoding="utf-8"), references=refs, default_id=path.name
         )
     except SkillParseError as exc:
         raise ForgeError("invalid", str(exc)) from exc
-    return import_skill(store, doc, source, atlas_graph)  # type: ignore[arg-type]
+
+
+def import_skill_dir(
+    store,
+    path: Path,
+    source: str = "repo",
+    atlas_graph: str = GRAPH_ATLAS,
+) -> ImportResult:
+    return import_skill(store, _load_skill_dir(path), source, atlas_graph)  # type: ignore[arg-type]
+
+
+def _dependency_order(docs: dict[str, SkillDoc]) -> list[str]:
+    """Order skill ids so in-batch requirements come first (ties by id; cycles fall back to id order)."""
+    ordered: list[str] = []
+    done: set[str] = set()
+    visiting: set[str] = set()
+
+    def visit(sid: str) -> None:
+        if sid in done or sid in visiting:
+            return
+        visiting.add(sid)
+        for req in sorted(docs[sid].requires):
+            if req in docs:
+                visit(req)
+        visiting.discard(sid)
+        done.add(sid)
+        ordered.append(sid)
+
+    for sid in sorted(docs):
+        visit(sid)
+    return ordered
+
+
+def import_repo_skills(
+    store,
+    root: Path = Path("skills"),
+    atlas_graph: str = GRAPH_ATLAS,
+) -> list[ImportResult]:
+    """Import every ``<root>/<id>/SKILL.md`` as an approved repo skill.
+
+    Skills are imported in dependency order; any skill whose ``requires`` still
+    warned (e.g. a requirement loaded later) is re-imported once after all are
+    loaded. Results are returned sorted by skill id.
+    """
+    root = Path(root)
+    if not root.is_dir():
+        raise ForgeError("not_found", f"skills directory {root} not found")
+    docs: dict[str, SkillDoc] = {}
+    for d in sorted(p for p in root.iterdir() if (p / "SKILL.md").is_file()):
+        doc = _load_skill_dir(d)
+        docs[doc.id] = doc
+
+    results: dict[str, ImportResult] = {}
+    for sid in _dependency_order(docs):
+        results[sid] = import_skill(store, docs[sid], "repo", atlas_graph)
+
+    for sid in sorted(results):
+        first = results[sid]
+        if any(w.startswith("unknown required skill") for w in first.warnings):
+            retry = import_skill(store, docs[sid], "repo", atlas_graph)
+            results[sid] = retry.model_copy(update={"changed": first.changed or retry.changed})
+
+    return [results[sid] for sid in sorted(results)]
 
 
 def set_skill_status(
