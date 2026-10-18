@@ -1,0 +1,83 @@
+.section {
+  padding: 120px 24px;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.heading {
+  font-family: var(--font-primary);
+  font-size: var(--text-heading-lg);
+  font-weight: 400;
+  line-height: 1.07;
+  letter-spacing: var(--tracking-heading-lg);
+  color: var(--color-chalk);
+  margin: 0 0 48px 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cell {
+  background-color: transparent;
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.icon {
+  stroke: var(--color-compass-gold);
+}
+
+.cellTitle {
+  font-family: var(--font-primary);
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--color-chalk);
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.cellLine {
+  font-family: var(--font-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-smoke);
+  margin: 0;
+}
+
+.limitsNote {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  line-height: 1.6;
+  margin: 0;
+}

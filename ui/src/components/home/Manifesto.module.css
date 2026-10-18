@@ -1,0 +1,31 @@
+.section {
+  padding: 120px 24px;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.title {
+  font-family: var(--font-primary);
+  font-size: var(--text-heading-sm);
+  font-weight: 400;
+  color: var(--color-chalk);
+  margin: 0;
+}
+
+.body {
+  font-family: var(--font-primary);
+  font-size: var(--text-body);
+  line-height: 24px;
+  color: var(--color-smoke);
+  margin: 0;
+}

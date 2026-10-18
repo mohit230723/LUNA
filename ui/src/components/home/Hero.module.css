@@ -1,0 +1,46 @@
+.hero {
+  padding-top: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.headline {
+  font-family: var(--font-primary);
+  font-size: var(--text-display);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: var(--tracking-display);
+  color: var(--color-chalk);
+  margin: 0 0 24px 0;
+  max-width: 900px;
+}
+
+.subheadline {
+  font-family: var(--font-primary);
+  font-size: var(--text-subheading);
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--color-smoke);
+  margin: 0 0 32px 0;
+  max-width: 640px;
+}
+
+.ctaRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.badgeRow {
+  margin-bottom: 48px;
+}
+
+.constellationBand {
+  width: 100%;
+  background-color: var(--color-carbon);
+  padding: 0;
+}
