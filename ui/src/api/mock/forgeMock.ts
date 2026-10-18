@@ -53,17 +53,17 @@ const task = (
 });
 
 const FIXTURE_TASKS: ForgeTask[] = [
-  task('scaffold_project', 'Scaffold the project', 'scaffold', 'project-scaffold', [], 0, 'done', {
+  task('scaffold_project', 'Scaffold project', 'scaffold_project', 'project-scaffold', [], 0, 'done', {
     claimed_by: 'sess-claude',
     agent_label: 'claude-code',
     result: { summary: 'Vite + React scaffold created', files: ['package.json', 'src/main.tsx'], checks: [] },
   }),
-  task('implement_frontend', 'Build the portfolio pages', 'frontend', 'react-vite-pages', ['scaffold_project'], 1, 'claimed', {
+  task('implement_frontend', 'Implement frontend', 'implement_frontend', 'react-vite-pages', ['scaffold_project'], 1, 'claimed', {
     claimed_by: 'sess-claude',
     agent_label: 'claude-code',
     lease_expires_at: '2026-10-19T09:30:00+00:00',
   }),
-  task('qa_verification', 'Verify the build', 'qa', 'qa-verification', ['implement_frontend'], 2, 'pending'),
+  task('verify_contracts', 'Verify contracts', 'verify_contracts', 'qa-verification', ['implement_frontend'], 2, 'pending'),
 ];
 
 function fixtureRun(): ForgeRunDetail {
@@ -113,13 +113,13 @@ const skill = (
 });
 
 const SKILLS: ForgeSkillSummary[] = [
-  skill('backend-api', 'Backend API', 'Design and build HTTP APIs.', ['backend'], ['fastapi']),
-  skill('database-schema', 'Database Schema', 'Model tables and migrations.', ['database'], ['postgres']),
-  skill('project-scaffold', 'Project Scaffold', 'Bootstrap a new project.', ['scaffold'], ['vite']),
-  skill('qa-verification', 'QA Verification', 'Verify builds, tests and lint.', ['qa'], ['vitest']),
-  skill('react-vite-pages', 'React Vite Pages', 'Build pages with React and Vite.', ['frontend'], ['react', 'vite']),
-  skill('ui-styling', 'UI Styling', 'Style interfaces consistently.', ['styling'], ['css']),
-  skill('uploaded-seo', 'SEO Audit', 'Uploaded skill awaiting review.', ['seo'], ['html'], 'pending_review', 'upload'),
+  skill('backend-api', 'Backend API', 'Design and build HTTP APIs.', ['implement_backend'], ['FastAPI', 'Express', 'Python', 'Node']),
+  skill('database-schema', 'Database Schema', 'Model tables and migrations.', ['implement_database'], ['SQLite', 'Postgres']),
+  skill('project-scaffold', 'Project Scaffold', 'Bootstrap a new project.', ['scaffold_project'], ['Vite', 'React', 'TypeScript', 'Node']),
+  skill('qa-verification', 'QA Verification', 'Verify builds, tests and lint.', ['verify_contracts'], ['TypeScript', 'Python']),
+  skill('react-vite-pages', 'React Vite Pages', 'Build pages with React and Vite.', ['implement_frontend'], ['React', 'Vite', 'TypeScript']),
+  skill('ui-styling', 'UI Styling', 'Style interfaces consistently.', ['style_ui'], ['TailwindCSS', 'React']),
+  skill('uploaded-seo', 'SEO Audit', 'Uploaded skill awaiting review.', ['implement_backend'], ['FastAPI'], 'pending_review', 'upload'),
 ];
 
 function skillDetail(s: ForgeSkillSummary): ForgeSkillDetail {
@@ -153,7 +153,7 @@ const REPORT: ForgeReport = {
   tasks: FIXTURE_TASKS.map((t) => ({ task_id: t.task_id, status: 'done', summary: t.title, files: [] })),
   overlaps: {},
   gaps: [],
-  summary: '3 of 3 tasks complete.',
+  summary: '3/3 tasks complete across 3 waves',
 };
 
 function scriptedEvents(): ForgeEvent[] {
@@ -172,7 +172,7 @@ function scriptedEvents(): ForgeEvent[] {
       agent_label: 'claude-code',
       result: { summary: 'Pages built', files: ['src/App.tsx'], checks: [] },
     }),
-    ev(2, 'task_updated', { run_id: RUN_ID, task_id: 'qa_verification', status: 'ready' }),
+    ev(2, 'task_updated', { run_id: RUN_ID, task_id: 'verify_contracts', status: 'ready' }),
     ev(3, 'run_assembled', { run_id: RUN_ID, report: REPORT }),
   ];
 }

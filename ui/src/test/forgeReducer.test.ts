@@ -11,7 +11,7 @@ function mkTask(id: string, status: string): ForgeTask {
 function mkRun(): ForgeRunDetail {
   return {
     run: { run_id: 'r1', prompt: 'p', status: 'running' },
-    tasks: [mkTask('implement_frontend', 'claimed'), mkTask('qa', 'pending')],
+    tasks: [mkTask('implement_frontend', 'claimed'), mkTask('verify_contracts', 'pending')],
     report: null,
   };
 }
@@ -33,10 +33,10 @@ describe('forgeReducer', () => {
 
   it('ignores duplicate or older seq', () => {
     let s = withRun();
-    s = forgeReducer(s, { type: 'event', event: ev(5, 'task_updated', { run_id: 'r1', task_id: 'qa', status: 'ready' }) });
-    s = forgeReducer(s, { type: 'event', event: ev(5, 'task_updated', { run_id: 'r1', task_id: 'qa', status: 'done' }) });
-    s = forgeReducer(s, { type: 'event', event: ev(3, 'task_updated', { run_id: 'r1', task_id: 'qa', status: 'failed' }) });
-    expect(task(s, 'qa').status).toBe('ready');
+    s = forgeReducer(s, { type: 'event', event: ev(5, 'task_updated', { run_id: 'r1', task_id: 'verify_contracts', status: 'ready' }) });
+    s = forgeReducer(s, { type: 'event', event: ev(5, 'task_updated', { run_id: 'r1', task_id: 'verify_contracts', status: 'done' }) });
+    s = forgeReducer(s, { type: 'event', event: ev(3, 'task_updated', { run_id: 'r1', task_id: 'verify_contracts', status: 'failed' }) });
+    expect(task(s, 'verify_contracts').status).toBe('ready');
     expect(s.lastSeq).toBe(5);
   });
 
