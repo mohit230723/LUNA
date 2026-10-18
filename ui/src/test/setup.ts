@@ -86,6 +86,8 @@ if (typeof window !== 'undefined') {
         actualBoundingBoxLeft: 0,
         actualBoundingBoxRight: text.length * 8,
       }),
+      fillText: () => {},
+      strokeText: () => {},
       drawImage: () => {},
       getImageData: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 }),
       putImageData: () => {},

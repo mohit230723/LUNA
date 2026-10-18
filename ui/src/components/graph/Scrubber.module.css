@@ -1,0 +1,137 @@
+.container {
+  height: 64px;
+  width: 100%;
+  border-top: 1px solid var(--color-graphite);
+  background-color: var(--color-obsidian);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-24);
+  gap: var(--spacing-16);
+  user-select: none;
+}
+
+.controlsLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-12);
+}
+
+.timelineCenter {
+  flex: 1;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.slider {
+  width: 100%;
+  appearance: none;
+  background: var(--color-graphite);
+  height: 2px;
+  outline: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--color-chalk);
+  border-radius: 0;
+  cursor: pointer;
+  border: 1px solid var(--color-obsidian);
+}
+
+.slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--color-chalk);
+  border-radius: 0;
+  cursor: pointer;
+  border: 1px solid var(--color-obsidian);
+}
+
+.tickContainer {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 4px;
+}
+
+.tick {
+  width: 1px;
+  height: 4px;
+  background-color: var(--color-iron);
+}
+
+.tickActive {
+  background-color: var(--color-chalk);
+}
+
+.controlsRight {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-16);
+}
+
+.speedGroup {
+  display: flex;
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  overflow: hidden;
+}
+
+.speedBtn {
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--color-graphite);
+  color: var(--color-smoke);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.speedBtn:last-child {
+  border-right: none;
+}
+
+.speedBtn:hover {
+  background-color: var(--color-carbon);
+  color: var(--color-chalk);
+}
+
+.speedActive {
+  background-color: var(--color-carbon);
+  color: var(--color-chalk);
+}
+
+.readout {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  min-width: 90px;
+  text-align: right;
+  letter-spacing: -0.022em;
+}
+
+.highlightChalk {
+  color: var(--color-chalk);
+}
+
+.showAllActive {
+  background-color: var(--color-carbon);
+  border-color: var(--color-chalk) !important;
+  color: var(--color-chalk) !important;
+}

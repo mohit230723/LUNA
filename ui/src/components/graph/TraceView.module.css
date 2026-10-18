@@ -1,0 +1,135 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--color-obsidian);
+  color: var(--color-chalk);
+  overflow: hidden;
+  position: relative;
+}
+
+.toolbar {
+  height: 48px;
+  width: 100%;
+  border-bottom: 1px solid var(--color-graphite);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-16);
+  background-color: var(--color-obsidian);
+  z-index: 20;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-12);
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-tag);
+  transition: all 0.15s ease;
+}
+
+.backBtn:hover {
+  background-color: var(--color-carbon);
+  color: var(--color-chalk);
+}
+
+.title {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-chalk);
+  font-weight: 400;
+  letter-spacing: -0.022em;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-8);
+}
+
+.searchInput {
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-chalk);
+  width: 160px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.searchInput:focus {
+  border-color: var(--color-chalk);
+}
+
+.layoutSelect {
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-chalk);
+  outline: none;
+  cursor: pointer;
+}
+
+.summaryStrip {
+  padding: 10px var(--spacing-24);
+  border-bottom: 1px solid var(--color-graphite);
+  background-color: var(--color-carbon);
+  font-size: var(--text-body);
+  color: var(--color-chalk);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mainArea {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.centerGraph {
+  flex: 1;
+  height: 100%;
+  position: relative;
+}
+
+.loadingOverlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--spacing-16);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+}
+
+.activeToggleBtn {
+  background-color: var(--color-carbon);
+  border-color: var(--color-chalk) !important;
+  color: var(--color-chalk) !important;
+}

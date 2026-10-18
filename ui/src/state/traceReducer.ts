@@ -15,6 +15,7 @@ export const INITIAL_TRACE_STATE: TraceState = {
   selectedStepSeq: null,
   showAll: false,
 };
+export const initialTraceState = INITIAL_TRACE_STATE;
 
 export type TraceAction =
   | { type: 'SET_TOTAL_STEPS'; totalSteps: number }

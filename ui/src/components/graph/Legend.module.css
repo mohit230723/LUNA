@@ -1,0 +1,132 @@
+.card {
+  position: absolute;
+  top: 56px;
+  right: 16px;
+  width: 260px;
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  padding: var(--spacing-16);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-16);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-graphite);
+  padding-bottom: var(--spacing-8);
+}
+
+.title {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  text-transform: uppercase;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-8);
+}
+
+.sectionTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-smoke);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-12);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-chalk);
+}
+
+.shapeBadge {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.diamond {
+  width: 12px;
+  height: 12px;
+  background-color: var(--color-smoke);
+  border: 1px solid var(--color-iron);
+  transform: rotate(45deg);
+}
+
+.ellipse {
+  width: 14px;
+  height: 14px;
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-radius: 50%;
+}
+
+.roundRect {
+  width: 14px;
+  height: 10px;
+  background-color: var(--color-chalk);
+  border: 1px solid var(--color-ash);
+  border-radius: 2px;
+}
+
+.hexagon {
+  width: 14px;
+  height: 12px;
+  background-color: var(--color-card-slate);
+  border: 1px solid var(--color-iron);
+}
+
+.barrel {
+  width: 12px;
+  height: 14px;
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-chalk);
+}
+
+.octagon {
+  width: 14px;
+  height: 14px;
+  background-color: transparent;
+  border: 1px solid var(--color-compass-gold);
+}
+
+.dashedRect {
+  width: 14px;
+  height: 10px;
+  background-color: transparent;
+  border: 1px dashed var(--color-chalk);
+  border-radius: 2px;
+}
+
+.edgeLine {
+  width: 24px;
+  height: 0;
+  border-top: 1px solid var(--color-iron);
+}
+
+.pathEdgeLine {
+  width: 24px;
+  height: 0;
+  border-top: 2.5px solid var(--color-signal-white);
+}
+
+.rejectedEdgeLine {
+  width: 24px;
+  height: 0;
+  border-top: 1px dashed var(--color-smoke);
+}

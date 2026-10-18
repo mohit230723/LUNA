@@ -1,0 +1,76 @@
+.container {
+  width: 320px;
+  height: 100%;
+  overflow-y: auto;
+  border-right: 1px solid var(--color-graphite);
+  background-color: var(--color-obsidian);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: var(--spacing-12) var(--spacing-16);
+  border-bottom: 1px solid var(--color-graphite);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.stepItem {
+  padding: var(--spacing-12) var(--spacing-16);
+  border-bottom: 1px solid var(--color-graphite);
+  border-left: 1px solid transparent;
+  cursor: pointer;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+  text-align: left;
+}
+
+.stepItem:hover {
+  background-color: var(--color-carbon);
+}
+
+.activeStep {
+  border-left: 1px solid var(--color-chalk);
+  background-color: var(--color-carbon);
+}
+
+.primaryLine {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-chalk);
+  margin-bottom: 4px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.seq {
+  color: var(--color-smoke);
+  margin-right: var(--spacing-8);
+}
+
+.relTag {
+  color: var(--color-ash);
+}
+
+.secondaryLine {
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  line-height: 1.35;
+}
+
+.emptyState {
+  padding: var(--spacing-24);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  text-align: center;
+}

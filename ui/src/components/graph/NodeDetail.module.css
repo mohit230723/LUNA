@@ -1,0 +1,114 @@
+.container {
+  width: 320px;
+  height: 100%;
+  overflow-y: auto;
+  border-left: 1px solid var(--color-graphite);
+  background-color: var(--color-obsidian);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: var(--spacing-16);
+  border-bottom: 1px solid var(--color-graphite);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.titleArea {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nodeType {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-smoke);
+  text-transform: uppercase;
+}
+
+.nodeId {
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  color: var(--color-chalk);
+  word-break: break-all;
+}
+
+.body {
+  padding: var(--spacing-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-20);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-8);
+}
+
+.sectionTitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.propTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+}
+
+.propRow {
+  border-bottom: 1px solid var(--color-graphite);
+}
+
+.propRow:last-child {
+  border-bottom: none;
+}
+
+.propKey {
+  padding: 6px 0;
+  color: var(--color-smoke);
+  width: 40%;
+  vertical-align: top;
+}
+
+.propVal {
+  padding: 6px 0;
+  color: var(--color-chalk);
+  width: 60%;
+  word-break: break-all;
+}
+
+.touchedItem {
+  padding: var(--spacing-8) 0;
+  border-bottom: 1px solid var(--color-graphite);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+}
+
+.findingItem {
+  padding: var(--spacing-8);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  margin-bottom: var(--spacing-8);
+}
+
+.findingHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.actionsRow {
+  display: flex;
+  gap: var(--spacing-8);
+  margin-top: var(--spacing-12);
+}
