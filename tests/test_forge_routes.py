@@ -189,3 +189,44 @@ def test_events_stream_replays_after(client):
     ) as resp:
         text = "".join(resp.iter_text())
     assert f"id: {second}\n" in text
+
+
+def test_upload_content_length_guard_413(client):
+    resp = client.post(
+        "/api/forge/skills/upload",
+        content=b"x",
+        headers={
+            "Content-Type": "multipart/form-data; boundary=zzz",
+            "Content-Length": str(21 * 102_400 + 65_536 + 1),
+        },
+    )
+    assert resp.status_code == 413
+    assert "exceeds" in resp.json()["detail"]
+
+
+def test_upload_too_many_files_413(client):
+    refs = [(f"r{i}.md", "# R\n") for i in range(30)]
+    assert upload(client, refs=refs).status_code == 413
+
+
+class _FakeLLM:
+    def info(self):
+        return {"reachable": True}
+
+    def complete_json(self, system, user, schema):
+        return {"capabilities": ["implement_frontend"], "technologies": []}
+
+
+def test_upload_uses_llm_suggestions(live_store, tmp_graph):
+    app = create_app(
+        store=live_store,
+        config={
+            "atlas_graph": tmp_graph,
+            "forge_llm_factory": lambda: _FakeLLM(),
+            "forge_skills_dir": str(SKILLS_ROOT),
+        },
+    )
+    md = "---\nname: No Caps\ndescription: nothing declared\n---\nBody.\n"
+    with TestClient(app) as c:
+        body = upload(c, md).json()
+    assert any("suggested capability 'implement_frontend'" in w for w in body["warnings"])

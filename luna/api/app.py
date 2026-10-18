@@ -1335,7 +1335,8 @@ def create_app(
         app.mount("/mcp", forge_endpoint, name="forge_mcp")
 
     if forge_enabled:
-        register_forge_routes(app, graph_store, forge_bus, forge_sessions, atlas_graph, forge_skills_dir)
+        register_forge_routes(app, graph_store, forge_bus, forge_sessions, atlas_graph, forge_skills_dir,
+                              llm_factory=forge_llm_factory)
 
     ui_dist_dir = Path("ui/dist")
     if ui_dist_dir.is_dir():

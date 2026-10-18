@@ -6,12 +6,14 @@ import json
 import os
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 import anyio
 import redis.exceptions
-from fastapi import FastAPI, HTTPException, Request, Response, UploadFile
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
+from starlette.datastructures import UploadFile
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from luna.forge.events import SKILL_IMPORTED, ForgeEventBus
 from luna.forge.models import ForgeError
@@ -41,6 +43,7 @@ from luna.graph.schema import (
 __all__ = ["register_forge_routes"]
 
 KEEP_ALIVE_S = 15.0
+MAX_UPLOAD_BODY_BYTES = (MAX_REFERENCES + 1) * MAX_SKILL_BYTES + 65_536
 _STORE_ERRORS = (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError, ConnectionError, OSError)
 
 
@@ -83,7 +86,16 @@ def register_forge_routes(
     sessions: SessionRegistry,
     atlas_graph: str,
     skills_dir: Path,
+    llm_factory: Callable[[], Any] | None = None,
 ) -> None:
+    def _llm():
+        if llm_factory is None:
+            return None
+        try:
+            return llm_factory()
+        except Exception:
+            return None
+
     async def _blocking(fn):
         with _http_errors():
             return await anyio.to_thread.run_sync(fn)
@@ -282,10 +294,33 @@ def register_forge_routes(
         return data
 
     @app.post("/api/forge/skills/upload")
-    async def forge_skill_upload(
-        skill: UploadFile, references: list[UploadFile] | None = None
-    ) -> dict:
-        refs = references or []
+    async def forge_skill_upload(request: Request) -> dict:
+        # Reject oversized bodies before Starlette parses or spools the multipart form.
+        try:
+            declared = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            declared = 0
+        if declared > MAX_UPLOAD_BODY_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"upload exceeds the {MAX_UPLOAD_BODY_BYTES // 1024} KB request limit",
+            )
+        try:
+            form = await request.form(max_files=MAX_REFERENCES + 2, max_fields=MAX_REFERENCES + 8)
+        except StarletteHTTPException as e:  # Starlette's file/field count limits
+            raise HTTPException(status_code=413, detail=f"upload exceeds limits: {e.detail}") from e
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"invalid multipart upload: {e}") from e
+        try:
+            skill = form.get("skill")
+            if not isinstance(skill, UploadFile):
+                raise HTTPException(status_code=422, detail="missing 'skill' file field")
+            refs = [r for r in form.getlist("references") if isinstance(r, UploadFile)]
+            return await _handle_upload(skill, refs)
+        finally:
+            await form.close()
+
+    async def _handle_upload(skill: UploadFile, refs: list[UploadFile]) -> dict:
         if len(refs) > MAX_REFERENCES:
             raise HTTPException(status_code=413, detail=f"too many references (max {MAX_REFERENCES})")
         skill_bytes = await _read_limited(skill, MAX_SKILL_BYTES, "SKILL.md")
@@ -301,7 +336,7 @@ def register_forge_routes(
             raise HTTPException(status_code=422, detail="files must be UTF-8 text") from e
         except SkillParseError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
-        result = await _blocking(lambda: import_skill(store, doc, "upload", atlas_graph))
+        result = await _blocking(lambda: import_skill(store, doc, "upload", atlas_graph, llm=_llm()))
         bus.publish(SKILL_IMPORTED, {"skill_id": result.skill_id, "status": result.status})
         return result.model_dump()
 
