@@ -5,8 +5,10 @@ import re
 import json
 import time
 import uuid
+import logging
 import urllib.request
 import threading
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -33,6 +35,18 @@ from luna.investigate.seed import seed_investigation_atlas
 from luna.packs.registry import default_registry, PackRegistry
 from luna.packs.router import route_prompt
 from luna.packs.build.pipeline import BuildPipeline, BuildPipelineConfig
+from luna.forge.events import ForgeEventBus
+from luna.forge.sessions import SessionRegistry
+from luna.forge.mcp_server import (
+    allowed_hosts_from_env,
+    create_forge_mcp,
+    forge_asgi_app,
+    start_lease_sweep,
+)
+from luna.forge.skill_import import import_repo_skills
+from luna.forge.vocab import seed_forge_vocabulary
+
+logger = logging.getLogger(__name__)
 
 
 # Strict allowlist pattern for graph scope identifiers to prevent Cypher injection
@@ -224,11 +238,58 @@ def create_app(
     ground_truth: Optional[GroundTruth] = cfg.get("ground_truth")
     recording_file = cfg.get("recording_file", os.path.join("artifacts", "replay_recording.json"))
 
+    # LUNA Forge: event bus, agent sessions and the MCP server mounted at /mcp
+    forge_enabled = bool(cfg.get("forge_enabled", True))
+    forge_skills_dir = Path(cfg.get("forge_skills_dir", "skills"))
+    forge_llm_factory = cfg.get("forge_llm_factory", get_llm)
+    forge_bus = ForgeEventBus()
+    forge_sessions = SessionRegistry(forge_bus)
+    forge_mcp = (
+        create_forge_mcp(
+            graph_store,
+            forge_bus,
+            forge_sessions,
+            forge_llm_factory,
+            atlas_graph=atlas_graph,
+            allowed_hosts=allowed_hosts_from_env(),
+        )
+        if forge_enabled
+        else None
+    )
+    forge_endpoint = forge_asgi_app(forge_mcp, os.environ.get("LUNA_MCP_TOKEN") or None) if forge_mcp else None
+
+    def _forge_startup_import() -> None:
+        try:
+            seed_forge_vocabulary(graph_store, atlas_graph)
+            import_repo_skills(graph_store, forge_skills_dir, atlas_graph)
+        except Exception as err:
+            logger.warning("LUNA Forge startup skill import skipped: %s", err)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        if forge_mcp is None:
+            yield
+            return
+        import anyio
+
+        await anyio.to_thread.run_sync(_forge_startup_import)
+        sweep_thread, sweep_stop = start_lease_sweep(graph_store, forge_bus)
+        try:
+            async with forge_mcp.session_manager.run():
+                yield
+        finally:
+            sweep_stop.set()
+            sweep_thread.join(timeout=5)
+
     app = FastAPI(
         title="LUNA OS API",
         description="Autonomous Multi-Agent Graph Intelligence Engine API with SSE Streaming",
         version="1.0.0",
+        lifespan=lifespan,
     )
+    app.state.forge_bus = forge_bus
+    app.state.forge_sessions = forge_sessions
+    app.state.forge_mcp = forge_mcp
 
     # Configure CORS
     cors_origins_env = os.environ.get("LUNA_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
@@ -1263,6 +1324,14 @@ def create_app(
             return skills
         except Exception as err:
             return []
+
+    if forge_endpoint is not None:
+        # The endpoint ignores the path, so serve the exact "/mcp" (no 307 redirect
+        # that could drop a POST) as well as "/mcp/..." via the mount.
+        from starlette.routing import Route
+
+        app.router.routes.append(Route("/mcp", endpoint=forge_endpoint))
+        app.mount("/mcp", forge_endpoint, name="forge_mcp")
 
     ui_dist_dir = Path("ui/dist")
     if ui_dist_dir.is_dir():
