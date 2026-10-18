@@ -1,0 +1,342 @@
+/* LUNA Forge mission control. Every colour maps onto an existing Hyperstudio token. */
+:root {
+  --forge-status-pending: var(--color-iron);
+  --forge-status-ready: var(--color-smoke);
+  --forge-status-claimed: var(--color-compass-gold);
+  --forge-status-stalled: var(--color-ash);
+  --forge-status-done: var(--color-chalk);
+  --forge-status-live: var(--color-pulse-green);
+  --forge-node-bg: var(--color-carbon);
+  --forge-node-text: var(--color-chalk);
+  --forge-edge: var(--color-iron);
+}
+
+/* ---- Platform tab shell ---- */
+.platform-tabs-shell {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px);
+  width: 100%;
+  background-color: var(--color-obsidian);
+}
+
+.platform-tablist {
+  display: flex;
+  gap: var(--spacing-20);
+  padding: 0 var(--spacing-24);
+  border-bottom: 1px solid var(--color-graphite);
+  flex-shrink: 0;
+}
+
+.platform-tab {
+  font-family: var(--font-primary);
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-smoke);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+
+.platform-tab:hover {
+  color: var(--color-ash);
+}
+
+.platform-tab[aria-selected='true'] {
+  color: var(--color-chalk);
+  border-bottom-color: var(--color-chalk);
+}
+
+.platform-tabpanel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.platform-placeholder {
+  padding: var(--spacing-40) var(--spacing-24);
+  color: var(--color-smoke);
+}
+
+/* ---- Agents tab layout ---- */
+.forge-agents {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: var(--spacing-24);
+  padding: var(--spacing-24);
+  color: var(--color-chalk);
+}
+
+@media (max-width: 900px) {
+  .forge-agents {
+    grid-template-columns: 1fr;
+    padding: var(--spacing-16);
+  }
+}
+
+.forge-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-16);
+  min-width: 0;
+}
+
+.forge-panel {
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  background-color: var(--color-carbon);
+  padding: var(--spacing-16);
+  min-width: 0;
+}
+
+.forge-panel-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-smoke);
+  margin: 0 0 var(--spacing-12);
+}
+
+.forge-muted {
+  color: var(--color-smoke);
+  font-size: var(--text-caption);
+}
+
+.forge-error {
+  color: var(--color-chalk);
+  border-left: 2px solid var(--color-compass-gold);
+  padding-left: var(--spacing-8);
+}
+
+/* ---- Connect card ---- */
+.forge-snippet {
+  margin-top: var(--spacing-12);
+}
+
+.forge-snippet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-8);
+  margin-bottom: var(--spacing-4);
+  font-size: var(--text-caption);
+}
+
+.forge-code {
+  margin: 0;
+  padding: var(--spacing-8);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  background-color: var(--color-obsidian);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--color-ash);
+}
+
+.forge-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-chalk);
+  background: transparent;
+  border: 1px solid var(--color-iron);
+  border-radius: var(--radius-tag);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.forge-btn:hover {
+  border-color: var(--color-ash);
+}
+
+/* ---- Agent list ---- */
+.forge-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-8);
+}
+
+.forge-agent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-8);
+  font-size: var(--text-caption);
+}
+
+.forge-agent-name {
+  font-family: var(--font-mono);
+}
+
+.forge-status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-icon);
+  border: 1px solid var(--color-smoke);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.forge-status-dot.is-live {
+  background-color: var(--forge-status-live);
+  border-color: var(--forge-status-live);
+}
+
+.forge-status-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-smoke);
+}
+
+/* ---- Run list ---- */
+.forge-run-btn {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--color-chalk);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  padding: var(--spacing-8);
+  cursor: pointer;
+  font-family: var(--font-primary);
+  font-size: var(--text-caption);
+}
+
+.forge-run-btn[aria-current='true'] {
+  border-color: var(--color-ash);
+}
+
+.forge-run-meta {
+  display: block;
+  margin-top: var(--spacing-4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-smoke);
+}
+
+/* ---- Run view ---- */
+.forge-run-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-12);
+  flex-wrap: wrap;
+}
+
+.forge-run-prompt {
+  font-size: var(--text-heading-xs);
+  font-weight: 400;
+  margin: 0;
+}
+
+.forge-dag {
+  height: 280px;
+  width: 100%;
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  background-color: var(--color-obsidian);
+  margin: var(--spacing-12) 0;
+}
+
+.forge-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--spacing-12);
+}
+
+/* ---- Task card ---- */
+.forge-task {
+  border: 1px solid var(--color-graphite);
+  border-left: 2px solid var(--forge-status-pending);
+  border-radius: var(--radius-card);
+  background-color: var(--color-carbon);
+  padding: var(--spacing-12);
+  font-size: var(--text-caption);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-8);
+}
+
+.forge-task.status-ready { border-left-color: var(--forge-status-ready); }
+.forge-task.status-claimed { border-left-color: var(--forge-status-claimed); }
+.forge-task.status-stalled { border-left-color: var(--forge-status-stalled); }
+.forge-task.status-done { border-left-color: var(--forge-status-done); }
+
+.forge-task.is-selected {
+  border-color: var(--color-ash);
+}
+
+.forge-task-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-8);
+}
+
+.forge-task-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.forge-task-select {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.forge-kv {
+  display: flex;
+  gap: var(--spacing-8);
+  color: var(--color-smoke);
+}
+
+.forge-kv > span:last-child {
+  color: var(--color-chalk);
+  font-family: var(--font-mono);
+}
+
+.forge-task details summary {
+  cursor: pointer;
+  color: var(--color-ash);
+}
+
+.forge-task ul {
+  margin: var(--spacing-4) 0 0;
+  padding-left: var(--spacing-16);
+}
+
+.forge-file {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ---- Assembly report ---- */
+.forge-report {
+  margin-top: var(--spacing-16);
+  border: 1px solid var(--color-iron);
+  border-radius: var(--radius-card);
+  padding: var(--spacing-12);
+  font-size: var(--text-caption);
+}

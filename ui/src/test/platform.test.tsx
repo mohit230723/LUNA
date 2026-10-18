@@ -10,7 +10,7 @@ describe('Platform Chat Page', () => {
 
   it('renders empty state with 4 example prompt chips and fills composer on click', async () => {
     render(
-      <MemoryRouter initialEntries={['/platform']}>
+      <MemoryRouter initialEntries={['/platform?tab=cases']}>
         <Routes>
           <Route path="/platform" element={<Platform />} />
           <Route path="/platform/:conversationId" element={<Platform />} />
@@ -44,7 +44,7 @@ describe('Platform Chat Page', () => {
 
   it('sends prompt, displays user message, and receives streaming assistant run', async () => {
     render(
-      <MemoryRouter initialEntries={['/platform/test_conv_01']}>
+      <MemoryRouter initialEntries={['/platform/test_conv_01?tab=cases']}>
         <Routes>
           <Route path="/platform/:conversationId" element={<Platform />} />
         </Routes>
@@ -70,7 +70,7 @@ describe('Platform Chat Page', () => {
 
   it('approves action request and saves approver name in localStorage', async () => {
     render(
-      <MemoryRouter initialEntries={['/platform']}>
+      <MemoryRouter initialEntries={['/platform?tab=cases']}>
         <Routes>
           <Route path="/platform" element={<Platform />} />
           <Route path="/platform/:conversationId" element={<Platform />} />

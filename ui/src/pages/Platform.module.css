@@ -1,6 +1,6 @@
 .shell {
   display: flex;
-  height: calc(100vh - 56px);
+  height: 100%; /* fills the Platform tab panel */
   width: 100%;
   overflow: hidden;
   background-color: var(--color-obsidian);
