@@ -121,6 +121,7 @@ d:\LUNA\
 │   │       ├── seed.py         # Atlas Seeding (Techs, Capabilities, Skills)
 │   │       ├── understand.py   # Tech & Requirement Extractor
 │   │       └── verifier.py     # Deterministic Route/Fetch Contract Checker
+│   ├── forge/                  # Forge MCP server (/mcp) and /api/forge/* for coding agents (see docs/runbook.md#connect-a-coding-agent)
 │   ├── planner/                # Task Decomposition & Skill Assignment
 │   └── tools/                  # Algorithmic & Graph Tools (PageRank, ShortestPath, etc.)
 ├── ui/                         # Hyperstudio Frontend (Vite + React + TypeScript)
@@ -238,6 +239,9 @@ set LUNA_LLM_MODEL=claude-3-5-sonnet-20241022
 - `GET /api/runs/{run_id}/download`: Download assembled software-build zip archive (`workspaces/<run_id>.zip`).
 - `GET /api/runs/{run_id}/artifacts/{file_path:path}`: Stream an individual generated file from the sandboxed workspace.
 - `GET /api/atlas/skills`: Retrieve the complete catalog of skills, capabilities, and technologies.
+
+### Forge (coding-agent MCP)
+- `/mcp` (Streamable HTTP MCP) and `/api/forge/*` (connect, agents, runs, skills, SSE events): implemented in `luna/forge/`; setup and smoke results in [docs/runbook.md](docs/runbook.md#connect-a-coding-agent).
 
 ---
 

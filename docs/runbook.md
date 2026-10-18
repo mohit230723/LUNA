@@ -232,6 +232,63 @@ Before reading any file:
 
 ---
 
+## Connect a coding agent
+
+LUNA Forge exposes an MCP server (Streamable HTTP) at `/mcp` so Claude Code or Google Antigravity can plan and build with LUNA's skills. `GET /api/forge/connect` returns the exact snippets for the running backend (the Platform Agents tab shows them with copy buttons).
+
+> Starting the backend seeds forge vocabulary and the starter skills into the real `atlas` graph (MERGE, idempotent). Every `luna_plan` call creates a real run in FalkorDB.
+
+### 1. Start the stack
+
+```bash
+docker start luna-falkordb            # or the compose command from README Quickstart
+python -m uvicorn luna.api.app:app --port 8000
+```
+
+### 2. Optional bearer token
+
+Set `LUNA_MCP_TOKEN` before starting the backend to require `Authorization: Bearer <token>` on `/mcp` (401 otherwise). The `/api/forge/*` routes stay unauthenticated.
+
+### 3. Claude Code
+
+```bash
+claude mcp add --transport http luna http://localhost:8000/mcp
+# with a token:
+claude mcp add --transport http luna http://localhost:8000/mcp --header "Authorization: Bearer <token>"
+```
+
+### 4. Antigravity
+
+In the Agent panel open the MCP menu, then Manage MCP Servers, then View raw config, and add:
+
+```json
+{"mcpServers": {"luna": {"serverUrl": "http://localhost:8000/mcp"}}}
+```
+
+With a token add `"headers": {"Authorization": "Bearer <token>"}` inside the `luna` object. Sources disagree on the file path (`~/.gemini/antigravity/mcp_config.json` vs `~/.gemini/config/mcp_config.json`), so use the menu rather than editing a path.
+
+### 5. Use it
+
+In the agent run the `luna-build` prompt (Claude Code: `/luna-build build me a portfolio website with React`). It calls `luna_plan`, then `luna_get_skill` and `luna_submit` per task wave by wave (parallel subagents if the agent supports them, otherwise sequential), then `luna_assemble`. Watch the run in the Platform page, Agents tab.
+
+### 6. Scripted smoke
+
+```bash
+python scripts/forge_smoke.py --url http://127.0.0.1:8000/mcp   # add --token if LUNA_MCP_TOKEN is set
+```
+
+Uses the real MCP Python client, exits non-zero on failure, and creates one real run.
+
+### Manual smoke results
+
+| Agent | Version | Connected | Mode used | Run id | Result | Notes |
+|-------|---------|-----------|-----------|--------|--------|-------|
+| forge_smoke.py (MCP Python client) | mcp client 0.1 | yes | sequential | f6d3372fb1d2 | pass: 6 tools, `luna-build` prompt, 3 tasks in 3 waves done, report `complete`, agent and run listed | 2026-10-19, backend on :8765. Each call was slow (about 5 min total) against the local FalkorDB; lease sweep logged "Query timed out" warnings. A first aborted attempt left run 397a96cbc5d9 in `planned`. |
+| Claude Code | pending | pending | pending | pending | pending - run by user | Run `claude mcp add --transport http luna http://localhost:8000/mcp`; in a scratch folder run `/luna-build build me a portfolio website with React`; confirm Agents tab shows `claude-code` connected and the DAG reaches all-done with a report. |
+| Antigravity | pending | pending | pending | pending | pending - run by user | Add the raw config above via Manage MCP Servers, ask the agent to use the `luna-build` prompt with the same request, record whether it used parallel or sequential mode. |
+
+---
+
 ## Common Issues
 
 ### "SPEC.md not FINALIZED"
