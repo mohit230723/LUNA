@@ -1,0 +1,256 @@
+.header {
+  padding-top: var(--spacing-40);
+  padding-bottom: var(--spacing-40);
+  text-align: left;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-smoke);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-12);
+}
+
+.heading {
+  font-size: var(--text-heading-lg);
+  font-weight: 400;
+  color: var(--color-chalk);
+  line-height: 1.07;
+  letter-spacing: var(--tracking-heading-lg);
+  margin-bottom: var(--spacing-12);
+}
+
+.subline {
+  font-size: var(--text-subheading);
+  color: var(--color-smoke);
+  line-height: 1.2;
+  max-width: 680px;
+}
+
+.tabsContainer {
+  margin-top: var(--spacing-24);
+  margin-bottom: var(--spacing-32);
+}
+
+.walkthroughGrid {
+  display: grid;
+  grid-template-columns: 4fr 6fr;
+  gap: var(--spacing-32);
+  align-items: start;
+  margin-bottom: 80px;
+}
+
+@media (max-width: 900px) {
+  .walkthroughGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stepperCol {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  background-color: var(--color-obsidian);
+  overflow: hidden;
+}
+
+.stepHeader {
+  padding: var(--spacing-16);
+  border-bottom: 1px solid var(--color-graphite);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.stepHeader:hover {
+  background-color: var(--color-carbon);
+}
+
+.activeStepHeader {
+  background-color: var(--color-carbon);
+  border-left: 2px solid var(--color-chalk);
+}
+
+.stepNumber {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-smoke);
+  margin-right: var(--spacing-12);
+}
+
+.stepTitle {
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--color-chalk);
+  letter-spacing: 0.5px;
+}
+
+.stepContent {
+  padding: var(--spacing-20) var(--spacing-16);
+  border-bottom: 1px solid var(--color-graphite);
+  background-color: var(--color-carbon);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-16);
+}
+
+.stepDescription {
+  font-size: 14px;
+  color: var(--color-smoke);
+  line-height: 1.5;
+}
+
+.storedSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.storedTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-smoke);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.storedItem {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-chalk);
+  background-color: var(--color-obsidian);
+  padding: 6px 10px;
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  word-break: break-all;
+}
+
+.valuesList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-ash);
+}
+
+.stepperNav {
+  padding: var(--spacing-16);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--color-graphite);
+}
+
+.canvasCol {
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  height: 520px;
+  background-color: var(--color-carbon);
+  overflow: hidden;
+  position: relative;
+}
+
+.sectionHeader {
+  padding-top: 60px;
+  padding-bottom: var(--spacing-24);
+  text-align: left;
+}
+
+.sectionTitleLg {
+  font-size: var(--text-heading);
+  font-weight: 400;
+  color: var(--color-chalk);
+  margin-bottom: var(--spacing-8);
+}
+
+.glossaryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  margin-bottom: 80px;
+}
+
+@media (max-width: 768px) {
+  .glossaryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.glossaryItem {
+  padding: var(--spacing-24);
+  border-bottom: 1px solid var(--color-graphite);
+  border-right: 1px solid var(--color-graphite);
+}
+
+.glossaryItem:nth-child(2n) {
+  border-right: none;
+}
+
+.glossaryTerm {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--color-chalk);
+  text-transform: uppercase;
+  margin-bottom: var(--spacing-8);
+}
+
+.glossaryDef {
+  font-size: 14px;
+  color: var(--color-smoke);
+  line-height: 1.45;
+}
+
+.safetyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-20);
+  margin-bottom: 80px;
+}
+
+@media (max-width: 900px) {
+  .safetyGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.safetyCard {
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  padding: var(--spacing-32);
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-12);
+}
+
+.safetyTitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-chalk);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.safetyBody {
+  font-size: 14px;
+  color: var(--color-smoke);
+  line-height: 1.5;
+}
+
+.ctaSection {
+  padding: 80px 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-24);
+}
