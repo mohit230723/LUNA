@@ -136,6 +136,7 @@ function skillDetail(s: ForgeSkillSummary): ForgeSkillDetail {
     checklist: [{ id: 'c1', text: 'Output verified' }],
     requires: [],
     required_by: [],
+    warnings: s.id === 'uploaded-seo' ? ["unknown technology 'Next'"] : [],
     neighbourhood: {
       nodes: [
         { id: s.id, label: s.name, type: 'skill' },

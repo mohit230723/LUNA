@@ -90,6 +90,8 @@ def test_import_creates_skill_sections_checks_and_links(live_store, atlas):
 def test_import_unknown_names_warn_without_edges(live_store, atlas):
     res = import_skill(live_store, doc_with(capabilities=["fly"], technologies=["Cobol"], requires=["ghost"]), "repo", atlas)
     assert sorted(res.warnings) == ["unknown capability 'fly'", "unknown required skill 'ghost'", "unknown technology 'Cobol'"]
+    stored = q(live_store, atlas, "MATCH (s:Skill {id: 's1'}) RETURN s.warnings AS w")
+    assert sorted(stored[0]["w"]) == sorted(res.warnings)
     n = q(live_store, atlas, "MATCH (:Skill {id: 's1'})-[r:PROVIDES|TARGETS|REQUIRES]->() RETURN count(r) AS n")
     assert n[0]["n"] == 0
 

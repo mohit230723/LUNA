@@ -414,6 +414,7 @@ export interface ForgeSkillDetail {
   checklist: { id: string; text: string }[];
   requires: string[];
   required_by: string[];
+  warnings: string[];
   neighbourhood: {
     nodes: { id: string; label: string; type: string }[];
     edges: { source: string; target: string; type: string }[];

@@ -127,6 +127,16 @@ def test_upload_approve_flow(client):
     assert listed["react-vite-pages"]["source"] == "repo"
 
 
+def test_skill_warnings_in_detail_and_list(client):
+    extra = "capabilities: [implement_frontend]\ntechnologies: [Cobol]"
+    text = SKILL_MD.replace("capabilities: [implement_frontend]", extra).replace("Upload Probe", "Warn Probe")
+    assert upload(client, text).status_code == 200
+    detail = client.get("/api/forge/skills/warn-probe").json()
+    assert detail["warnings"] == ["unknown technology 'Cobol'"]
+    listed = {s["id"]: s for s in client.get("/api/forge/skills").json()}
+    assert listed["warn-probe"]["warnings_count"] == 1
+
+
 def test_upload_parse_error_422(client):
     resp = upload(client, "no frontmatter here")
     assert resp.status_code == 422

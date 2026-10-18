@@ -166,6 +166,7 @@ def register_forge_routes(
                 f"OPTIONAL MATCH (s)-[:{REL_TARGETS}]->(t:{LABEL_TECHNOLOGY}) "
                 "RETURN s.id AS id, s.name AS name, s.description AS description, "
                 "s.status AS status, s.source AS source, "
+                "s.warnings AS warnings, "
                 "collect(DISTINCT c.name) AS caps, collect(DISTINCT t.name) AS techs "
                 "ORDER BY id",
             )
@@ -178,8 +179,7 @@ def register_forge_routes(
                     "source": r.get("source") or "",
                     "capabilities": sorted(c for c in r.get("caps") or [] if c),
                     "technologies": sorted(t for t in r.get("techs") or [] if t),
-                    # Import warnings are not persisted on the Skill node.
-                    "warnings_count": 0,
+                    "warnings_count": len(r.get("warnings") or []),
                 }
                 for r in rows
             ]
@@ -282,6 +282,7 @@ def register_forge_routes(
                 "checklist": checklist,
                 "requires": requires,
                 "required_by": required_by,
+                "warnings": list(node.get("warnings") or []),
                 "neighbourhood": {"nodes": nodes, "edges": edges},
             }
 

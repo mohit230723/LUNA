@@ -223,6 +223,13 @@ def import_skill(
         {"id": doc.id, "tt": TASK_TYPE_SOFTWARE_BUILD, "score": INITIAL_SCORE},
     )
 
+    # Persist the latest warnings (overwritten on every import) for the review UI.
+    store.query(
+        atlas_graph,
+        f"MATCH (s:{LABEL_SKILL} {{id: $id}}) SET s.warnings = $w",
+        {"id": doc.id, "w": list(warnings)},
+    )
+
     return ImportResult(skill_id=doc.id, status=status, warnings=warnings, changed=changed)
 
 

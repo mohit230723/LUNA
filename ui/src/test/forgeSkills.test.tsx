@@ -83,6 +83,16 @@ describe('Platform Skills tab', () => {
     expect(within(detail).getByRole('img', { name: /neighbourhood/i })).toBeInTheDocument();
   });
 
+  it('renders import warnings in the skill detail', async () => {
+    renderSkills();
+    const table = await screen.findByRole('table', { name: /skills/i });
+    fireEvent.click(within(table).getByRole('button', { name: /seo audit/i }));
+    const detail = await screen.findByRole('region', { name: /skill detail/i });
+    expect(await within(detail).findByText(/unknown technology 'Next'/)).toBeInTheDocument();
+    fireEvent.click(within(table).getByRole('button', { name: /react vite pages/i }));
+    expect(await within(detail).findByText('No warnings')).toBeInTheDocument();
+  });
+
   it('approving a pending skill moves it out of the review queue', async () => {
     renderSkills();
     const queue = await screen.findByRole('region', { name: /review queue/i });

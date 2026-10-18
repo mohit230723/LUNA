@@ -178,6 +178,16 @@ export const SkillDetail: React.FC<SkillDetailProps> = ({ skillId, onClose }) =>
               ))}
             </ul>
           )}
+          <h3 className="forge-panel-title">Warnings</h3>
+          {detail.warnings.length === 0 ? (
+            <p className="forge-muted">No warnings</p>
+          ) : (
+            <ul className="forge-warnings" aria-label="Import warnings">
+              {detail.warnings.map((w, i) => (
+                <li key={i}>Warning: {w}</li>
+              ))}
+            </ul>
+          )}
           {detail.requires.length > 0 && <p className="forge-muted">Requires: {detail.requires.join(', ')}</p>}
           {detail.required_by.length > 0 && (
             <p className="forge-muted">Required by: {detail.required_by.join(', ')}</p>
