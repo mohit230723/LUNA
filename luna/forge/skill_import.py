@@ -8,6 +8,7 @@ from typing import Literal
 from luna.forge.models import ForgeError, ImportResult, SkillDoc
 from luna.forge.skill_parse import SkillParseError, parse_skill_md
 from luna.forge.vocab import CAPABILITY_ROLES
+from luna.llm.client import extract_json_from_text
 from luna.graph.schema import (
     GRAPH_ATLAS,
     LABEL_CAPABILITY,
@@ -34,6 +35,7 @@ __all__ = [
 ]
 
 INITIAL_SCORE = 0.7
+LLM_TIMEOUT_S = 10.0
 
 
 def _find_cycle(store, atlas_graph: str, doc: SkillDoc) -> list[str] | None:
@@ -69,22 +71,17 @@ def _suggest(llm, caps: dict[str, str], techs: dict[str, str], doc: SkillDoc) ->
     try:
         if not llm.info().get("reachable"):
             return []
-        schema = {
-            "type": "object",
-            "properties": {
-                "capabilities": {"type": "array", "items": {"type": "string"}},
-                "technologies": {"type": "array", "items": {"type": "string"}},
-            },
-        }
         system = (
             "Choose which capabilities and technologies a coding skill covers. "
-            "Only use names from the provided lists. Return JSON."
+            "Only use names from the provided lists. Return ONLY a JSON object of the form "
+            '{"capabilities": [...], "technologies": [...]}.'
         )
         user = (
             f"Skill: {doc.name}\nDescription: {doc.description}\n\n{doc.body[:2000]}\n\n"
             f"Capabilities: {sorted(caps.values())}\nTechnologies: {sorted(techs.values())}"
         )
-        out = llm.complete_json(system, user, schema) or {}
+        # One short call, no repair retry: suggestions are advisory only.
+        out = extract_json_from_text(llm.complete_text(system, user, timeout=LLM_TIMEOUT_S) or "")
         warnings = []
         for c in out.get("capabilities") or []:
             if str(c).lower() in caps:

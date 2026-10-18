@@ -16,6 +16,16 @@ class ForgeError(Exception):
         self.code = code
 
 
+def is_store_unavailable(exc: BaseException) -> bool:
+    """True for graph-store failures that mean "store unavailable" (connection
+    loss, socket timeout, or FalkorDB's per-query ``Query timed out``)."""
+    import redis.exceptions
+
+    if isinstance(exc, (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError, ConnectionError, OSError)):
+        return True
+    return isinstance(exc, redis.exceptions.ResponseError) and "timed out" in str(exc).lower()
+
+
 class ChecklistDef(BaseModel):
     id: str
     text: str

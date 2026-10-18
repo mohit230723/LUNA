@@ -106,7 +106,7 @@ async def run(url: str, token: str) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--url", default="http://127.0.0.1:8000/mcp")
-    ap.add_argument("--timeout", type=float, default=600, help="overall timeout in seconds")
+    ap.add_argument("--timeout", type=float, default=120, help="overall timeout in seconds")
     ap.add_argument("--token", default=os.environ.get("LUNA_MCP_TOKEN", ""))
     args = ap.parse_args()
     try:

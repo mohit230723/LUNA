@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from luna.forge.models import CandidateRecord, ForgeError, PlanDraft, PlanTask
+from luna.llm.client import extract_json_from_text
 from luna.graph.schema import (
     GRAPH_ATLAS,
     LABEL_CAPABILITY,
@@ -90,26 +91,27 @@ def _matches(text: str, terms: list[str]) -> bool:
     return any(t and re.search(r"\b" + re.escape(t.lower()) + r"\b", text) for t in terms)
 
 
+LLM_TIMEOUT_S = 10.0
+
+
 def _llm_picks(llm, text: str, graph: _Graph) -> tuple[set[str], set[str]]:
+    """Ask the LLM for capability/technology names (one short call, no repair retry).
+
+    Any failure or timeout yields no picks.
+    """
     try:
         if llm is None or not llm.info().get("reachable"):
             return set(), set()
-        schema = {
-            "type": "object",
-            "properties": {
-                "capabilities": {"type": "array", "items": {"type": "string"}},
-                "technologies": {"type": "array", "items": {"type": "string"}},
-            },
-        }
         system = (
             "Map a software build request onto capabilities and technologies. "
-            "Only use names from the provided lists. Return JSON."
+            "Only use names from the provided lists. Return ONLY a JSON object of the form "
+            '{"capabilities": [...], "technologies": [...]}.'
         )
         user = (
             f"Request: {text}\n\nCapabilities: {sorted(graph.capabilities)}\n"
             f"Technologies: {sorted(graph.technologies)}"
         )
-        out = llm.complete_json(system, user, schema) or {}
+        out = extract_json_from_text(llm.complete_text(system, user, timeout=LLM_TIMEOUT_S) or "")
         caps = {c.lower(): c for c in graph.capabilities}
         techs = {t.lower(): t for t in graph.technologies}
         picked_caps = {caps[str(c).lower()] for c in out.get("capabilities") or [] if str(c).lower() in caps}
@@ -176,15 +178,22 @@ def build_plan(
     # 1. Match capability / technology names and aliases.
     caps = {c for c, info in graph.capabilities.items() if _matches(text, [c, *info["aliases"]])}
     techs = {t for t, aliases in graph.technologies.items() if _matches(text, [t, *aliases])}
-    llm_caps, llm_techs = _llm_picks(llm, text, graph)
-    caps |= llm_caps
-    techs |= llm_techs
 
     # 2. Technology-only fallback.
-    if not caps and techs:
-        for sid, targeted in graph.targets.items():
-            if graph.skills.get(sid, {}).get("status") == "approved" and targeted & techs:
-                caps |= graph.provides.get(sid, set())
+    def tech_fallback() -> None:
+        if not caps and techs:
+            for sid, targeted in graph.targets.items():
+                if graph.skills.get(sid, {}).get("status") == "approved" and targeted & techs:
+                    caps.update(graph.provides.get(sid, set()))
+
+    tech_fallback()
+
+    # 2b. LLM only when deterministic matching found no capability.
+    if not caps:
+        llm_caps, llm_techs = _llm_picks(llm, text, graph)
+        caps |= llm_caps
+        techs |= llm_techs
+        tech_fallback()
 
     # 3. No match.
     if not caps:

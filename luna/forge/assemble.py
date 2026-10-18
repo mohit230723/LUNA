@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 
 from luna.atlas.learner import update_skill_score
@@ -27,13 +28,18 @@ def _template_summary(done: int, total: int, waves: int, n_files: int, n_gaps: i
     )
 
 
+LLM_TIMEOUT_S = 10.0
+SUMMARY_FLAG = "LUNA_FORGE_LLM_SUMMARY"
+
+
 def _llm_summary(llm, report: dict) -> str | None:
-    if llm is None:
+    """Opt-in LLM summary (env LUNA_FORGE_LLM_SUMMARY=1), bounded to a 10 s call."""
+    if llm is None or os.getenv(SUMMARY_FLAG, "").strip() != "1":
         return None
     try:
         if not llm.info().get("reachable"):
             return None
-        text = llm.complete_text(_SYSTEM, json.dumps(report, sort_keys=True))
+        text = llm.complete_text(_SYSTEM, json.dumps(report, sort_keys=True), timeout=LLM_TIMEOUT_S)
     except Exception:
         return None
     text = (text or "").strip() if isinstance(text, str) else ""

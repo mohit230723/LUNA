@@ -33,7 +33,7 @@ from luna.forge.events import (
     TASK_UPDATED,
     ForgeEventBus,
 )
-from luna.forge.models import CheckReport, ForgeError, Plan
+from luna.forge.models import CheckReport, ForgeError, Plan, is_store_unavailable
 from luna.forge.planner import build_plan
 from luna.forge.runs import (
     claim_task,
@@ -141,6 +141,10 @@ async def _blocking(fn: Callable[[], Any]) -> Any:
         raise ToolError(f"{e.code}: {e}") from e
     except _STORE_ERRORS as e:
         raise ToolError(STORE_UNAVAILABLE) from e
+    except redis.exceptions.ResponseError as e:
+        if is_store_unavailable(e):  # FalkorDB "Query timed out"
+            raise ToolError(STORE_UNAVAILABLE) from e
+        raise
 
 
 def create_forge_mcp(

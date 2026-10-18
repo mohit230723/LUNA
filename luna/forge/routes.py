@@ -16,7 +16,7 @@ from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from luna.forge.events import SKILL_IMPORTED, ForgeEventBus
-from luna.forge.models import ForgeError
+from luna.forge.models import ForgeError, is_store_unavailable
 from luna.forge.runs import get_run, list_runs
 from luna.forge.sessions import SessionRegistry
 from luna.forge.skill_import import import_repo_skills, import_skill, set_skill_status
@@ -57,6 +57,10 @@ def _http_errors() -> Iterator[None]:
         raise HTTPException(status_code=status, detail=str(e)) from e
     except _STORE_ERRORS as e:
         raise HTTPException(status_code=503, detail="LUNA graph store unavailable") from e
+    except redis.exceptions.ResponseError as e:
+        if is_store_unavailable(e):  # FalkorDB "Query timed out"
+            raise HTTPException(status_code=503, detail="LUNA graph store unavailable") from e
+        raise
 
 
 def _connect_snippets(mcp_url: str) -> dict[str, str]:

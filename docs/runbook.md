@@ -274,10 +274,16 @@ In the agent run the `luna-build` prompt (Claude Code may list it as `/mcp__luna
 ### 6. Scripted smoke
 
 ```bash
-python scripts/forge_smoke.py --url http://127.0.0.1:8000/mcp   # reads LUNA_MCP_TOKEN from the environment; --token overrides it; --timeout N (default 600s)
+python scripts/forge_smoke.py --url http://127.0.0.1:8000/mcp   # reads LUNA_MCP_TOKEN from the environment; --token overrides it; --timeout N (default 120s)
 ```
 
 Uses the real MCP Python client, exits non-zero on failure, and creates one real run.
+
+### Performance notes
+
+- `luna_plan` consults the LLM only when deterministic matching (capability/technology names and aliases, then the technology-only fallback) finds no capability, with a single 10 s call and no JSON repair retry. Skill uploads ask the LLM for capability suggestions only when the frontmatter declares none, with the same 10 s bound.
+- The `luna_assemble` summary is a deterministic template. Set `LUNA_FORGE_LLM_SUMMARY=1` before starting the backend to opt into an LLM-written summary (one 10 s call; falls back to the template on any failure).
+- FalkorDB enforces a per-query `TIMEOUT` (`GRAPH.CONFIG GET TIMEOUT`; the local default was seen as 1000 ms). When the machine is saturated (for example by a local Ollama model) queries fail with "Query timed out"; Forge reports this as `store_unavailable` (MCP tool error / HTTP 503). Check it with `docker exec luna-falkordb redis-cli GRAPH.CONFIG GET TIMEOUT` and raise it if needed with `GRAPH.CONFIG SET TIMEOUT 5000` (or pass `TIMEOUT 5000` as a module load argument when starting the container).
 
 ### Manual smoke results
 

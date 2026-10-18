@@ -223,8 +223,8 @@ class _FakeLLM:
     def info(self):
         return {"reachable": True}
 
-    def complete_json(self, system, user, schema):
-        return {"capabilities": ["implement_frontend"], "technologies": []}
+    def complete_text(self, system, user, *, timeout=None):
+        return '{"capabilities": ["implement_frontend"], "technologies": []}'
 
 
 def test_upload_uses_llm_suggestions(live_store, tmp_graph):
@@ -240,3 +240,16 @@ def test_upload_uses_llm_suggestions(live_store, tmp_graph):
     with TestClient(app) as c:
         body = upload(c, md).json()
     assert any("suggested capability 'implement_frontend'" in w for w in body["warnings"])
+
+
+def test_store_query_timeout_maps_to_503(live_store, tmp_graph, monkeypatch):
+    import redis.exceptions
+
+    with TestClient(make_app(live_store, tmp_graph)) as c:
+        def timed_out(*a, **kw):
+            raise redis.exceptions.ResponseError("Query timed out")
+
+        monkeypatch.setattr(live_store, "query", timed_out)
+        r = c.get("/api/forge/skills")
+        r2 = c.get("/api/forge/runs")
+    assert r.status_code == 503 and r2.status_code == 503

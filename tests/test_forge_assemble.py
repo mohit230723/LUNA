@@ -83,10 +83,14 @@ class RaisingLLM:
 
 
 class FakeLLM:
+    def __init__(self):
+        self.calls: list[dict] = []
+
     def info(self):
         return {"reachable": True}
 
     def complete_text(self, system, user, **kw):
+        self.calls.append(kw)
         return "LLM summary"
 
 
@@ -130,16 +134,29 @@ def test_assemble_learning_applies_once(live_store, atlas, rid):
     assert after == mid
 
 
-def test_assemble_llm_failure_falls_back_to_template(live_store, atlas, rid):
+def test_assemble_llm_failure_falls_back_to_template(live_store, atlas, rid, monkeypatch):
+    monkeypatch.setenv("LUNA_FORGE_LLM_SUMMARY", "1")
     submit_all(live_store, atlas, rid)
     rep = assemble_run(live_store, rid, llm=RaisingLLM(), atlas_graph=atlas)
     assert rep.summary.startswith("3/3 tasks complete across 3 waves")
 
 
-def test_assemble_uses_llm_summary(live_store, atlas, rid):
+def test_assemble_summary_is_template_without_flag(live_store, atlas, rid, monkeypatch):
+    monkeypatch.delenv("LUNA_FORGE_LLM_SUMMARY", raising=False)
     submit_all(live_store, atlas, rid)
-    rep = assemble_run(live_store, rid, llm=FakeLLM(), atlas_graph=atlas)
+    llm = FakeLLM()
+    rep = assemble_run(live_store, rid, llm=llm, atlas_graph=atlas)
+    assert rep.summary.startswith("3/3 tasks complete across 3 waves")
+    assert llm.calls == []
+
+
+def test_assemble_uses_llm_summary_when_flag_set(live_store, atlas, rid, monkeypatch):
+    monkeypatch.setenv("LUNA_FORGE_LLM_SUMMARY", "1")
+    submit_all(live_store, atlas, rid)
+    llm = FakeLLM()
+    rep = assemble_run(live_store, rid, llm=llm, atlas_graph=atlas)
     assert rep.summary == "LLM summary"
+    assert len(llm.calls) == 1 and 0 < llm.calls[0]["timeout"] <= 10
 
 
 def test_assemble_learning_failure_releases_claim_and_retries(live_store, atlas, rid, monkeypatch):

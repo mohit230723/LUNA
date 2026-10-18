@@ -35,10 +35,11 @@ class FakeLLM:
     def info(self):
         return {"reachable": self.reachable}
 
-    def complete_json(self, system, user, schema):
+    def complete_text(self, system, user, *, timeout=None):
+        assert timeout is not None and timeout <= 10
         if self.fail:
             raise RuntimeError("boom")
-        return {"capabilities": ["implement_backend", "nope"], "technologies": ["Express"]}
+        return '{"capabilities": ["implement_backend", "nope"], "technologies": ["Express"]}'
 
 
 @pytest.fixture

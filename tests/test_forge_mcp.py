@@ -297,6 +297,23 @@ async def test_mcp_store_down_returns_tool_error(make_server, monkeypatch):
         assert res.isError and "LUNA graph store unavailable" in res.content[0].text
 
 
+class _TimingOutStore(GraphStore):
+    """A store whose queries fail like FalkorDB's per-query TIMEOUT."""
+
+    def query(self, *a, **kw):
+        import redis.exceptions
+
+        raise redis.exceptions.ResponseError("Query timed out")
+
+
+async def test_mcp_query_timeout_maps_to_store_unavailable(make_server, monkeypatch):
+    monkeypatch.delenv("LUNA_MCP_TOKEN", raising=False)
+    server = make_server(store=_TimingOutStore(host="localhost", port=6379))
+    async with client(server) as s:
+        res = await s.call_tool("luna_plan", {"prompt": PROMPT})
+        assert res.isError and "store_unavailable" in res.content[0].text
+
+
 async def test_sessions_record_client_name(forge_server):
     async with client(forge_server, name="pytest-agent") as s:
         await s.call_tool("luna_search_skills", {"query": "react"})

@@ -1,5 +1,6 @@
 """Integration tests for the starter skill library and the graph-native planner."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -33,17 +34,24 @@ b
 
 
 class FakeLLM:
+    """Records calls; answers via complete_text with a JSON string (no repair retry)."""
+
     def __init__(self, reachable=True, fail=False, picks=None):
         self.reachable, self.fail = reachable, fail
         self.picks = picks or {"capabilities": ["implement_backend", "teleport"], "technologies": ["Express", "Cobol"]}
+        self.calls: list[dict] = []
 
     def info(self):
         return {"reachable": self.reachable}
 
-    def complete_json(self, system, user, schema):
+    def complete_text(self, system, user, *, timeout=None):
+        self.calls.append({"timeout": timeout})
         if self.fail:
             raise RuntimeError("boom")
-        return self.picks
+        return "```json\n" + json.dumps(self.picks) + "\n```"
+
+    def complete_json(self, system, user, schema, *, timeout=None):  # must not be used (repair retry)
+        raise AssertionError("planner must not call complete_json")
 
 
 @pytest.fixture
@@ -180,16 +188,30 @@ def test_plan_required_skill_adds_capability(live_store, atlas):
     assert d.candidates["scaffold_project"][0].rejected_reason == "required by backend-api"
 
 
-def test_plan_llm_picks_are_unioned(live_store, atlas):
-    d = build_plan(live_store, "website with React", llm=FakeLLM(), atlas_graph=atlas)
+def test_plan_llm_not_called_when_deterministic_match(live_store, atlas):
+    llm = FakeLLM()
+    d = build_plan(live_store, "website with React", llm=llm, atlas_graph=atlas)
+    assert llm.calls == []
+    assert d.model_dump() == build_plan(live_store, "website with React", atlas_graph=atlas).model_dump()
+    # Technology-only fallback is deterministic too: no LLM call.
+    llm2 = FakeLLM()
+    build_plan(live_store, "use fastapi", llm=llm2, atlas_graph=atlas)
+    assert llm2.calls == []
+
+
+def test_plan_llm_called_once_when_nothing_matches(live_store, atlas):
+    llm = FakeLLM()
+    d = build_plan(live_store, "make me something nice", llm=llm, atlas_graph=atlas)
+    assert len(llm.calls) == 1 and llm.calls[0]["timeout"] is not None and llm.calls[0]["timeout"] <= 10
+    assert d.status == "planned"
     assert "implement_backend" in d.matched_capabilities and "Express" in d.matched_technologies
     assert "teleport" not in d.matched_capabilities
 
 
 def test_plan_llm_failure_is_swallowed(live_store, atlas):
-    a = build_plan(live_store, "website with React", llm=FakeLLM(fail=True), atlas_graph=atlas)
-    b = build_plan(live_store, "website with React", llm=FakeLLM(reachable=False), atlas_graph=atlas)
-    assert a.model_dump() == b.model_dump() and a.status == "planned"
+    a = build_plan(live_store, "make me something nice", llm=FakeLLM(fail=True), atlas_graph=atlas)
+    b = build_plan(live_store, "make me something nice", llm=FakeLLM(reachable=False), atlas_graph=atlas)
+    assert a.model_dump() == b.model_dump() and a.status == "needs_input"
 
 
 def test_plan_is_deterministic(live_store, atlas):
