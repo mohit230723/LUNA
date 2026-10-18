@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from luna.forge.briefing import RULES, build_briefing, get_section
-from luna.forge.models import CheckReport, ForgeError
+from luna.forge.models import CheckReport, ForgeError, PlanDraft, PlanTask
 from luna.forge.planner import build_plan
 from luna.forge.runs import (
     claim_task,
@@ -222,6 +222,7 @@ def test_submit_missing_checks_count_as_failed(live_store, atlas, rid):
         (["/abs"], [], "invalid path"),
         (["src\\..\\..\\x"], [], "invalid path"),
         ([""], [], "invalid path"),
+        (["a" * 301], [], "exceeds 300 characters"),
         ([f"f{i}" for i in range(501)], [], "at most 500 files"),
         (["a"], [CheckReport(id="bogus", passed=True)], "unknown check 'bogus'"),
     ],
@@ -233,6 +234,74 @@ def test_submit_rejects_bad_paths_and_limits(live_store, atlas, rid, files, chec
     assert r.unlocked_tasks == []
     assert tasks_by_id(live_store, rid)["scaffold_project"]["status"] == "claimed"
     assert results_count(live_store, rid) == 0
+
+
+def test_submit_accepts_path_at_limit(live_store, atlas, rid):
+    claim_task(live_store, rid, "scaffold_project", "s1", now=T0)
+    assert submit_task(live_store, rid, "scaffold_project", "s1", "ok", ["a" * 300], [], atlas, now=T0).accepted
+
+
+DIAMOND = PlanDraft(
+    status="planned",
+    tasks=[
+        PlanTask(task_id="a", title="A", capability="a", wave=0),
+        PlanTask(task_id="b", title="B", capability="b", wave=0),
+        PlanTask(task_id="c", title="C", capability="c", depends_on=["a", "b"], wave=1),
+    ],
+    waves=[["a", "b"], ["c"]],
+)
+
+
+@pytest.fixture
+def diamond(live_store, run_ids):
+    rid = f"test_{uuid.uuid4().hex[:10]}"
+    run_ids.append(rid)
+    create_run(live_store, DIAMOND, "diamond", "s0", run_id=rid, now=T0)
+    return rid
+
+
+class RacingStore:
+    """Store proxy that runs ``before_write`` just before submit's Result write,
+    i.e. after submit_task has read its task snapshot."""
+
+    def __init__(self, store, before_write):
+        self.store, self.before_write, self.fired = store, before_write, False
+
+    def query(self, graph, cypher, params=None):
+        if not self.fired and "HAS_RESULT" in cypher and "CREATE" in cypher:
+            self.fired = True
+            self.before_write()
+        return self.store.query(graph, cypher, params)
+
+    def __getattr__(self, name):
+        return getattr(self.store, name)
+
+
+def test_concurrent_sibling_submit_still_unlocks_dependent(live_store, atlas, diamond):
+    rid = diamond
+    claim_task(live_store, rid, "a", "s1", now=T0)
+    claim_task(live_store, rid, "b", "s2", now=T0)
+
+    def sibling_done_without_unlock():
+        # The concurrent submit of b read a stale snapshot (a still claimed) and so did not unlock c.
+        live_store.query(
+            run_graph_name(rid),
+            "MATCH (t:Task {id: 'b'}) SET t.status = 'done', t.claimed_by = '', t.lease_expires_at = ''",
+        )
+
+    racing = RacingStore(live_store, sibling_done_without_unlock)
+    r = submit_task(racing, rid, "a", "s1", "done", ["a.txt"], [], atlas, now=T0)
+    assert racing.fired and r.accepted and r.unlocked_tasks == ["c"]
+    assert tasks_by_id(live_store, rid)["c"]["status"] == "ready"
+
+
+def test_claim_pending_task_with_all_deps_done_promotes(live_store, atlas, diamond):
+    rid = diamond
+    live_store.query(run_graph_name(rid), "MATCH (t:Task) WHERE t.id IN ['a', 'b'] SET t.status = 'done'")
+    assert tasks_by_id(live_store, rid)["c"]["status"] == "pending"
+    t = claim_task(live_store, rid, "c", "s1", now=T0)
+    assert t.status == "claimed"
+    assert tasks_by_id(live_store, rid)["c"]["claimed_by"] == "s1"
 
 
 def test_submit_rejects_long_summary(live_store, atlas, rid):

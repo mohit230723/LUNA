@@ -54,7 +54,7 @@ __all__ = [
 DEFAULT_LEASE_MIN = 15
 MAX_SUMMARY_CHARS = 20_000
 MAX_FILES = 500
-MAX_PATH_CHARS = 1024
+MAX_PATH_CHARS = 300
 _DRIVE = re.compile(r"^[A-Za-z]:")
 
 
@@ -315,8 +315,11 @@ def claim_task(
             for d in t.get("depends_on") or []
             if d not in tasks or tasks[d].get("status") != "done"
         ]
-        raise ForgeError("not_ready", f"task '{task_id}' is waiting on: {', '.join(blockers)}")
-    if status not in ("ready", "claimed"):
+        if blockers:
+            raise ForgeError("not_ready", f"task '{task_id}' is waiting on: {', '.join(blockers)}")
+        # Every dependency is done but no submit promoted it (lost race): claim it
+        # directly; the conditional write below matches on status 'pending'.
+    if status not in ("ready", "claimed", "pending"):
         raise ForgeError("invalid", f"task '{task_id}' is already {status}")
 
     lease = (current + timedelta(minutes=_lease_minutes(lease_minutes))).isoformat()
@@ -354,10 +357,11 @@ def _validate_submission(
     else:
         for p in files:
             parts = re.split(r"[\\/]", p) if isinstance(p, str) else []
-            if (
+            if isinstance(p, str) and len(p) > MAX_PATH_CHARS:
+                errors.append(f"invalid path '{p[:40]}...': exceeds {MAX_PATH_CHARS} characters")
+            elif (
                 not isinstance(p, str)
                 or not p.strip()
-                or len(p) > MAX_PATH_CHARS
                 or p.startswith(("/", "\\"))
                 or _DRIVE.match(p)
                 or ".." in parts
@@ -429,13 +433,15 @@ def submit_task(
     if not rows:
         raise ForgeError("invalid", f"task '{task_id}' is not claimed by this session")
 
-    tasks[task_id] = {**t, "status": "done"}
+    # Re-read after our write so a concurrent submit of a sibling dependency
+    # (which read a stale snapshot) cannot leave a dependent stuck in pending.
+    tasks = _tasks(store, run_id)
     unlocked: list[str] = []
     for tid, other in tasks.items():
         if other.get("status") != "pending":
             continue
         deps = other.get("depends_on") or []
-        if task_id in deps and all(tasks.get(d, {}).get("status") == "done" for d in deps):
+        if all(tasks.get(d, {}).get("status") == "done" for d in deps):
             moved = store.query(
                 g,
                 f"MATCH (t:{LABEL_TASK} {{id: $id}}) WHERE t.status = 'pending' "
