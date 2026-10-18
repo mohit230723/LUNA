@@ -109,14 +109,19 @@ def assemble_run(
             {"ts": datetime.now(timezone.utc).isoformat()},
         )
         if claimed:
-            for e in entries:
-                if not e["skill_id"]:
-                    continue
-                total_checks = e["checks_total"]
-                reward = e["checks_passed"] / total_checks if total_checks else 1.0
-                update_skill_score(
-                    store, e["skill_id"], TASK_TYPE_SOFTWARE_BUILD, reward,
-                    LEARNING_ALPHA, atlas_graph,
-                )
-            set_run_status(store, run_id, "assembled")
+            try:
+                for e in entries:
+                    if not e["skill_id"]:
+                        continue
+                    total_checks = e["checks_total"]
+                    reward = e["checks_passed"] / total_checks if total_checks else 1.0
+                    update_skill_score(
+                        store, e["skill_id"], TASK_TYPE_SOFTWARE_BUILD, reward,
+                        LEARNING_ALPHA, atlas_graph,
+                    )
+            except BaseException:
+                # Release the claim so the next assemble retries learning.
+                store.query(g, f"MATCH (r:{LABEL_RUN}) REMOVE r.learned_at")
+                raise
+        set_run_status(store, run_id, "assembled")
     return report

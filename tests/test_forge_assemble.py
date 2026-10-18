@@ -140,3 +140,49 @@ def test_assemble_uses_llm_summary(live_store, atlas, rid):
     submit_all(live_store, atlas, rid)
     rep = assemble_run(live_store, rid, llm=FakeLLM(), atlas_graph=atlas)
     assert rep.summary == "LLM summary"
+
+
+def test_assemble_learning_failure_releases_claim_and_retries(live_store, atlas, rid, monkeypatch):
+    import luna.forge.assemble as asm
+
+    submit_all(live_store, atlas, rid)
+    before = score(live_store, atlas, "react-vite-pages")
+
+    def boom(*a, **k):
+        raise RuntimeError("learner down")
+
+    monkeypatch.setattr(asm, "update_skill_score", boom)
+    with pytest.raises(RuntimeError):
+        assemble_run(live_store, rid, atlas_graph=atlas)
+    rows = live_store.query(
+        run_graph_name(rid), "MATCH (r:Run) WHERE r.learned_at IS NULL RETURN r.id AS id"
+    )
+    assert rows
+    assert get_run(live_store, rid)["run"]["status"] != "assembled"
+    monkeypatch.undo()
+
+    assemble_run(live_store, rid, atlas_graph=atlas)
+    assert get_run(live_store, rid)["run"]["status"] == "assembled"
+    assert score(live_store, atlas, "react-vite-pages") == pytest.approx(
+        0.8 * before + 0.2 * (2 / 3)
+    )
+    assemble_run(live_store, rid, atlas_graph=atlas)
+    assert score(live_store, atlas, "react-vite-pages") == pytest.approx(
+        0.8 * before + 0.2 * (2 / 3)
+    )
+
+
+def test_assemble_zero_checks_reward_one(live_store, atlas, rid):
+    live_store.query(
+        atlas,
+        "MATCH (:Skill {id: 'project-scaffold'})-[:HAS_CHECK]->(c:ChecklistItem) DETACH DELETE c",
+    )
+    do_task(live_store, atlas, rid, "scaffold_project", ["package.json"], {})
+    do_task(live_store, atlas, rid, "implement_frontend", [],
+            {"routes": True, "responsive": True, "a11y": True})
+    do_task(live_store, atlas, rid, "verify_contracts", [],
+            {"build": True, "smoke": True, "contracts": True})
+    before = score(live_store, atlas, "project-scaffold")
+    rep = assemble_run(live_store, rid, atlas_graph=atlas)
+    assert rep.tasks[0]["checks_total"] == 0
+    assert score(live_store, atlas, "project-scaffold") == pytest.approx(0.8 * before + 0.2)
