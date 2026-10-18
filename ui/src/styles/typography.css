@@ -1,0 +1,81 @@
+@import './tokens.css';
+
+.text-display {
+  font-family: var(--font-primary);
+  font-size: var(--text-display);
+  line-height: 1.05;
+  letter-spacing: var(--tracking-display);
+  font-weight: 400;
+  color: var(--color-chalk);
+}
+
+.text-heading-lg {
+  font-family: var(--font-primary);
+  font-size: var(--text-heading-lg);
+  line-height: 1.07;
+  letter-spacing: var(--tracking-heading-lg);
+  font-weight: 400;
+  color: var(--color-chalk);
+}
+
+.text-heading {
+  font-family: var(--font-primary);
+  font-size: var(--text-heading);
+  line-height: 1.03;
+  font-weight: 400;
+  color: var(--color-chalk);
+}
+
+.text-heading-sm {
+  font-family: var(--font-primary);
+  font-size: var(--text-heading-sm);
+  line-height: 1.07;
+  font-weight: 400;
+  color: var(--color-chalk);
+}
+
+.text-subheading {
+  font-family: var(--font-primary);
+  font-size: var(--text-subheading);
+  line-height: 1.2;
+  font-weight: 400;
+  color: var(--color-smoke);
+}
+
+.text-heading-xs {
+  font-family: var(--font-primary);
+  font-size: var(--text-heading-xs);
+  line-height: 1.31;
+  font-weight: 400;
+  color: var(--color-chalk);
+}
+
+.text-body {
+  font-family: var(--font-primary);
+  font-size: var(--text-body);
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--color-smoke);
+}
+
+.text-caption {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  line-height: 1.6;
+  font-weight: 400;
+  color: var(--color-smoke);
+}
+
+.text-mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+.uppercase-label {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 400;
+}
