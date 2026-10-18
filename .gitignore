@@ -42,3 +42,7 @@ htmlcov/
 # IDE & runtime artifacts
 .gemini/
 *.log
+
+# UI
+ui/node_modules/
+ui/dist/

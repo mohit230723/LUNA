@@ -462,6 +462,11 @@ def create_app(
                 return json.load(f)
         return {"runs": [], "error": "No replay recording file found"}
 
+    ui_dist_dir = Path("ui/dist")
+    if ui_dist_dir.is_dir():
+        from fastapi.staticfiles import StaticFiles
+        app.mount("/", StaticFiles(directory=str(ui_dist_dir), html=True), name="ui")
+
     return app
 
 
