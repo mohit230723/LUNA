@@ -22,7 +22,7 @@
   max-width: 600px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .sliderRow {
@@ -64,57 +64,32 @@
 .tickContainer {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   width: 100%;
   padding: 0 4px;
 }
 
 .tick {
-  width: 1px;
+  width: 4px;
   height: 4px;
   background-color: var(--color-iron);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .tickActive {
-  background-color: var(--color-chalk);
+  width: 6px;
+  height: 6px;
+  background-color: var(--color-signal-white);
+  border-radius: 0; /* filled white square */
 }
 
 .controlsRight {
   display: flex;
   align-items: center;
   gap: var(--spacing-16);
-}
-
-.speedGroup {
-  display: flex;
-  border: 1px solid var(--color-graphite);
-  border-radius: var(--radius-tag);
-  overflow: hidden;
-}
-
-.speedBtn {
-  background: transparent;
-  border: none;
-  border-right: 1px solid var(--color-graphite);
-  color: var(--color-smoke);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  padding: 4px 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.speedBtn:last-child {
-  border-right: none;
-}
-
-.speedBtn:hover {
-  background-color: var(--color-carbon);
-  color: var(--color-chalk);
-}
-
-.speedActive {
-  background-color: var(--color-carbon);
-  color: var(--color-chalk);
 }
 
 .readout {
@@ -128,10 +103,4 @@
 
 .highlightChalk {
   color: var(--color-chalk);
-}
-
-.showAllActive {
-  background-color: var(--color-carbon);
-  border-color: var(--color-chalk) !important;
-  color: var(--color-chalk) !important;
 }

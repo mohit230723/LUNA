@@ -34,7 +34,7 @@ export const FindingsBlock: React.FC<FindingsBlockProps> = ({ items, onOpenWhy }
                 className={isSuperseded ? styles.supersededRow : ''}
               >
                 <td className={styles.td} style={{ fontFamily: 'var(--font-mono)' }}>
-                  {f.subject}
+                  {f.claim || f.subject || f.id}
                 </td>
                 <td className={styles.td}>
                   {f.verdict === 'suspicious' ? (
@@ -42,10 +42,15 @@ export const FindingsBlock: React.FC<FindingsBlockProps> = ({ items, onOpenWhy }
                       <span aria-hidden="true" style={{ marginRight: 4 }}>◆</span>
                       SUSPICIOUS
                     </span>
-                  ) : (
+                  ) : f.verdict === 'benign' ? (
                     <span>
                       <span aria-hidden="true" style={{ marginRight: 4 }}>◇</span>
                       BENIGN
+                    </span>
+                  ) : (
+                    <span>
+                      <span aria-hidden="true" style={{ marginRight: 4 }}>•</span>
+                      {(f.kind || 'finding').toUpperCase()}
                     </span>
                   )}
                 </td>
@@ -56,11 +61,11 @@ export const FindingsBlock: React.FC<FindingsBlockProps> = ({ items, onOpenWhy }
                   {f.skill_id}
                 </td>
                 <td className={styles.td}>
-                  <Badge size="compact">{f.backend.toUpperCase()}</Badge>
+                  <Badge size="compact">{(f.backend || 'llm').toUpperCase()}</Badge>
                 </td>
                 <td className={styles.td}>
                   {onOpenWhy && (
-                    <GhostButton onClick={() => onOpenWhy(f.subject)}>
+                    <GhostButton onClick={() => onOpenWhy(f.subject_cids?.[0] || f.subject || f.id)}>
                       WHY
                     </GhostButton>
                   )}

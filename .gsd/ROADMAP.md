@@ -12,6 +12,24 @@ updated: 2026-10-18T01:18:00+05:30
 ## Must-Haves (from SPEC)
 
 - [x] FalkorDB multi-graph store with parameterized Cypher queries and isolated graph naming.
+| 4: Explainability & Backend API | ⬜ Not Started | 0/3 | 0% |
+| 5: Obsidian UI & Final Polish | ⬜ Not Started | 0/4 | 0% |
+
+---
+
+## Timeline
+
+| Phase | Started | Completed | Duration |
+|-------|---------|-----------|----------|
+| 1: Foundation & Graph Infrastructure | 2026-10-15 | 2026-10-15 | 1 day |
+| 2: Execution, Isolation & Promotion | 2026-10-15 | 2026-10-15 | 1 day |
+| 3: Conflict Resolution & Action Lifecycle | — | — | — |
+| 4: Explainability & Backend API | — | — | — |
+| 5: Obsidian UI & Final Polish | — | — | — |
+
+---
+
+*Last updated: 2026-10-15*
 - [x] Synthetic claims domain generator with planted 8-node fraud ring, 4-node decoy family, and GraphRAG ontology.
 - [x] Atlas skill catalog with 7 skills and 6 tools (`ask_graph` + 5 deterministic algorithm tools).
 - [x] Task decomposition and graph-based skill selection logging chosen and rejected candidates.
@@ -104,21 +122,3 @@ updated: 2026-10-18T01:18:00+05:30
 | 1: Foundation & Graph Infrastructure | ✅ Complete | 5/5 | 100% |
 | 2: Execution, Isolation & Promotion | ✅ Complete | 4/4 | 100% |
 | 3: Conflict Resolution & Action Lifecycle | ✅ Complete | 4/4 | 100% |
-| 4: Explainability & Backend API | ⬜ Not Started | 0/3 | 0% |
-| 5: Obsidian UI & Final Polish | ⬜ Not Started | 0/4 | 0% |
-
----
-
-## Timeline
-
-| Phase | Started | Completed | Duration |
-|-------|---------|-----------|----------|
-| 1: Foundation & Graph Infrastructure | 2026-10-15 | 2026-10-15 | 1 day |
-| 2: Execution, Isolation & Promotion | 2026-10-15 | 2026-10-15 | 1 day |
-| 3: Conflict Resolution & Action Lifecycle | — | — | — |
-| 4: Explainability & Backend API | — | — | — |
-| 5: Obsidian UI & Final Polish | — | — | — |
-
----
-
-*Last updated: 2026-10-15*

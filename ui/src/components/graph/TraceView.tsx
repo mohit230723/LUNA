@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect, useState, useRef, useMemo } from 'react';
+import React, { useReducer, useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { GhostButton } from '../ui/GhostButton';
@@ -6,13 +6,14 @@ import { Spinner } from '../ui/Spinner';
 import { ErrorState } from '../ui/ErrorState';
 import { StepList } from './StepList';
 import { GraphCanvas, GraphCanvasHandle, LayoutType } from './GraphCanvas';
+import { StepCard } from './StepCard';
 import { NodeDetail } from './NodeDetail';
 import { Scrubber } from './Scrubber';
 import { Legend } from './Legend';
 import { toElements } from './toElements';
-import { traceReducer, initialTraceState } from '../../state/traceReducer';
+import { traceReducer, INITIAL_TRACE_STATE } from '../../state/traceReducer';
 import { getApi } from '../../api';
-import type { TraceResponse, TraceNode, FindingInfo } from '../../api/contract';
+import type { TraceResponse, TraceNode, TraceEdge, FindingInfo } from '../../api/contract';
 import styles from './TraceView.module.css';
 
 export interface TraceViewProps {
@@ -36,10 +37,8 @@ export const TraceView: React.FC<TraceViewProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [state, dispatch] = useReducer(traceReducer, initialTraceState);
+  const [state, dispatch] = useReducer(traceReducer, INITIAL_TRACE_STATE);
   const [selectedNode, setSelectedNode] = useState<TraceNode | null>(null);
-  const [layoutType, setLayoutType] = useState<LayoutType>('layered');
-  const [hideContext, setHideContext] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [copyFeedback, setCopyFeedback] = useState(false);
@@ -54,8 +53,6 @@ export const TraceView: React.FC<TraceViewProps> = ({
       const api = getApi();
       const res = await api.getTrace(runId);
       setTraceData(res);
-      // Initialize revealed steps to total steps initially
-      dispatch({ type: 'SET_TOTAL_STEPS', totalSteps: res.steps.length });
     } catch {
       setError('Failed to load trace data.');
     } finally {
@@ -71,44 +68,83 @@ export const TraceView: React.FC<TraceViewProps> = ({
   useEffect(() => {
     if (initialFocusedCid && traceData) {
       setTimeout(() => {
-        graphCanvasRef.current?.focusNode(initialFocusedCid);
+        graphCanvasRef.current?.focusNode(initialFocusedCid, true);
         const node = traceData.nodes.find((n) => n.id === initialFocusedCid);
         if (node) setSelectedNode(node);
       }, 400);
     }
   }, [initialFocusedCid, traceData]);
 
-  // Playback ticker: 900ms / speed
-  useEffect(() => {
-    if (!state.playing || !traceData || traceData.steps.length === 0) return;
-
-    const intervalMs = Math.round(900 / state.speed);
-    const timer = setInterval(() => {
-      dispatch({ type: 'STEP_FORWARD' });
-    }, intervalMs);
-
-    return () => clearInterval(timer);
-  }, [state.playing, state.speed, traceData]);
-
-  // Convert nodes & edges to Cytoscape elements
+  // Convert nodes & edges to Cytoscape elements (Overview whole subgraph)
   const { elements, truncated } = useMemo(() => {
     if (!traceData) {
       return { elements: { nodes: [], edges: [] }, truncated: false };
     }
 
-    const revealedSteps = state.showAll
-      ? traceData.steps
-      : traceData.steps.slice(0, state.revealedStepCount);
-
     return toElements({
       nodes: traceData.nodes,
       edges: traceData.edges,
       pathNodeIds: traceData.path_node_ids,
-      revealedSteps,
-      activeStepSeq: state.selectedStepSeq ?? state.revealedStepCount,
-      showAll: state.showAll,
     });
-  }, [traceData, state.revealedStepCount, state.selectedStepSeq, state.showAll]);
+  }, [traceData]);
+
+  // Node name map for StepCard
+  const nodeNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (traceData) {
+      for (const n of traceData.nodes) {
+        map[n.id] = (n.props?.name as string) || n.id;
+      }
+    }
+    return map;
+  }, [traceData]);
+
+  // Start node for Step 0 of Tour
+  const startNode = useMemo(() => {
+    if (!traceData || traceData.steps.length === 0) return undefined;
+    const startId = traceData.steps[0]?.from;
+    if (!startId) return undefined;
+    return traceData.nodes.find((n) => n.id === startId);
+  }, [traceData]);
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      if (state.mode === 'overview') {
+        if (e.code === 'Space' || e.key === 'Enter' || e.key === 'ArrowRight') {
+          if (traceData && traceData.steps.length > 0) {
+            e.preventDefault();
+            dispatch({ type: 'ENTER_TOUR', stepIndex: 0 });
+          }
+        }
+      } else if (state.mode === 'tour') {
+        if (e.code === 'Space' || e.key === 'Enter' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          if (traceData) {
+            dispatch({ type: 'NEXT_STEP', totalSteps: traceData.steps.length });
+          }
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          dispatch({ type: 'PREV_STEP' });
+        } else if (e.key === 'Escape' || e.key === 'o' || e.key === 'O') {
+          e.preventDefault();
+          dispatch({ type: 'EXIT_TOUR' });
+          graphCanvasRef.current?.resetToOverview();
+        }
+      }
+    },
+    [state.mode, traceData]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   // Handle Export PNG
   const handleExportPng = () => {
@@ -123,10 +159,20 @@ export const TraceView: React.FC<TraceViewProps> = ({
   // Handle Copy Path
   const handleCopyPath = () => {
     if (!traceData) return;
-    const pathStr = traceData.path_node_ids.join(' -> ');
-    navigator.clipboard.writeText(pathStr);
+    const summaryText = traceData.summary || traceData.path_node_ids.join(' -> ');
+    navigator.clipboard.writeText(summaryText);
     setCopyFeedback(true);
     setTimeout(() => setCopyFeedback(false), 2000);
+  };
+
+  // Handle Fit / Exit Tour
+  const handleFit = () => {
+    if (state.mode === 'tour') {
+      dispatch({ type: 'EXIT_TOUR' });
+      graphCanvasRef.current?.resetToOverview();
+    } else {
+      graphCanvasRef.current?.fit(60);
+    }
   };
 
   // Handle neighbor expansion
@@ -135,10 +181,10 @@ export const TraceView: React.FC<TraceViewProps> = ({
       const api = getApi();
       const expanded = await api.expandNode(cid, 1);
       if (traceData) {
-        const existingNodeIds = new Set(traceData.nodes.map((n) => n.id));
-        const newNodes = expanded.nodes.filter((n) => !existingNodeIds.has(n.id));
-        const existingEdgeIds = new Set(traceData.edges.map((e) => e.id));
-        const newEdges = expanded.edges.filter((e) => !existingEdgeIds.has(e.id));
+        const existingNodeIds = new Set(traceData.nodes.map((n: TraceNode) => n.id));
+        const newNodes = expanded.nodes.filter((n: TraceNode) => !existingNodeIds.has(n.id));
+        const existingEdgeIds = new Set(traceData.edges.map((e: TraceEdge) => e.id));
+        const newEdges = expanded.edges.filter((e: TraceEdge) => !existingEdgeIds.has(e.id));
 
         setTraceData({
           ...traceData,
@@ -148,15 +194,12 @@ export const TraceView: React.FC<TraceViewProps> = ({
         });
       }
     } catch {
-      //
+      // Graceful fallback
     }
   };
 
-  const detectedPack = pack || (traceData?.mode === 'blueprint' ? 'build' : 'investigate');
+  const detectedPack = pack || 'investigate';
   const shortRunId = runId.length > 12 ? runId.slice(0, 12) : runId;
-  const currentStep = traceData?.steps.find(
-    (s) => s.seq === (state.selectedStepSeq ?? state.revealedStepCount)
-  );
 
   return (
     <div className={styles.container}>
@@ -170,9 +213,7 @@ export const TraceView: React.FC<TraceViewProps> = ({
           <span className={styles.title}>
             TRACE · {detectedPack.toUpperCase()} · {shortRunId}
           </span>
-          <Badge size="compact">
-            {traceData?.mode === 'blueprint' ? 'BLUEPRINT' : 'TRAVERSAL'}
-          </Badge>
+          <Badge size="compact">TRAVERSAL</Badge>
         </div>
 
         <div className={styles.toolbarRight}>
@@ -187,8 +228,9 @@ export const TraceView: React.FC<TraceViewProps> = ({
 
           <select
             className={styles.layoutSelect}
-            value={layoutType}
-            onChange={(e) => setLayoutType(e.target.value as LayoutType)}
+            value={state.layout}
+            disabled={state.mode === 'tour'}
+            onChange={(e) => dispatch({ type: 'SET_LAYOUT', layout: e.target.value as LayoutType })}
             aria-label="Graph layout type"
           >
             <option value="layered">LAYERED</option>
@@ -196,7 +238,7 @@ export const TraceView: React.FC<TraceViewProps> = ({
             <option value="force">FORCE</option>
           </select>
 
-          <GhostButton onClick={() => graphCanvasRef.current?.fit()}>
+          <GhostButton onClick={handleFit} aria-label={state.mode === 'tour' ? 'Return to overview' : 'Fit to viewport'}>
             FIT
           </GhostButton>
 
@@ -216,8 +258,8 @@ export const TraceView: React.FC<TraceViewProps> = ({
           </GhostButton>
 
           <GhostButton
-            className={hideContext ? styles.activeToggleBtn : ''}
-            onClick={() => setHideContext((v) => !v)}
+            className={state.hideContext ? styles.activeToggleBtn : ''}
+            onClick={() => dispatch({ type: 'TOGGLE_HIDE_CONTEXT' })}
           >
             HIDE CONTEXT
           </GhostButton>
@@ -232,7 +274,7 @@ export const TraceView: React.FC<TraceViewProps> = ({
       )}
 
       {/* Main Graph Content */}
-      <div className={styles.mainArea}>
+      <div className={`${styles.mainArea} ${state.mode === 'tour' ? styles.mainAreaTour : ''}`}>
         {loading ? (
           <div className={styles.loadingOverlay}>
             <Spinner size={32} />
@@ -248,30 +290,52 @@ export const TraceView: React.FC<TraceViewProps> = ({
           </div>
         ) : (
           <>
-            {/* Left StepList */}
-            <StepList
-              steps={traceData.steps}
-              activeStepSeq={state.selectedStepSeq ?? state.revealedStepCount}
-              onSelectStep={(seq) => dispatch({ type: 'SEEK_STEP', stepIndex: seq })}
-              mode={traceData.mode}
-            />
+            {/* Left StepList (slides out in Tour mode) */}
+            <div className={`${styles.stepListWrapper} ${state.mode === 'tour' ? styles.stepListWrapperTour : ''}`}>
+              <StepList
+                steps={traceData.steps}
+                activeStepSeq={
+                  state.stepIndex && state.stepIndex > 0
+                    ? traceData.steps[state.stepIndex - 1]?.seq
+                    : undefined
+                }
+                onSelectStep={(seq) => {
+                  dispatch({ type: 'ENTER_TOUR', stepIndex: seq });
+                }}
+                mode={traceData.mode}
+              />
+            </div>
 
             {/* Center Cytoscape Graph Canvas */}
             <main className={styles.centerGraph}>
               <GraphCanvas
                 ref={graphCanvasRef}
                 elements={elements}
-                mode={traceData.mode}
-                layoutType={layoutType}
-                hideContext={hideContext}
+                mode={state.mode}
+                stepIndex={state.stepIndex}
+                steps={traceData.steps}
+                layoutType={state.layout}
+                hideContext={state.hideContext}
                 searchQuery={searchQuery}
-                activeStep={currentStep}
-                isPlaying={state.playing}
                 truncated={truncated}
                 totalNodeCount={traceData.nodes.length}
                 onSelectNode={setSelectedNode}
                 onExpandNode={handleExpandNode}
               />
+
+              {/* Floating Step Card in Tour Mode */}
+              {state.mode === 'tour' && state.stepIndex !== null && (
+                <StepCard
+                  stepIndex={state.stepIndex}
+                  totalSteps={traceData.steps.length}
+                  currentStep={
+                    state.stepIndex > 0 ? traceData.steps[state.stepIndex - 1] : undefined
+                  }
+                  startNode={startNode}
+                  nodeNameMap={nodeNameMap}
+                  exploredSteps={traceData.explored_steps}
+                />
+              )}
 
               <Legend isOpen={showLegend} onClose={() => setShowLegend(false)} />
             </main>
@@ -292,19 +356,19 @@ export const TraceView: React.FC<TraceViewProps> = ({
       </div>
 
       {/* Bottom Scrubber */}
-      {traceData && traceData.steps.length > 0 && (
+      {traceData && (
         <Scrubber
           totalSteps={traceData.steps.length}
-          currentStepSeq={state.selectedStepSeq ?? state.revealedStepCount}
-          isPlaying={state.playing}
-          speed={state.speed}
-          showAll={state.showAll}
-          onTogglePlay={() => dispatch({ type: 'TOGGLE_PLAY' })}
-          onStepBack={() => dispatch({ type: 'STEP_BACK' })}
-          onStepForward={() => dispatch({ type: 'STEP_FORWARD' })}
-          onSeek={(seq) => dispatch({ type: 'SEEK_STEP', stepIndex: seq })}
-          onChangeSpeed={(spd) => dispatch({ type: 'SET_SPEED', speed: spd })}
-          onToggleShowAll={() => dispatch({ type: 'TOGGLE_SHOW_ALL' })}
+          mode={state.mode}
+          stepIndex={state.stepIndex}
+          onEnterTour={() => dispatch({ type: 'ENTER_TOUR', stepIndex: 0 })}
+          onExitTour={() => {
+            dispatch({ type: 'EXIT_TOUR' });
+            graphCanvasRef.current?.resetToOverview();
+          }}
+          onStepBack={() => dispatch({ type: 'PREV_STEP' })}
+          onStepForward={() => dispatch({ type: 'NEXT_STEP', totalSteps: traceData.steps.length })}
+          onSeek={(idx) => dispatch({ type: 'SET_STEP', stepIndex: idx })}
         />
       )}
     </div>

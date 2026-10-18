@@ -20,7 +20,7 @@ export function useRun(runId: string | undefined): {
       onEvent: (event: RunEvent) => {
         dispatch({ type: 'ADD_EVENT', event });
       },
-      onState: (state) => {
+      onState: (state: 'open' | 'reconnecting' | 'closed') => {
         setConnectionState(state);
       },
     });

@@ -262,3 +262,58 @@ def test_replay_endpoint(api_client) -> None:
     assert res.status_code == 200
     data = res.json()
     assert "runs" in data
+
+
+def test_approval_status_codes_and_alias(api_client) -> None:
+    """Verify Q0.4: 422 for empty approver, 404 for unknown action, 409 for non-pending, and alias /approve."""
+    client, store, domain, atlas, gt = api_client
+    res = client.post(
+        "/api/runs",
+        json={"task": "Investigate fraud ring", "mode": "scripted", "parallel": 2},
+    )
+    run_id = res.json()["run_id"]
+
+    for _ in range(40):
+        time.sleep(0.4)
+        run_data = client.get(f"/api/runs/{run_id}").json()
+        if run_data["status"] == "pending_approval":
+            break
+
+    action_id = run_data["action_id"]
+    assert action_id is not None
+
+    # 1. 422 for empty/whitespace approver on approve
+    empty_res = client.post(
+        f"/api/runs/{run_id}/actions/{action_id}/approve",
+        json={"approver": "   "},
+    )
+    assert empty_res.status_code == 422
+
+    # 2. 422 for empty/whitespace approver on reject
+    empty_rej_res = client.post(
+        f"/api/runs/{run_id}/actions/{action_id}/reject",
+        json={"approver": ""},
+    )
+    assert empty_rej_res.status_code == 422
+
+    # 3. 404 for unknown action
+    not_found_res = client.post(
+        f"/api/runs/{run_id}/actions/act-nonexistent-999/approve",
+        json={"approver": "Jane"},
+    )
+    assert not_found_res.status_code == 404
+
+    # 4. Alias endpoint /api/runs/{run_id}/approve works
+    alias_res = client.post(
+        f"/api/runs/{run_id}/approve",
+        json={"approver": "Jane_Alias"},
+    )
+    assert alias_res.status_code == 200
+    assert alias_res.json()["status"] == "EXECUTED"
+
+    # 5. 409 for already executed action (no longer PENDING)
+    conflict_res = client.post(
+        f"/api/runs/{run_id}/actions/{action_id}/approve",
+        json={"approver": "Jane"},
+    )
+    assert conflict_res.status_code == 409

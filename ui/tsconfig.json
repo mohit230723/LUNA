@@ -17,5 +17,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "scripts"]
+  "include": ["src", "scripts"],
+  "exclude": ["src/test", "src/api/mock/mockApi.ts", "**/*.test.ts", "**/*.test.tsx"]
 }

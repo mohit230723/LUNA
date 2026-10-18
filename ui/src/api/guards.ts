@@ -1,31 +1,36 @@
 import { Block, RunEvent, RunEventType } from './contract';
 
 const VALID_RUN_EVENT_TYPES: Set<string> = new Set([
-  'routed',
-  'requirements',
-  'blueprint',
+  'understood',
+  'entities_resolved',
+  'plan',
   'skill_assigned',
-  'skill_fit',
   'agent_started',
-  'agent_progress',
   'tool_call',
   'traversal_step',
-  'artifact_written',
-  'contract_violation',
-  'remediation',
+  'finding',
   'agent_done',
   'agent_failed',
   'promoted',
-  'conflict_resolved',
   'answer',
-  'action_proposed',
   'needs_input',
-  'approved',
-  'executed',
-  'learned',
   'completed',
   'failed',
   'cancelled',
+  // keep legacy event names tolerated for graceful transitions
+  'routed',
+  'requirements',
+  'blueprint',
+  'skill_fit',
+  'agent_progress',
+  'artifact_written',
+  'contract_violation',
+  'remediation',
+  'conflict_resolved',
+  'action_proposed',
+  'approved',
+  'executed',
+  'learned',
 ]);
 
 const VALID_BLOCK_TYPES: Set<string> = new Set([
@@ -41,6 +46,7 @@ const VALID_BLOCK_TYPES: Set<string> = new Set([
   'needs_input',
   'warning',
   'answer',
+  'graph_summary',
 ]);
 
 export function isRunEventType(val: unknown): val is RunEventType {
@@ -70,23 +76,12 @@ export function isBlock(val: unknown): val is Block {
   if (typeof obj.type !== 'string' || !VALID_BLOCK_TYPES.has(obj.type)) {
     return false;
   }
-  if (typeof obj.data !== 'object' || obj.data === null) {
-    return false;
-  }
-  return true;
+  return typeof obj.data === 'object' && obj.data !== null;
 }
 
-export function filterValidBlocks(blocks: unknown[]): Block[] {
-  if (!Array.isArray(blocks)) return [];
-  const valid: Block[] = [];
-  for (const b of blocks) {
-    if (isBlock(b)) {
-      valid.push(b);
-    } else {
-      if (import.meta.env.DEV) {
-        console.warn('Unknown or malformed block ignored:', b);
-      }
-    }
+export function filterValidBlocks(blocks: unknown): Block[] {
+  if (!Array.isArray(blocks)) {
+    return [];
   }
-  return valid;
+  return blocks.filter(isBlock);
 }

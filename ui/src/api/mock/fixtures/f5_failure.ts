@@ -1,4 +1,4 @@
-import { Block, RunEvent } from '../../contract';
+import { Block } from '../../contract';
 
 export const F5_PARTIAL_FAIL_ID = 'run_fail_partial_005';
 export const F5_ALL_FAIL_ID = 'run_fail_all_005';
@@ -33,7 +33,7 @@ export const F5_PARTIAL_BLOCKS: Block[] = [
   },
 ];
 
-export const F5_PARTIAL_EVENTS: RunEvent[] = [
+export const F5_PARTIAL_EVENTS: any[] = [
   { run_id: F5_PARTIAL_FAIL_ID, seq: 1, ts: '2026-10-18T09:40:00Z', type: 'routed', backend: 'scripted', data: { pack: 'investigate' } },
   { run_id: F5_PARTIAL_FAIL_ID, seq: 2, ts: '2026-10-18T09:40:01Z', type: 'agent_started', backend: 'scripted', data: { agent_id: 'agent_tracer', skill: 'connection-tracer' } },
   { run_id: F5_PARTIAL_FAIL_ID, seq: 3, ts: '2026-10-18T09:40:02Z', type: 'agent_started', backend: 'scripted', data: { agent_id: 'agent_deep', skill: 'graph-rag-investigator' } },
@@ -43,7 +43,7 @@ export const F5_PARTIAL_EVENTS: RunEvent[] = [
   { run_id: F5_PARTIAL_FAIL_ID, seq: 7, ts: '2026-10-18T09:40:06Z', type: 'completed', backend: 'scripted', data: { run_id: F5_PARTIAL_FAIL_ID } },
 ];
 
-export const F5_ALL_FAIL_EVENTS: RunEvent[] = [
+export const F5_ALL_FAIL_EVENTS: any[] = [
   { run_id: F5_ALL_FAIL_ID, seq: 1, ts: '2026-10-18T09:45:00Z', type: 'routed', backend: 'scripted', data: { pack: 'investigate' } },
   { run_id: F5_ALL_FAIL_ID, seq: 2, ts: '2026-10-18T09:45:01Z', type: 'agent_started', backend: 'scripted', data: { agent_id: 'agent_tracer', skill: 'connection-tracer' } },
   { run_id: F5_ALL_FAIL_ID, seq: 3, ts: '2026-10-18T09:45:02Z', type: 'agent_failed', backend: 'scripted', data: { agent_id: 'agent_tracer', reason: 'connection refused to graph database' } },

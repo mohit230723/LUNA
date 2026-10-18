@@ -129,7 +129,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({
               <div key={f.id} className={styles.findingItem}>
                 <div className={styles.findingHeader}>
                   <Badge size="compact">
-                    {f.verdict === 'suspicious' ? 'SUSPICIOUS' : 'BENIGN'}
+                    {f.verdict ? (f.verdict === 'suspicious' ? 'SUSPICIOUS' : 'BENIGN') : (f.kind ? f.kind.toUpperCase() : 'FINDING')}
                   </Badge>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                     {(f.confidence * 100).toFixed(0)}%

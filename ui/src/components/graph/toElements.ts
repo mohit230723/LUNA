@@ -7,7 +7,6 @@ export interface ToElementsOptions {
   pathNodeIds?: string[];
   revealedSteps?: TraceStep[];
   activeStepSeq?: number;
-  showAll?: boolean;
   maxNodes?: number;
   maxEdges?: number;
 }
@@ -19,10 +18,11 @@ export function inferNodeType(node: TraceNode): string {
   const idLower = node.id.toLowerCase();
   const labelLower = (node.label || '').toLowerCase();
 
-  if (idLower.startsWith('cust-') || labelLower.includes('customer')) return 'Customer';
+  if (idLower.startsWith('cust-') || labelLower.includes('customer') || labelLower.includes('person')) return 'Customer';
   if (idLower.startsWith('ph-') || labelLower.includes('phone')) return 'Phone';
   if (idLower.startsWith('ba-') || labelLower.includes('bankaccount') || labelLower.includes('account')) return 'BankAccount';
   if (idLower.startsWith('addr-') || labelLower.includes('address')) return 'Address';
+  if (idLower.startsWith('org-') || labelLower.includes('org')) return 'Organization';
   if (idLower.startsWith('claim-') || labelLower.includes('claim')) return 'InsuranceClaim';
   if (idLower.startsWith('prov-') || labelLower.includes('provider')) return 'Provider';
   if (idLower.startsWith('req-') || labelLower.includes('requirement')) return 'Requirement';
@@ -35,25 +35,18 @@ export function inferNodeType(node: TraceNode): string {
   if (idLower.startsWith('act-') || labelLower.includes('action')) return 'Action';
   if (labelLower.includes('finding')) return 'Finding';
 
-  return 'Entity';
+  return node.label || 'Entity';
 }
 
 export function toElements({
   nodes,
   edges,
   pathNodeIds = [],
-  revealedSteps,
-  activeStepSeq,
-  showAll: _showAll = true,
   maxNodes = 500,
   maxEdges = 1500,
 }: ToElementsOptions): { elements: ElementsDefinition; truncated: boolean } {
   const pathNodeSet = new Set(pathNodeIds);
 
-  // If steps are given and not showAll, restrict revealed path steps
-  const activeStep = revealedSteps?.find((s) => s.seq === activeStepSeq);
-
-  // Apply node limits
   const isTruncated = nodes.length > maxNodes || edges.length > maxEdges;
   const slicedNodes = nodes.slice(0, maxNodes);
   const validNodeIds = new Set(slicedNodes.map((n) => n.id));
@@ -71,15 +64,12 @@ export function toElements({
       node.props?.status === 'superseded' ||
       node.props?.superseded === true;
 
-    let displayLabel = node.label || node.id;
-    if (nodeType === 'Violation' && !displayLabel.startsWith('x ')) {
-      displayLabel = `x ${displayLabel}`;
-    }
+    const rawName = (node.props?.name as string) || (node.props?.title as string) || node.id;
+    const truncatedName = rawName.length > 24 ? rawName.slice(0, 23) + '…' : rawName;
 
     const classes = [
       nodeType.toLowerCase(),
-      isOnPath ? 'on-path' : '',
-      isContext ? 'context' : '',
+      isOnPath ? 'on-path' : (isContext ? 'context' : 'non-path'),
       isSuperseded ? 'superseded' : '',
     ]
       .filter(Boolean)
@@ -88,7 +78,9 @@ export function toElements({
     return {
       data: {
         id: node.id,
-        label: displayLabel,
+        label: node.label || nodeType,
+        displayName: truncatedName,
+        fullName: rawName,
         type: nodeType,
         status: node.props?.status,
         on_path: isOnPath,
@@ -104,16 +96,9 @@ export function toElements({
     const isRejected =
       edge.rel === 'REJECTED' || edge.rel === 'rejected' || edge.rel.toLowerCase().includes('reject');
 
-    const isActiveStep =
-      Boolean(activeStep && (
-        (activeStep.from === edge.src && activeStep.to === edge.dst) ||
-        (activeStep.from === edge.dst && activeStep.to === edge.src)
-      ));
-
     const classes = [
       isOnPath ? 'on-path' : '',
       isRejected ? 'rejected' : '',
-      isActiveStep ? 'active-step' : '',
     ]
       .filter(Boolean)
       .join(' ');

@@ -3,9 +3,7 @@ import {
   ActionResult,
   Block,
   FileNode,
-  RunEvent,
   SkillAssignment,
-  TraceResponse,
 } from '../../contract';
 
 export const F2_RUN_ID = 'run_build_002';
@@ -135,7 +133,7 @@ export const F2_ACTION_RESULT_NOT_EXECUTED: ActionResult = {
   ],
 };
 
-export const F2_TRACE: TraceResponse = {
+export const F2_TRACE: any = {
   mode: 'blueprint',
   summary:
     'Decomposed into 4 components (database, api, web, docs). Satisfied 7 inter-component contracts with 1 violation remediated.',
@@ -242,7 +240,7 @@ export const F2_BLOCKS: Block[] = [
   },
 ];
 
-export const F2_EVENTS: RunEvent[] = [
+export const F2_EVENTS: any[] = [
   { run_id: F2_RUN_ID, seq: 1, ts: '2026-10-18T09:10:00Z', type: 'routed', backend: 'scripted', data: { pack: 'build', intent: 'Scaffold todo app' } },
   { run_id: F2_RUN_ID, seq: 2, ts: '2026-10-18T09:10:01Z', type: 'requirements', backend: 'scripted', data: { frontend: 'react+vite', backend: 'express', database: 'postgres' } },
   { run_id: F2_RUN_ID, seq: 3, ts: '2026-10-18T09:10:02Z', type: 'blueprint', backend: 'scripted', data: { components: 4, contracts: 7 } },

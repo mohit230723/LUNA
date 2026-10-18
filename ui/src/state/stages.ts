@@ -1,7 +1,7 @@
 import type { RunEvent } from '../api/contract';
 
 export type StageName =
-  | 'ROUTED'
+  | 'UNDERSTOOD'
   | 'PLANNED'
   | 'SKILLS ASSIGNED'
   | 'AGENTS WORKING'
@@ -19,7 +19,7 @@ export interface StageState {
 }
 
 export const STAGE_NAMES: StageName[] = [
-  'ROUTED',
+  'UNDERSTOOD',
   'PLANNED',
   'SKILLS ASSIGNED',
   'AGENTS WORKING',
@@ -36,39 +36,29 @@ export function getInitialStages(): StageState[] {
 
 export interface StageTrackingContext {
   stages: StageState[];
-  hasRouted: boolean;
-  hasRequirements: boolean;
-  hasBlueprint: boolean;
+  hasUnderstood: boolean;
+  hasEntitiesResolved: boolean;
+  hasPlan: boolean;
   hasSkillAssigned: boolean;
-  assignedSubjects: Set<string>;
-  fittedSubjects: Set<string>;
   startedAgents: Set<string>;
   doneAgents: Set<string>;
   failedAgents: Set<string>;
-  hasVerificationActivity: boolean;
+  hasPromoted: boolean;
   hasAnswer: boolean;
-  isRunCompleted: boolean;
-  isRunFailed: boolean;
-  isRunCancelled: boolean;
 }
 
 export function createInitialStageContext(): StageTrackingContext {
   return {
     stages: getInitialStages(),
-    hasRouted: false,
-    hasRequirements: false,
-    hasBlueprint: false,
+    hasUnderstood: false,
+    hasEntitiesResolved: false,
+    hasPlan: false,
     hasSkillAssigned: false,
-    assignedSubjects: new Set(),
-    fittedSubjects: new Set(),
     startedAgents: new Set(),
     doneAgents: new Set(),
     failedAgents: new Set(),
-    hasVerificationActivity: false,
+    hasPromoted: false,
     hasAnswer: false,
-    isRunCompleted: false,
-    isRunFailed: false,
-    isRunCancelled: false,
   };
 }
 
@@ -77,7 +67,6 @@ export function deriveStagesFromEvents(events: RunEvent[]): StageState[] {
     return getInitialStages();
   }
 
-  // Sort events by sequence number
   const sorted = [...events].sort((a, b) => a.seq - b.seq);
   const ctx = createInitialStageContext();
 
@@ -92,73 +81,65 @@ export function processEventForStages(ctx: StageTrackingContext, event: RunEvent
   const ts = event.ts;
 
   switch (event.type) {
-    case 'routed': {
-      ctx.hasRouted = true;
-      updateStage(ctx.stages, 'ROUTED', 'done', ts);
-      // Next stage becomes active
-      if (ctx.stages[1]?.status === 'pending') {
-        updateStage(ctx.stages, 'PLANNED', 'running', ts);
+    case 'understood': {
+      ctx.hasUnderstood = true;
+      if (ctx.hasEntitiesResolved) {
+        updateStage(ctx.stages, 'UNDERSTOOD', 'done', ts);
+        if (ctx.stages[1]?.status === 'pending') {
+          updateStage(ctx.stages, 'PLANNED', 'running', ts);
+        }
+      } else {
+        updateStage(ctx.stages, 'UNDERSTOOD', 'running', ts);
       }
       break;
     }
 
-    case 'requirements': {
-      ctx.hasRequirements = true;
-      if (ctx.stages[1]?.status === 'pending') {
-        updateStage(ctx.stages, 'PLANNED', 'running', ts);
+    case 'entities_resolved': {
+      ctx.hasEntitiesResolved = true;
+      if (ctx.hasUnderstood) {
+        updateStage(ctx.stages, 'UNDERSTOOD', 'done', ts);
+        if (ctx.stages[1]?.status === 'pending') {
+          updateStage(ctx.stages, 'PLANNED', 'running', ts);
+        }
+      } else {
+        updateStage(ctx.stages, 'UNDERSTOOD', 'running', ts);
       }
       break;
     }
 
-    case 'blueprint': {
-      ctx.hasBlueprint = true;
-      if (ctx.hasRequirements && ctx.hasBlueprint) {
-        updateStage(ctx.stages, 'PLANNED', 'done', ts);
+    case 'plan': {
+      ctx.hasPlan = true;
+      updateStage(ctx.stages, 'UNDERSTOOD', 'done', ts);
+      updateStage(ctx.stages, 'PLANNED', 'done', ts);
+      if (ctx.stages[2]?.status === 'pending') {
+        updateStage(ctx.stages, 'SKILLS ASSIGNED', 'running', ts);
       }
       break;
     }
 
     case 'skill_assigned': {
       ctx.hasSkillAssigned = true;
-      // In investigate runs, first skill_assigned completes PLANNED
+      updateStage(ctx.stages, 'UNDERSTOOD', 'done', ts);
       updateStage(ctx.stages, 'PLANNED', 'done', ts);
       updateStage(ctx.stages, 'SKILLS ASSIGNED', 'running', ts);
-
-      const assignments = event.data['assignments'] as Array<{ subject?: string }> | undefined;
-      if (Array.isArray(assignments)) {
-        assignments.forEach((a) => {
-          if (a.subject) ctx.assignedSubjects.add(a.subject);
-        });
-      }
-      break;
-    }
-
-    case 'skill_fit': {
-      const subject = event.data['subject'] as string | undefined;
-      if (subject) ctx.fittedSubjects.add(subject);
-
-      // If all assigned subjects are fitted
-      if (
-        ctx.assignedSubjects.size > 0 &&
-        ctx.fittedSubjects.size >= ctx.assignedSubjects.size
-      ) {
-        updateStage(ctx.stages, 'SKILLS ASSIGNED', 'done', ts);
-      }
       break;
     }
 
     case 'agent_started': {
-      // First agent_started completes PLANNED and SKILLS ASSIGNED if they were still running or pending
-      if (ctx.stages[1]?.status === 'running' || ctx.stages[1]?.status === 'pending') {
-        updateStage(ctx.stages, 'PLANNED', 'done', ts);
-      }
-      if (ctx.stages[2]?.status === 'running' || ctx.stages[2]?.status === 'pending') {
-        updateStage(ctx.stages, 'SKILLS ASSIGNED', 'done', ts);
-      }
+      const agentId = (event.data['agent_id'] as string) || (event.data['id'] as string) || `agent_${ctx.startedAgents.size + 1}`;
+      ctx.startedAgents.add(agentId);
+      // first agent_started completes SKILLS ASSIGNED and activates AGENTS WORKING
+      updateStage(ctx.stages, 'SKILLS ASSIGNED', 'done', ts);
       updateStage(ctx.stages, 'AGENTS WORKING', 'running', ts);
+      break;
+    }
 
-      const agentId = (event.data['agent_id'] as string) || (event.data['id'] as string);
-      if (agentId) ctx.startedAgents.add(agentId);
+    case 'tool_call':
+    case 'traversal_step':
+    case 'finding': {
+      if (ctx.stages[3]?.status === 'pending') {
+        updateStage(ctx.stages, 'AGENTS WORKING', 'running', ts);
+      }
       break;
     }
 
@@ -176,58 +157,62 @@ export function processEventForStages(ctx: StageTrackingContext, event: RunEvent
       break;
     }
 
-    case 'promoted':
-    case 'contract_violation':
-    case 'conflict_resolved':
-    case 'remediation': {
-      ctx.hasVerificationActivity = true;
-      if (ctx.stages[4]?.status === 'pending') {
-        updateStage(ctx.stages, 'VERIFIED', 'running', ts);
+    case 'promoted': {
+      ctx.hasPromoted = true;
+      updateStage(ctx.stages, 'AGENTS WORKING', 'done', ts);
+      updateStage(ctx.stages, 'VERIFIED', 'done', ts);
+      if (ctx.stages[5]?.status === 'pending') {
+        updateStage(ctx.stages, 'ANSWER', 'running', ts);
       }
       break;
     }
 
     case 'answer': {
       ctx.hasAnswer = true;
-      // Answer arrival marks VERIFIED done
       updateStage(ctx.stages, 'VERIFIED', 'done', ts);
       updateStage(ctx.stages, 'ANSWER', 'done', ts);
       break;
     }
 
     case 'completed': {
-      ctx.isRunCompleted = true;
-      // Mark any unfinished stages done
-      ctx.stages.forEach((stage) => {
-        if (stage.status === 'pending' || stage.status === 'running') {
-          updateStage(ctx.stages, stage.name, 'done', ts);
-        }
-      });
+      if (ctx.hasAnswer) {
+        updateStage(ctx.stages, 'ANSWER', 'done', ts);
+      }
       break;
     }
 
     case 'failed': {
-      ctx.isRunFailed = true;
-      // Mark active stage as failed
-      markActiveStageStatus(ctx.stages, 'failed', ts);
+      // Find current running stage and mark it failed
+      for (const stage of ctx.stages) {
+        if (stage.status === 'running') {
+          stage.status = 'failed';
+          stage.completedAt = ts;
+          break;
+        }
+      }
       break;
     }
 
     case 'cancelled': {
-      ctx.isRunCancelled = true;
-      // Mark active stage as cancelled
-      markActiveStageStatus(ctx.stages, 'cancelled', ts);
+      for (const stage of ctx.stages) {
+        if (stage.status === 'running') {
+          stage.status = 'cancelled';
+          stage.completedAt = ts;
+          break;
+        }
+      }
       break;
     }
+
+    default:
+      break;
   }
 }
 
-function checkAgentsWorkingDone(ctx: StageTrackingContext, ts: string) {
-  const totalFinished = ctx.doneAgents.size + ctx.failedAgents.size;
-  if (ctx.startedAgents.size > 0 && totalFinished >= ctx.startedAgents.size) {
-    if (ctx.failedAgents.size === ctx.startedAgents.size && ctx.startedAgents.size > 0) {
-      updateStage(ctx.stages, 'AGENTS WORKING', 'failed', ts);
-    } else {
+function checkAgentsWorkingDone(ctx: StageTrackingContext, ts: string): void {
+  if (ctx.startedAgents.size > 0) {
+    const finishedCount = ctx.doneAgents.size + ctx.failedAgents.size;
+    if (finishedCount >= ctx.startedAgents.size) {
       updateStage(ctx.stages, 'AGENTS WORKING', 'done', ts);
       if (ctx.stages[4]?.status === 'pending') {
         updateStage(ctx.stages, 'VERIFIED', 'running', ts);
@@ -241,43 +226,26 @@ function updateStage(
   name: StageName,
   status: StageStatus,
   timestamp?: string
-) {
+): void {
   const stage = stages.find((s) => s.name === name);
   if (!stage) return;
 
-  if (status === 'running' && stage.status === 'pending') {
-    stage.status = 'running';
-    stage.startedAt = timestamp;
-  } else if (status === 'done' || status === 'failed' || status === 'cancelled') {
-    if (!stage.startedAt) stage.startedAt = timestamp;
-    stage.status = status;
-    stage.completedAt = timestamp;
-    if (stage.startedAt && stage.completedAt) {
-      const start = new Date(stage.startedAt).getTime();
-      const end = new Date(stage.completedAt).getTime();
-      if (!isNaN(start) && !isNaN(end) && end >= start) {
-        stage.durationMs = end - start;
-      }
-    }
+  if (stage.status === 'done' && status === 'running') {
+    return; // Do not regress completed stage
   }
-}
 
-function markActiveStageStatus(stages: StageState[], status: 'failed' | 'cancelled', timestamp?: string) {
-  let activeFound = false;
-  for (const s of stages) {
-    if (s.status === 'running') {
-      s.status = status;
-      s.completedAt = timestamp;
-      activeFound = true;
-      break;
-    }
+  stage.status = status;
+
+  if (status === 'running' && !stage.startedAt && timestamp) {
+    stage.startedAt = timestamp;
   }
-  if (!activeFound) {
-    for (const s of stages) {
-      if (s.status === 'pending') {
-        s.status = status;
-        s.completedAt = timestamp;
-        break;
+
+  if (status === 'done' || status === 'failed' || status === 'cancelled') {
+    if (timestamp) {
+      stage.completedAt = timestamp;
+      if (stage.startedAt) {
+        stage.durationMs =
+          new Date(timestamp).getTime() - new Date(stage.startedAt).getTime();
       }
     }
   }

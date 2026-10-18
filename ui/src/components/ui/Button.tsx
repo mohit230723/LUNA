@@ -24,3 +24,6 @@ export const Button: React.FC<ButtonProps> = ({
     </button>
   );
 };
+
+export const PrimaryButton = Button;
+

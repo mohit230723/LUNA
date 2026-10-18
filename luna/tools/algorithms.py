@@ -275,3 +275,98 @@ def claim_amount_outliers(
 
     outliers.sort(key=lambda x: x["amount"], reverse=True)
     return outliers
+
+
+def trace_connections(
+    store: GraphStore,
+    graph_name: str,
+    src_cid: str,
+    max_hops: int = 4,
+    via_labels: Optional[list[str]] = None,
+    limit_paths: int = 5,
+) -> list[dict[str, Any]]:
+    """Trace multi-hop connection paths outward from src_cid up to max_hops.
+
+    Returns list of discovered paths with nodes, relationships, and hop counts,
+    ranked by length and centrality.
+    """
+    edge_query = (
+        "MATCH (a)-[r]-(b) "
+        "RETURN a.cid AS source, b.cid AS target, type(r) AS rel"
+    )
+    edge_rows = store.query(graph_name, edge_query, {})
+
+    g = nx.Graph()
+    for row in edge_rows:
+        src = row.get("source")
+        tgt = row.get("target")
+        rel = row.get("rel", "")
+        if src and tgt:
+            g.add_edge(src, tgt, rel=rel)
+
+    if src_cid not in g:
+        return []
+
+    # BFS outward from src_cid up to max_hops
+    paths: list[dict[str, Any]] = []
+    all_paths = nx.single_source_shortest_path(g, src_cid, cutoff=max_hops)
+
+    for target_cid, path in all_paths.items():
+        if target_cid == src_cid:
+            continue
+        rel_types = []
+        for i in range(len(path) - 1):
+            edge_data = g.get_edge_data(path[i], path[i + 1])
+            rel_types.append(edge_data.get("rel", "") if edge_data else "")
+
+        paths.append({
+            "target_cid": target_cid,
+            "hops": len(path) - 1,
+            "path": path,
+            "rel_types": rel_types,
+        })
+
+    # Sort paths by hop count (shorter first)
+    paths.sort(key=lambda p: (p["hops"], p["target_cid"]))
+    return paths[:limit_paths]
+
+
+def find_suspect_links(
+    store: GraphStore,
+    graph_name: str,
+    cids: list[str],
+    min_strength: int = 1,
+) -> list[dict[str, Any]]:
+    """Find shared links connecting pairs among cids with connection strength."""
+    if not cids:
+        return []
+
+    query = (
+        "MATCH (c1)-[r1]->(a)<-[r2]-(c2) "
+        "WHERE c1.cid IN $cids AND c2.cid IN $cids AND c1.cid < c2.cid "
+        "RETURN c1.cid AS src_cid, c2.cid AS dst_cid, labels(a)[0] AS attr_label, a.cid AS attr_cid, type(r1) AS r1, type(r2) AS r2"
+    )
+    rows = store.query(graph_name, query, {"cids": cids})
+
+    pair_links: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for r in rows:
+        pair = (r["src_cid"], r["dst_cid"])
+        pair_links.setdefault(pair, []).append({
+            "attr_label": r.get("attr_label"),
+            "attr_cid": r.get("attr_cid"),
+            "r1": r.get("r1"),
+            "r2": r.get("r2"),
+        })
+
+    result: list[dict[str, Any]] = []
+    for (src, dst), links in pair_links.items():
+        if len(links) >= min_strength:
+            result.append({
+                "src_cid": src,
+                "dst_cid": dst,
+                "strength": len(links),
+                "shared_attributes": links,
+            })
+
+    result.sort(key=lambda x: x["strength"], reverse=True)
+    return result

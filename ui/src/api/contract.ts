@@ -2,10 +2,87 @@ export type Pack = 'investigate' | 'build';
 export type Backend = 'llm' | 'rules' | 'scripted';
 export type RunStatus = 'queued' | 'streaming' | 'needs_input' | 'done' | 'failed' | 'cancelled';
 
+export type SourceKind = 'text' | 'csv' | 'json' | 'jsonl' | 'xlsx' | 'sqlite' | 'txt' | 'md';
+export type SourceStatus = 'pending' | 'parsed' | 'failed';
+
+export interface SourceInfo {
+  id: string;
+  name: string;
+  kind: SourceKind;
+  bytes: number;
+  status: SourceStatus;
+  error?: string;
+  stats?: { chunks?: number; rows?: number; tables?: number };
+}
+
+export type CaseStatus = 'draft' | 'building' | 'ready' | 'stale' | 'failed';
+
+export interface LlmInfo {
+  provider: string;
+  model: string;
+  remote: boolean;
+  reachable: boolean;
+}
+
+export interface CaseSummary {
+  id: string;
+  title: string;
+  status: CaseStatus;
+  updated_at: string;
+}
+
+export interface GraphStats {
+  nodes: number;
+  edges: number;
+  sources: number;
+  by_label: Record<string, number>;
+  by_rel: Record<string, number>;
+  top_entities: { cid: string; name: string; type: string; degree: number }[];
+  warnings: string[];
+  extraction?: {
+    chunks_total: number;
+    chunks_ok: number;
+    entities_kept: number;
+    entities_dropped: number;
+    relations_kept: number;
+    relations_dropped: number;
+    model: string;
+  };
+}
+
+export interface CaseDetail {
+  id: string;
+  title: string;
+  status: CaseStatus;
+  sources: SourceInfo[];
+  stats: GraphStats | null;
+  messages: Message[];
+  llm: LlmInfo;
+  build_error?: string;
+}
+
+export type BuildEventType =
+  | 'source_parsed'
+  | 'mapping_planned'
+  | 'extract_progress'
+  | 'resolve_done'
+  | 'load_done'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface BuildEvent {
+  build_id: string;
+  seq: number;
+  ts: string;
+  type: BuildEventType;
+  data: Record<string, unknown>;
+}
+
 export interface Health {
   status: 'ok' | 'degraded';
   falkordb: boolean;
-  llm: { provider: string; reachable: boolean };
+  llm: LlmInfo;
 }
 
 export interface ConversationSummary {
@@ -41,7 +118,8 @@ export type Block =
   | { type: 'action_request'; data: ActionRequest }
   | { type: 'needs_input'; data: { question: string; options: string[]; allow_free_text?: boolean } }
   | { type: 'warning'; data: { text: string } }
-  | { type: 'answer'; data: { text: string; cited_cids: string[]; backend: Backend } };
+  | { type: 'answer'; data: { text: string; cited_cids: string[]; backend: Backend; model?: string } }
+  | { type: 'graph_summary'; data: GraphStats };
 
 export interface Subtask {
   id: string;
@@ -92,13 +170,16 @@ export interface FindingInfo {
   id: string;
   agent_id: string;
   skill_id: string;
-  subject: string;
-  verdict: 'suspicious' | 'benign';
+  kind: 'path' | 'link' | 'cluster' | 'timeline' | 'fact' | 'absence';
+  claim: string;
+  subject_cids: string[];
+  evidence_cids: string[];
   confidence: number;
   status: 'active' | 'superseded';
   backend: Backend;
+  verdict?: 'suspicious' | 'benign';
+  subject?: string;
   fallback_reason?: string;
-  evidence_cids: string[];
 }
 
 export interface FileNode {
@@ -140,28 +221,19 @@ export interface ActionResult {
 }
 
 export type RunEventType =
-  | 'routed'
-  | 'requirements'
-  | 'blueprint'
+  | 'understood'
+  | 'entities_resolved'
+  | 'plan'
   | 'skill_assigned'
-  | 'skill_fit'
   | 'agent_started'
-  | 'agent_progress'
   | 'tool_call'
   | 'traversal_step'
-  | 'artifact_written'
-  | 'contract_violation'
-  | 'remediation'
+  | 'finding'
   | 'agent_done'
   | 'agent_failed'
   | 'promoted'
-  | 'conflict_resolved'
   | 'answer'
-  | 'action_proposed'
   | 'needs_input'
-  | 'approved'
-  | 'executed'
-  | 'learned'
   | 'completed'
   | 'failed'
   | 'cancelled';
@@ -191,7 +263,6 @@ export interface TraceEdge {
 }
 
 export interface TraceStep {
-  [key: string]: unknown;
   seq: number;
   from: string;
   to: string;
@@ -199,16 +270,20 @@ export interface TraceStep {
   tool: string;
   agent_id: string;
   note: string;
+  focus: string;
+  value: { title: string; subtitle: string; properties: { k: string; v: string }[] };
+  source?: { name: string; locator: string; quote?: string };
 }
 
 export interface TraceResponse {
-  mode: 'traversal' | 'blueprint';
+  mode: 'traversal';
   nodes: TraceNode[];
   edges: TraceEdge[];
   steps: TraceStep[];
   path_node_ids: string[];
   summary: string;
   truncated: boolean;
+  explored_steps: number;
 }
 
 export interface SkillInfo {
@@ -247,17 +322,39 @@ export interface WhyResponse {
 }
 
 export interface SendOptions {
-  pack: 'auto' | Pack;
-  mode: 'scripted' | 'live';
-  strict_llm: boolean;
-  parallel: number;
+  max_hops: number;
+  investigators: number;
+  pack?: 'auto' | Pack;
+  mode?: 'scripted' | 'live';
+  strict_llm?: boolean;
+  parallel?: number;
 }
 
 export interface Api {
   health(): Promise<Health>;
-  listConversations(): Promise<ConversationSummary[]>;
+  listConversations(): Promise<CaseSummary[]>;
   createConversation(): Promise<{ id: string }>;
   getConversation(id: string): Promise<Conversation>;
+  deleteConversation(conversationId: string): Promise<void>;
+
+  // Case & Ingestion methods
+  getCase(conversationId: string): Promise<CaseDetail>;
+  uploadText(conversationId: string, body: { name?: string; text: string }): Promise<SourceInfo>;
+  uploadFiles(conversationId: string, files: File[]): Promise<SourceInfo[]>;
+  removeSource(conversationId: string, sourceId: string): Promise<void>;
+  startBuild(conversationId: string, opts: { acknowledge_remote: boolean }): Promise<{ build_id: string }>;
+  subscribeBuild(
+    conversationId: string,
+    buildId: string,
+    opts: {
+      lastEventId?: number;
+      onEvent: (e: BuildEvent) => void;
+      onState: (s: 'open' | 'reconnecting' | 'closed') => void;
+    }
+  ): () => void;
+  cancelBuild(conversationId: string, buildId: string): Promise<void>;
+  getSuggestions(conversationId: string): Promise<string[]>;
+
   sendMessage(
     conversationId: string,
     body: { content: string; options: SendOptions }
@@ -281,5 +378,5 @@ export interface Api {
   artifactsZipUrl(runId: string): string;
   getAtlasSkills(pack?: Pack): Promise<SkillInfo[]>;
   getAtlasGraph(): Promise<GraphData>;
-  expandNode(cid: string, hops: number): Promise<GraphData>;
+  expandNode(cid: string, hops: number, conversationId?: string): Promise<GraphData>;
 }

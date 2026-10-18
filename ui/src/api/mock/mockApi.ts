@@ -93,17 +93,18 @@ export class MockApi implements Api {
     return {
       status: 'ok',
       falkordb: true,
-      llm: { provider: 'mock-llm', reachable: true },
+      llm: { provider: 'mock-llm', model: 'mock', remote: false, reachable: true },
     };
   }
 
-  async listConversations(): Promise<ConversationSummary[]> {
-    const list: ConversationSummary[] = [];
+  async listConversations(): Promise<CaseSummary[]> {
+    const list: CaseSummary[] = [];
     this.conversations.forEach((conv) => {
       const lastMsg = conv.messages[conv.messages.length - 1];
       list.push({
         id: conv.id,
         title: conv.title,
+        status: 'ready',
         updated_at: lastMsg?.created_at || new Date().toISOString(),
       });
     });

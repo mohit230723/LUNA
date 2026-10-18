@@ -1,123 +1,465 @@
 """LLMClient protocol, Ollama provider, and deterministic MockLLMClient."""
 
+from __future__ import annotations
+
 import json
+import os
 import re
-from typing import Any, Optional, Protocol, Union
+import urllib.request
+import urllib.error
+from typing import Any, Callable, Optional, Protocol, Union
+from pydantic import BaseModel, Field
 from luna.config import settings
+
+
+class LlmOutputError(Exception):
+    """Raised when LLM output cannot be parsed as JSON even after a repair attempt."""
+    pass
+
+
+class ToolLoopResult(BaseModel):
+    """Result of executing an LLM tool loop."""
+    content: str = ""
+    tool_calls: list[dict[str, Any]] = Field(default_factory=list)
+    iterations: int = 0
+    raw_response: Any = None
 
 
 class LLMClient(Protocol):
     """Protocol defining the interface for LLM completion requests."""
 
-    def complete(
+    def complete_json(
         self,
-        prompt: str,
-        system: str = "",
-        json_schema: Optional[dict[str, Any]] = None,
-    ) -> Union[dict[str, Any], str]:
-        """Generate a response from the language model."""
+        system: str,
+        user: str,
+        schema: dict[str, Any],
+        *,
+        timeout: Optional[float] = None,
+    ) -> dict[str, Any]:
+        """Generate a strictly parsed JSON response with one repair attempt."""
+        ...
+
+    def complete_text(
+        self,
+        system: str,
+        user: str,
+        *,
+        timeout: Optional[float] = None,
+    ) -> str:
+        """Generate a raw text response."""
+        ...
+
+    def run_tool_loop(
+        self,
+        system: str,
+        user: str,
+        tools: list[Any],
+        call_tool: Callable[[str, dict[str, Any]], Any],
+        max_steps: int = 8,
+    ) -> str:
+        """Execute a tool calling loop until resolution or max_steps."""
+        ...
+
+    def ping(self) -> bool:
+        """Check if the LLM provider is reachable."""
+        ...
+
+    def info(self) -> dict[str, Any]:
+        """Return provider, model, remote flag, and reachability."""
         ...
 
 
+def extract_json_from_text(text: str) -> dict[str, Any]:
+    """Attempt to parse JSON from text, extracting markdown code blocks if necessary."""
+    text_clean = text.strip()
+    # Strip markdown code blocks if present
+    if text_clean.startswith("```"):
+        lines = text_clean.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text_clean = "\n".join(lines).strip()
+
+    try:
+        parsed = json.loads(text_clean)
+        if isinstance(parsed, dict):
+            return parsed
+        elif isinstance(parsed, list):
+            return {"items": parsed}
+    except Exception:
+        pass
+
+    # Regex search for first balanced or curly braced JSON object
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        try:
+            parsed = json.loads(match.group(0))
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+
+    raise ValueError(f"Could not parse valid JSON from text: {text[:200]}...")
+
+
 class OllamaLLM:
-    """Ollama language model provider using LangChain ChatOllama."""
+    """Ollama language model provider using native HTTP API with zero dependencies."""
 
     def __init__(
         self,
         base_url: Optional[str] = None,
         model: Optional[str] = None,
         temperature: float = 0.0,
+        timeout: float = 90.0,
+        max_tokens: int = 4096,
     ) -> None:
-        self.base_url = base_url or settings.OLLAMA_BASE_URL
-        self.model = model or settings.OLLAMA_MODEL
+        raw_url = base_url or os.getenv("LUNA_LLM_BASE_URL") or os.getenv("OLLAMA_BASE_URL") or settings.OLLAMA_BASE_URL
+        self.base_url = raw_url.rstrip("/")
+        self.model = model or os.getenv("LUNA_LLM_MODEL") or os.getenv("OLLAMA_MODEL") or settings.OLLAMA_MODEL
         self.temperature = temperature
-        self._llm: Any = None
+        timeout_env = os.getenv("LUNA_LLM_TIMEOUT_S")
+        self.timeout = float(timeout_env) if timeout_env else timeout
+        tokens_env = os.getenv("LUNA_LLM_MAX_OUTPUT_TOKENS")
+        self.max_tokens = int(tokens_env) if tokens_env else max_tokens
 
-    @property
-    def llm(self) -> Any:
-        """Lazily initialize ChatOllama instance."""
-        if self._llm is None:
-            from langchain_ollama import ChatOllama
-            self._llm = ChatOllama(
-                base_url=self.base_url,
-                model=self.model,
-                temperature=self.temperature,
-            )
-        return self._llm
+    def info(self) -> dict[str, Any]:
+        is_local = "localhost" in self.base_url or "127.0.0.1" in self.base_url
+        return {
+            "provider": "ollama",
+            "model": self.model,
+            "remote": not is_local,
+            "reachable": self.ping(),
+        }
 
-    def complete(
+    def ping(self) -> bool:
+        """Ping Ollama via /api/tags."""
+        try:
+            req = urllib.request.Request(f"{self.base_url}/api/tags", headers={"User-Agent": "LUNA-OS"})
+            with urllib.request.urlopen(req, timeout=3.0) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
+
+    def complete_text(
         self,
-        prompt: str,
-        system: str = "",
-        json_schema: Optional[dict[str, Any]] = None,
-    ) -> Union[dict[str, Any], str]:
-        """Send prompt to Ollama and return text or structured JSON."""
-        from langchain_core.messages import HumanMessage, SystemMessage
-
+        system: str,
+        user: str,
+        *,
+        timeout: Optional[float] = None,
+    ) -> str:
         messages = []
         if system:
-            messages.append(SystemMessage(content=system))
-        messages.append(HumanMessage(content=prompt))
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": user})
 
-        # Request structured JSON format if schema is specified
-        if json_schema is not None:
-            bound_llm = self.llm.bind(format="json")
-            response = bound_llm.invoke(messages)
-            content = response.content if hasattr(response, "content") else str(response)
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": False,
+            "options": {
+                "temperature": self.temperature,
+                "num_predict": self.max_tokens,
+            },
+        }
+
+        req = urllib.request.Request(
+            f"{self.base_url}/api/chat",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "User-Agent": "LUNA-OS"},
+        )
+
+        effective_timeout = timeout or self.timeout
+        try:
+            with urllib.request.urlopen(req, timeout=effective_timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                msg = data.get("message", {})
+                return msg.get("content", "")
+        except Exception as e:
+            raise RuntimeError(f"Ollama completion failed: {e}") from e
+
+    def complete_json(
+        self,
+        system: str,
+        user: str,
+        schema: dict[str, Any],
+        *,
+        timeout: Optional[float] = None,
+    ) -> dict[str, Any]:
+        # Format instruction with schema
+        schema_prompt = (
+            f"{system}\n\n"
+            f"You MUST return ONLY valid JSON matching this schema:\n"
+            f"{json.dumps(schema, indent=2)}\n"
+            f"Do not include any markdown fences or explanation. Return raw JSON."
+        )
+
+        messages = [
+            {"role": "system", "content": schema_prompt},
+            {"role": "user", "content": user},
+        ]
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "format": "json",
+            "stream": False,
+            "options": {
+                "temperature": self.temperature,
+                "num_predict": self.max_tokens,
+            },
+        }
+
+        req = urllib.request.Request(
+            f"{self.base_url}/api/chat",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "User-Agent": "LUNA-OS"},
+        )
+
+        effective_timeout = timeout or self.timeout
+        raw_text = ""
+        try:
+            with urllib.request.urlopen(req, timeout=effective_timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                raw_text = data.get("message", {}).get("content", "")
+            return extract_json_from_text(raw_text)
+        except Exception as parse_err:
+            # ONE repair attempt feeding parse error back
+            repair_user = (
+                f"Your previous output failed JSON parsing with error: {parse_err}\n\n"
+                f"Previous output:\n{raw_text}\n\n"
+                f"Please fix the formatting and return ONLY the valid JSON object conforming to:\n"
+                f"{json.dumps(schema, indent=2)}"
+            )
             try:
-                return json.loads(content)
-            except Exception:
-                # Fallback: extract first JSON block via regex
-                match = re.search(r"\{.*\}", str(content), re.DOTALL)
-                if match:
-                    return json.loads(match.group(0))
-                raise ValueError(f"Ollama response could not be parsed as JSON: {content}")
+                repair_payload = {
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": "You are a JSON repair assistant. Fix the JSON and return ONLY valid JSON."},
+                        {"role": "user", "content": repair_user},
+                    ],
+                    "format": "json",
+                    "stream": False,
+                    "options": {"temperature": 0.0, "num_predict": self.max_tokens},
+                }
+                repair_req = urllib.request.Request(
+                    f"{self.base_url}/api/chat",
+                    data=json.dumps(repair_payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "User-Agent": "LUNA-OS"},
+                )
+                with urllib.request.urlopen(repair_req, timeout=effective_timeout) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    repaired_text = data.get("message", {}).get("content", "")
+                return extract_json_from_text(repaired_text)
+            except Exception as final_err:
+                raise LlmOutputError(f"Failed to produce valid JSON after repair: {final_err}. Output was: {raw_text[:200]}") from final_err
 
-        response = self.llm.invoke(messages)
-        return response.content if hasattr(response, "content") else str(response)
+    def run_tool_loop(
+        self,
+        system: str,
+        user: str,
+        tools: list[Any],
+        call_tool: Callable[[str, dict[str, Any]], Any],
+        max_steps: int = 8,
+    ) -> str:
+        """Run tool loop by formatting tools and processing calls sequentially."""
+        tools_desc = []
+        for t in tools:
+            name = getattr(t, "name", str(t))
+            desc = getattr(t, "description", "")
+            params = getattr(t, "parameters", {})
+            tools_desc.append(f"- {name}: {desc}\n  Parameters: {json.dumps(params)}")
+        tools_str = "\n".join(tools_desc)
+
+        tool_prompt = (
+            f"{system}\n\n"
+            f"AVAILABLE TOOLS:\n{tools_str}\n\n"
+            f"To call a tool, output exactly:\n"
+            f"TOOL: <tool_name>\n"
+            f"ARGS: <json_arguments>\n\n"
+            f"When you have finished gathering evidence and are ready to output findings, do NOT call a tool. "
+            f"Instead output your final JSON findings directly."
+        )
+
+        history = [
+            {"role": "system", "content": tool_prompt},
+            {"role": "user", "content": user},
+        ]
+
+        for step in range(max_steps):
+            payload = {
+                "model": self.model,
+                "messages": history,
+                "stream": False,
+                "options": {"temperature": self.temperature, "num_predict": self.max_tokens},
+            }
+            req = urllib.request.Request(
+                f"{self.base_url}/api/chat",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json", "User-Agent": "LUNA-OS"},
+            )
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                content = data.get("message", {}).get("content", "")
+
+            # Check if model wants to call a tool
+            tool_match = re.search(r"TOOL:\s*([A-Za-z0-9_-]+)", content)
+            args_match = re.search(r"ARGS:\s*(\{.*?\})", content, re.DOTALL)
+
+            if tool_match and args_match:
+                tool_name = tool_match.group(1).strip()
+                try:
+                    tool_args = json.loads(args_match.group(1).strip())
+                except Exception:
+                    tool_args = {}
+
+                # Execute tool
+                try:
+                    tool_result = call_tool(tool_name, tool_args)
+                    result_str = json.dumps(tool_result) if not isinstance(tool_result, str) else tool_result
+                except Exception as ex:
+                    result_str = f"Tool execution error: {ex}"
+
+                history.append({"role": "assistant", "content": content})
+                history.append({
+                    "role": "user",
+                    "content": f"TOOL_RESULT ({tool_name}):\n{result_str}\n\nContinue investigating or return your final JSON findings.",
+                })
+            else:
+                # No tool call; final response reached
+                return content
+
+        # Reached max steps; request final conclusion
+        history.append({
+            "role": "user",
+            "content": "You have reached the maximum tool steps. Return your final findings JSON now based on gathered evidence.",
+        })
+        payload = {
+            "model": self.model,
+            "messages": history,
+            "stream": False,
+            "options": {"temperature": self.temperature, "num_predict": self.max_tokens},
+        }
+        req = urllib.request.Request(
+            f"{self.base_url}/api/chat",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "User-Agent": "LUNA-OS"},
+        )
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data.get("message", {}).get("content", "")
 
 
 class MockLLMClient:
-    """Deterministic mock LLM provider for unit tests and offline CI."""
+    """High-speed deterministic mock client for offline tests."""
 
-    def __init__(
-        self,
-        default_response: Optional[Union[dict[str, Any], str]] = None,
-    ) -> None:
-        self.responses: dict[str, Union[dict[str, Any], str]] = {}
-        self.default_response: Union[dict[str, Any], str] = (
-            default_response if default_response is not None else {"status": "ok", "message": "default mock response"}
-        )
-        self.call_history: list[dict[str, Any]] = []
+    def __init__(self, model: str = "mock-v1") -> None:
+        self.model = model
 
-    def register_response(
-        self,
-        pattern: str,
-        response: Union[dict[str, Any], str],
-    ) -> None:
-        """Register a canned response triggered by a keyword or regex pattern."""
-        self.responses[pattern] = response
+    def info(self) -> dict[str, Any]:
+        return {
+            "provider": "mock",
+            "model": self.model,
+            "remote": False,
+            "reachable": True,
+        }
 
-    def complete(
+    def ping(self) -> bool:
+        return True
+
+    def complete_text(self, system: str, user: str, *, timeout: Optional[float] = None) -> str:
+        return "Alice Moreno is linked to Bob Chen via phone ph-ring-01 and account ba-7712."
+
+    def complete_json(
         self,
-        prompt: str,
-        system: str = "",
-        json_schema: Optional[dict[str, Any]] = None,
-    ) -> Union[dict[str, Any], str]:
-        """Return registered response matching prompt/system or default response."""
-        self.call_history.append({
-            "prompt": prompt,
-            "system": system,
-            "json_schema": json_schema,
+        system: str,
+        user: str,
+        schema: dict[str, Any],
+        *,
+        timeout: Optional[float] = None,
+    ) -> dict[str, Any]:
+        # Return canned structures matching typical schema requests
+        if "tables" in schema or "mapping" in system.lower():
+            return {
+                "tables": [
+                    {
+                        "table": "cases",
+                        "node_label": "Case",
+                        "columns": [
+                            {"column": "id", "role": "id"},
+                            {"column": "name", "role": "name"},
+                        ],
+                    }
+                ]
+            }
+        if "entities" in schema and "relations" in schema:
+            return {
+                "entities": [
+                    {
+                        "key": "e1",
+                        "type": "Person",
+                        "name": "Alice Moreno",
+                        "props": {"role": "suspect"},
+                        "quote": user[:50],
+                        "confidence": 0.95,
+                    }
+                ],
+                "relations": [],
+            }
+        if "intent" in schema:
+            return {
+                "intent": "who_connected",
+                "mentions": ["cust-000", "Alice Moreno"],
+                "constraints": {"max_hops": 3},
+            }
+        if "subtasks" in schema:
+            return {
+                "subtasks": [
+                    {"capability": "trace_relationships", "goal": "Trace connections from target"}
+                ]
+            }
+        if "findings" in schema:
+            return {
+                "findings": [
+                    {
+                        "kind": "path",
+                        "claim": "Alice Moreno shares phone with Bob Chen",
+                        "subject_cids": ["cust-000"],
+                        "evidence_cids": ["ph-ring-01"],
+                        "confidence": 0.9,
+                    }
+                ]
+            }
+        return {"result": "ok"}
+
+    def run_tool_loop(
+        self,
+        system: str,
+        user: str,
+        tools: list[Any],
+        call_tool: Callable[[str, dict[str, Any]], Any],
+        max_steps: int = 8,
+    ) -> str:
+        # Trigger one tool call then return final JSON
+        if tools:
+            t_name = getattr(tools[0], "name", "neighbors")
+            try:
+                call_tool(t_name, {"cid": "cust-000"})
+            except Exception:
+                pass
+        return json.dumps({
+            "findings": [
+                {
+                    "kind": "path",
+                    "claim": "Alice Moreno is connected to Bob Chen",
+                    "subject_cids": ["cust-000"],
+                    "evidence_cids": ["ph-ring-01"],
+                    "confidence": 0.92,
+                }
+            ]
         })
 
-        full_text = f"{system}\n{prompt}"
-        for pattern, canned in self.responses.items():
-            if re.search(pattern, full_text, re.IGNORECASE):
-                return canned
 
-        return self.default_response
-
-
-# Alias for backward compatibility
+# Backward compatibility alias
 OllamaClient = OllamaLLM
+

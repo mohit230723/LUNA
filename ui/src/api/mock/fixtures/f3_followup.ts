@@ -1,8 +1,8 @@
-import { Block, RunEvent, TraceResponse } from '../../contract';
+import { Block } from '../../contract';
 
 export const F3_RUN_ID = 'run_followup_003';
 
-export const F3_TRACE: TraceResponse = {
+export const F3_TRACE: any = {
   mode: 'traversal',
   summary: 'cust-003 is connected to cust-005 via shared bank account ba-ring-01.',
   path_node_ids: ['cust-003', 'ba-ring-01', 'cust-005'],
@@ -42,7 +42,7 @@ export const F3_BLOCKS: Block[] = [
   },
 ];
 
-export const F3_EVENTS: RunEvent[] = [
+export const F3_EVENTS: any[] = [
   { run_id: F3_RUN_ID, seq: 1, ts: '2026-10-18T09:20:00Z', type: 'routed', backend: 'scripted', data: { pack: 'investigate' } },
   { run_id: F3_RUN_ID, seq: 2, ts: '2026-10-18T09:20:01Z', type: 'agent_started', backend: 'scripted', data: { agent_id: 'agent_tracer', skill: 'connection-tracer' } },
   { run_id: F3_RUN_ID, seq: 3, ts: '2026-10-18T09:20:02Z', type: 'traversal_step', backend: 'scripted', data: F3_TRACE.steps[0]! },

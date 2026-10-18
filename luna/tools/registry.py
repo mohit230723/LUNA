@@ -8,6 +8,8 @@ from luna.tools.algorithms import (
     pagerank_top,
     shortest_path,
     claim_amount_outliers,
+    trace_connections,
+    find_suspect_links,
 )
 from luna.tools.ask_graph import ask_graph
 from luna.atlas.seed import get_seeded_skills
@@ -130,6 +132,52 @@ TOOL_REGISTRY: dict[str, ToolInfo] = {
             "required": ["question"],
         },
         func=ask_graph,
+    ),
+    "trace_connections": ToolInfo(
+        name="trace_connections",
+        description="Trace multi-hop connection paths outward from an entity up to max_hops.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "src_cid": {
+                    "type": "string",
+                    "description": "Origin entity CID to trace outward from",
+                },
+                "max_hops": {
+                    "type": "integer",
+                    "description": "Maximum traversal depth (default: 4)",
+                    "default": 4,
+                },
+                "limit_paths": {
+                    "type": "integer",
+                    "description": "Maximum number of shortest paths to return (default: 5)",
+                    "default": 5,
+                },
+            },
+            "required": ["src_cid"],
+        },
+        func=trace_connections,
+    ),
+    "find_suspect_links": ToolInfo(
+        name="find_suspect_links",
+        description="Find shared links and connection strengths among a specified list of entity CIDs.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "cids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of entity CIDs to check for connections",
+                },
+                "min_strength": {
+                    "type": "integer",
+                    "description": "Minimum shared attributes required (default: 1)",
+                    "default": 1,
+                },
+            },
+            "required": ["cids"],
+        },
+        func=find_suspect_links,
     ),
 }
 

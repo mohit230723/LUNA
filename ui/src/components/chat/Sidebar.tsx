@@ -1,16 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { GhostButton } from '../ui/GhostButton';
 import { Badge } from '../ui/Badge';
-import { useHealth } from '../../state/hooks';
-import type { ConversationSummary } from '../../api/contract';
+import type { CaseSummary, LlmInfo } from '../../api/contract';
 import styles from './Sidebar.module.css';
 
 export interface SidebarProps {
-  conversations: ConversationSummary[];
+  conversations?: CaseSummary[];
+  cases?: CaseSummary[];
   activeId?: string;
-  onNewChat: () => void;
+  onNewChat?: () => void;
+  onNewCase?: () => void;
+  onDeleteCase?: (caseId: string) => void;
+  llmInfo?: LlmInfo;
   className?: string;
 }
 
@@ -33,52 +36,113 @@ function formatRelativeTime(iso: string): string {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   conversations,
+  cases,
   activeId,
   onNewChat,
+  onNewCase,
+  onDeleteCase,
+  llmInfo,
   className = '',
 }) => {
-  const { isOnline } = useHealth();
-  const isMock = import.meta.env.VITE_API_MODE !== 'live';
+  const caseList = cases || conversations || [];
+  const handleNew = onNewCase || onNewChat || (() => {});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onDeleteCase) {
+      onDeleteCase(id);
+    }
+    setConfirmDeleteId(null);
+  };
+
+  const cancelDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setConfirmDeleteId(null);
+  };
 
   return (
-    <aside className={`${styles.sidebar} ${className}`} aria-label="Conversation Sidebar">
+    <aside className={`${styles.sidebar} ${className}`} aria-label="Case Workspace Sidebar">
       <div className={styles.topSection}>
-        <GhostButton onClick={onNewChat} className={styles.newChatButton}>
+        <GhostButton onClick={handleNew} className={styles.newChatButton}>
           <Plus size={16} strokeWidth={1.5} />
-          NEW CHAT
+          NEW CASE
         </GhostButton>
       </div>
 
       <div className={styles.listSection}>
-        <span className={styles.recentLabel}>RECENT</span>
+        <span className={styles.recentLabel}>CASES</span>
 
-        {conversations.length === 0 ? (
+        {caseList.length === 0 ? (
           <div style={{ padding: '0 16px', fontSize: '13px', color: 'var(--color-smoke)' }}>
-            No recent conversations
+            No cases yet
           </div>
         ) : (
-          conversations.map((c) => {
+          caseList.map((c) => {
             const isActive = c.id === activeId;
+            const statusUpper = (c.status || 'draft').toUpperCase();
             return (
-              <NavLink
-                key={c.id}
-                to={`/platform/${c.id}`}
-                className={`${styles.convItem} ${isActive ? styles.convItemActive : ''}`}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <span className={styles.convTitle}>{c.title || 'New Conversation'}</span>
-                <span className={styles.convTime}>{formatRelativeTime(c.updated_at)}</span>
-              </NavLink>
+              <div key={c.id} className={`${styles.itemWrapper} ${isActive ? styles.itemActive : ''}`}>
+                <NavLink
+                  to={`/platform/${c.id}`}
+                  className={styles.convItem}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <div className={styles.convHeader}>
+                    <span className={styles.convTitle}>{c.title || 'Untitled Case'}</span>
+                    <span className={styles.statusWord}>{statusUpper}</span>
+                  </div>
+                  <div className={styles.convFooter}>
+                    <span className={styles.convTime}>{formatRelativeTime(c.updated_at)}</span>
+                  </div>
+                </NavLink>
+
+                {onDeleteCase && (
+                  <button
+                    type="button"
+                    className={styles.deleteBtn}
+                    onClick={(e) => handleDelete(e, c.id)}
+                    title="Delete case"
+                    aria-label={`Delete case ${c.title}`}
+                  >
+                    <Trash2 size={13} strokeWidth={1.5} />
+                  </button>
+                )}
+
+                {confirmDeleteId === c.id && (
+                  <div className={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
+                    <div className={styles.confirmText}>Delete this case?</div>
+                    <div className={styles.confirmActions}>
+                      <button type="button" className={styles.confirmYes} onClick={(e) => confirmDelete(e, c.id)}>
+                        Delete
+                      </button>
+                      <button type="button" className={styles.confirmNo} onClick={cancelDelete}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })
         )}
       </div>
 
       <div className={styles.bottomSection}>
-        <Badge hasPulseDot={isOnline} size="compact">
-          {isOnline ? 'ONLINE' : 'OFFLINE'}
-        </Badge>
-        {isMock && <span className={styles.modeIndicator}>MOCK DATA</span>}
+        <div className={styles.modelStatusBadge}>
+          <Badge hasPulseDot={Boolean(llmInfo?.reachable)} size="compact">
+            {llmInfo?.provider || 'ollama'} · {llmInfo?.model || 'model'}
+          </Badge>
+          <span className={styles.localityMono}>{llmInfo?.remote ? 'REMOTE' : 'LOCAL'}</span>
+        </div>
       </div>
     </aside>
   );

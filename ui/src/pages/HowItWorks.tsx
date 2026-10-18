@@ -240,11 +240,11 @@ export const HowItWorks: React.FC = () => {
   // Progressive graph elements for current stage
   const stageElements = useMemo(() => {
     const revealedNodeIds = new Set(currentStage.nodeIds);
-    const visibleNodes: TraceNode[] = fullTrace.nodes.filter((n) => revealedNodeIds.has(n.id));
+    const visibleNodes: TraceNode[] = fullTrace.nodes.filter((n: any) => revealedNodeIds.has(n.id));
     const visibleNodeIdSet = new Set(visibleNodes.map((n) => n.id));
 
     const visibleEdges: TraceEdge[] = fullTrace.edges.filter(
-      (e) => visibleNodeIdSet.has(e.src) && visibleNodeIdSet.has(e.dst)
+      (e: any) => visibleNodeIdSet.has(e.src) && visibleNodeIdSet.has(e.dst)
     );
 
     return toElements({

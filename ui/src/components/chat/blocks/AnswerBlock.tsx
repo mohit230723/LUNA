@@ -10,6 +10,8 @@ export interface AnswerBlockProps {
   text: string;
   citedCids: string[];
   backend: Backend;
+  model?: string;
+  entityNames?: Record<string, string>;
   onViewTrace?: () => void;
   onOpenWhy?: () => void;
   onCidClick?: (cid: string) => void;
@@ -19,6 +21,8 @@ export interface AnswerBlockProps {
 export const AnswerBlock: React.FC<AnswerBlockProps> = ({
   text,
   citedCids,
+  model,
+  entityNames = {},
   onViewTrace,
   onOpenWhy,
   onCidClick,
@@ -26,12 +30,19 @@ export const AnswerBlock: React.FC<AnswerBlockProps> = ({
 }) => {
   return (
     <div className={styles.answerCard}>
-      {/* Sanitized Markdown content */}
-      <Markdown content={text} onCidClick={onCidClick} />
+      {/* Model badge */}
+      {model && (
+        <div style={{ marginBottom: 12 }}>
+          <span className={styles.monoMeta}>ANSWER · {model}</span>
+        </div>
+      )}
+
+      {/* Sanitized Markdown content with [[cid]] replacement */}
+      <Markdown content={text} onCidClick={onCidClick} entityNames={entityNames} />
 
       {/* Cited CIDs chips */}
       {citedCids.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           <span className={styles.monoMeta}>CITATIONS:</span>
           {citedCids.map((cid) => (
             <span
@@ -42,7 +53,7 @@ export const AnswerBlock: React.FC<AnswerBlockProps> = ({
               tabIndex={0}
               aria-label={`Citation node ${cid}`}
             >
-              {cid}
+              {entityNames[cid] || cid}
             </span>
           ))}
         </div>
@@ -60,7 +71,7 @@ export const AnswerBlock: React.FC<AnswerBlockProps> = ({
 
       {/* TracePreview: MiniGraph */}
       {previewElements && (
-        <div className={styles.tracePreviewContainer}>
+        <div className={styles.tracePreviewContainer} onClick={onViewTrace} style={{ cursor: 'pointer' }}>
           <MiniGraph
             elements={previewElements}
             height={200}

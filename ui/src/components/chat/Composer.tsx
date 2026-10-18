@@ -13,16 +13,11 @@ export interface ComposerProps {
   isStreaming?: boolean;
   needsInput?: boolean;
   initialValue?: string;
-  onSimulateDisconnect?: () => void;
-  onToggleFailAll?: () => void;
-  onToggleFailPartial?: () => void;
 }
 
 const DEFAULT_OPTIONS: SendOptions = {
-  pack: 'auto',
-  mode: 'scripted',
-  strict_llm: false,
-  parallel: 3,
+  max_hops: 3,
+  investigators: 3,
 };
 
 export const Composer: React.FC<ComposerProps> = ({
@@ -31,9 +26,6 @@ export const Composer: React.FC<ComposerProps> = ({
   isStreaming = false,
   needsInput = false,
   initialValue = '',
-  onSimulateDisconnect,
-  onToggleFailAll,
-  onToggleFailPartial,
 }) => {
   const [text, setText] = useState(initialValue);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -92,9 +84,6 @@ export const Composer: React.FC<ComposerProps> = ({
           options={options}
           onChange={setOptions}
           onClose={() => setOptionsOpen(false)}
-          onSimulateDisconnect={onSimulateDisconnect}
-          onToggleFailAll={onToggleFailAll}
-          onToggleFailPartial={onToggleFailPartial}
         />
       )}
 
@@ -105,16 +94,16 @@ export const Composer: React.FC<ComposerProps> = ({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Describe a task or ask a question"
+          placeholder="Ask about people, links, timelines, or anything in the graph"
           disabled={needsInput || isStreaming}
           rows={1}
-          aria-label="Composer prompt input"
+          aria-label="Composer question input"
         />
 
         <div className={styles.bottomRow}>
           <div className={styles.leftControls}>
             <IconButton
-              aria-label="Run Options"
+              aria-label="Investigation Options"
               onClick={() => setOptionsOpen(!optionsOpen)}
               disabled={needsInput || isStreaming}
             >

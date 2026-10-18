@@ -1,17 +1,19 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { ArrowDown } from 'lucide-react';
-import { Badge } from '../ui/Badge';
+import { ArrowDown, Plus } from 'lucide-react';
 import { GhostButton } from '../ui/GhostButton';
 import { UserMessage } from './UserMessage';
 import { AssistantMessage } from './AssistantMessage';
 import { Composer } from './Composer';
-import type { Message, SendOptions, ActionResult, AgentInfo } from '../../api/contract';
+import type { Message, SendOptions, AgentInfo, GraphStats } from '../../api/contract';
 import type { StageState } from '../../state/stages';
 import type { ElementsDefinition } from 'cytoscape';
 import styles from './Thread.module.css';
 
 export interface ThreadProps {
   messages: Message[];
+  graphStats?: GraphStats | null;
+  suggestions?: string[];
+  entityNames?: Record<string, string>;
   activeStages?: Record<string, StageState> | StageState[];
   activeAgents?: AgentInfo[];
   previewElements?: ElementsDefinition;
@@ -20,40 +22,18 @@ export interface ThreadProps {
   composerInitialPrompt?: string;
   onSend: (content: string, options: SendOptions) => void;
   onCancel?: () => void;
+  onAddSource?: () => void;
   onViewTrace?: (runId?: string) => void;
   onOpenWhy?: (target?: string) => void;
   onCidClick?: (cid: string) => void;
   onAnswer?: (choice: string) => void;
-  onApproveAction?: (actionId: string, approver: string) => Promise<ActionResult>;
-  onRejectAction?: (actionId: string, approver: string, reason: string) => Promise<void>;
-  onSelectFile?: (path: string) => void;
-  filePreview?: { path: string; content: string; truncated: boolean };
-  onSimulateDisconnect?: () => void;
-  onToggleFailAll?: () => void;
-  onToggleFailPartial?: () => void;
 }
-
-const EXAMPLE_PROMPTS = [
-  {
-    text: 'Who is connected to the fraud involving customer cust-000?',
-    pack: 'INVESTIGATE',
-  },
-  {
-    text: 'Is customer cust-010 part of a fraud ring?',
-    pack: 'INVESTIGATE',
-  },
-  {
-    text: 'Build a todo app: React + Vite frontend, Express backend, Postgres database.',
-    pack: 'BUILD',
-  },
-  {
-    text: 'Build a notes API with Fastify and SQLite.',
-    pack: 'BUILD',
-  },
-];
 
 export const Thread: React.FC<ThreadProps> = ({
   messages,
+  graphStats,
+  suggestions = [],
+  entityNames = {},
   activeStages,
   activeAgents,
   previewElements,
@@ -62,17 +42,11 @@ export const Thread: React.FC<ThreadProps> = ({
   composerInitialPrompt = '',
   onSend,
   onCancel,
+  onAddSource,
   onViewTrace,
   onOpenWhy,
   onCidClick,
   onAnswer,
-  onApproveAction,
-  onRejectAction,
-  onSelectFile,
-  filePreview,
-  onSimulateDisconnect,
-  onToggleFailAll,
-  onToggleFailPartial,
 }) => {
   const [composerText, setComposerText] = useState(composerInitialPrompt);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
@@ -85,7 +59,6 @@ export const Thread: React.FC<ThreadProps> = ({
     }
   }, [composerInitialPrompt]);
 
-  // Scroll to bottom on messages/events change unless user scrolled up
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     if (scrollAreaRef.current) {
       if (typeof scrollAreaRef.current.scrollTo === 'function') {
@@ -121,16 +94,38 @@ export const Thread: React.FC<ThreadProps> = ({
     }
   };
 
-  const handleChipClick = (prompt: string) => {
+  const handleSuggestionClick = (prompt: string) => {
     setComposerText(prompt);
   };
 
-  // Check if current run is in needs_input state
+  const handleSelectEntity = (name: string) => {
+    setComposerText(`Tell me about ${name}`);
+  };
+
   const lastMsg = messages[messages.length - 1];
   const isNeedsInput = lastMsg?.status === 'needs_input';
 
+  // Check if thread has user questions yet (ignoring graph summary message)
+  const userQuestions = messages.filter((m) => m.role === 'user');
+  const hasUserAsked = userQuestions.length > 0;
+
   return (
     <div className={styles.threadContainer}>
+      {/* Top Strip */}
+      <div className={styles.topStrip}>
+        <div className={styles.topStripText}>
+          CONTEXT GRAPH · {(graphStats?.nodes || 0).toLocaleString()} nodes ·{' '}
+          {(graphStats?.edges || 0).toLocaleString()} edges ·{' '}
+          {(graphStats?.sources || 0).toLocaleString()} sources
+        </div>
+        {onAddSource && (
+          <GhostButton onClick={onAddSource} className={styles.addSourceBtn}>
+            <Plus size={14} strokeWidth={1.5} />
+            ADD SOURCE
+          </GhostButton>
+        )}
+      </div>
+
       {/* Offline / Reconnecting banner */}
       {connectionState === 'reconnecting' && (
         <div className={styles.offlineBanner}>
@@ -139,69 +134,57 @@ export const Thread: React.FC<ThreadProps> = ({
       )}
 
       {/* Main scrollable message area */}
-      <div
-        ref={scrollAreaRef}
-        className={styles.scrollArea}
-        onScroll={handleScroll}
-      >
+      <div ref={scrollAreaRef} className={styles.scrollArea} onScroll={handleScroll}>
         <div className={styles.innerColumn}>
-          {messages.length === 0 ? (
-            <div className={styles.emptyStateContainer}>
-              <h2 className={styles.emptyHeading}>What should the agents work on?</h2>
-              <p className={styles.emptySubline}>
-                Ask a question about connected data, or describe something to build.
-              </p>
+          {messages.map((msg, index) => {
+            const isLast = index === messages.length - 1;
+            if (msg.role === 'user') {
+              const textContent =
+                msg.blocks.find((b) => b.type === 'text')?.data.markdown || '';
+              return (
+                <UserMessage
+                  key={msg.id}
+                  content={textContent}
+                  createdAt={msg.created_at}
+                />
+              );
+            }
 
-              <div className={styles.chipsGrid}>
-                {EXAMPLE_PROMPTS.map((item) => (
-                  <div
-                    key={item.text}
-                    className={styles.promptChip}
-                    onClick={() => handleChipClick(item.text)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleChipClick(item.text)}
+            return (
+              <AssistantMessage
+                key={msg.id}
+                message={msg}
+                stages={isLast ? activeStages : undefined}
+                agents={isLast ? activeAgents : undefined}
+                previewElements={previewElements}
+                entityNames={entityNames}
+                onCancel={onCancel}
+                onViewTrace={onViewTrace}
+                onOpenWhy={onOpenWhy}
+                onCidClick={onCidClick}
+                onAnswer={onAnswer}
+                onSelectEntity={handleSelectEntity}
+              />
+            );
+          })}
+
+          {/* Dynamic Suggestion Chips when no questions have been asked yet */}
+          {!hasUserAsked && suggestions.length > 0 && (
+            <div className={styles.suggestionsSection}>
+              <div className={styles.suggestionsHeader}>SUGGESTED QUESTIONS</div>
+              <div className={styles.suggestionsGrid}>
+                {suggestions.map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={styles.suggestionChip}
+                    onClick={() => handleSuggestionClick(item)}
                   >
-                    <Badge size="compact">{item.pack}</Badge>
-                    <p className={styles.chipText}>{item.text}</p>
-                  </div>
+                    {item}
+                  </button>
                 ))}
               </div>
             </div>
-          ) : (
-            messages.map((msg, index) => {
-              const isLast = index === messages.length - 1;
-              if (msg.role === 'user') {
-                const textContent =
-                  msg.blocks.find((b) => b.type === 'text')?.data.markdown || '';
-                return (
-                  <UserMessage
-                    key={msg.id}
-                    content={textContent}
-                    createdAt={msg.created_at}
-                  />
-                );
-              }
-
-              return (
-                <AssistantMessage
-                  key={msg.id}
-                  message={msg}
-                  stages={isLast ? activeStages : undefined}
-                  agents={isLast ? activeAgents : undefined}
-                  previewElements={previewElements}
-                  onCancel={onCancel}
-                  onViewTrace={onViewTrace}
-                  onOpenWhy={onOpenWhy}
-                  onCidClick={onCidClick}
-                  onAnswer={onAnswer}
-                  onApproveAction={onApproveAction}
-                  onRejectAction={onRejectAction}
-                  onSelectFile={onSelectFile}
-                  filePreview={filePreview}
-                />
-              );
-            })
           )}
         </div>
       </div>
@@ -228,9 +211,6 @@ export const Thread: React.FC<ThreadProps> = ({
             onCancel={onCancel}
             isStreaming={isStreaming}
             needsInput={isNeedsInput}
-            onSimulateDisconnect={onSimulateDisconnect}
-            onToggleFailAll={onToggleFailAll}
-            onToggleFailPartial={onToggleFailPartial}
           />
         </div>
       </div>

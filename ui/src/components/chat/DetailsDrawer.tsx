@@ -9,7 +9,6 @@ import type {
   AgentInfo,
   FindingInfo,
   WhyResponse,
-  FileNode,
 } from '../../api/contract';
 import styles from './DetailsDrawer.module.css';
 
@@ -17,14 +16,12 @@ export interface DetailsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   runId?: string;
-  initialTab?: 'skills' | 'agents' | 'findings' | 'why' | 'files';
+  initialTab?: 'skills' | 'agents' | 'findings' | 'why';
   whyTarget?: string;
   skillsData?: SkillAssignment[];
   agentsData?: AgentInfo[];
   findingsData?: FindingInfo[];
-  filesData?: FileNode[];
   onFocusNode?: (cid: string) => void;
-  onSelectFile?: (path: string) => void;
 }
 
 export const DetailsDrawer: React.FC<DetailsDrawerProps> = ({
@@ -36,11 +33,9 @@ export const DetailsDrawer: React.FC<DetailsDrawerProps> = ({
   skillsData = [],
   agentsData = [],
   findingsData = [],
-  filesData = [],
   onFocusNode,
-  onSelectFile,
 }) => {
-  const [activeTab, setActiveTab] = useState<'skills' | 'agents' | 'findings' | 'why' | 'files'>(
+  const [activeTab, setActiveTab] = useState<'skills' | 'agents' | 'findings' | 'why'>(
     initialTab
   );
   const [currentTarget, setCurrentTarget] = useState<string>(whyTarget || '');
@@ -101,7 +96,6 @@ export const DetailsDrawer: React.FC<DetailsDrawerProps> = ({
             { id: 'agents', label: 'AGENTS' },
             { id: 'findings', label: 'FINDINGS' },
             { id: 'why', label: 'WHY' },
-            { id: 'files', label: 'FILES' },
           ]}
         />
       </div>
@@ -258,7 +252,7 @@ export const DetailsDrawer: React.FC<DetailsDrawerProps> = ({
                       {f.subject}
                     </span>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-smoke)' }}>
-                      {f.verdict.toUpperCase()} ({f.confidence.toFixed(2)})
+                      {(f.verdict || f.kind || 'finding').toUpperCase()} ({f.confidence.toFixed(2)})
                     </span>
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--color-ash)' }}>
@@ -361,37 +355,6 @@ export const DetailsDrawer: React.FC<DetailsDrawerProps> = ({
               <span style={{ fontSize: '13px', color: 'var(--color-smoke)' }}>
                 Select an evidence target above to inspect the decision.
               </span>
-            )}
-          </div>
-        )}
-
-        {/* TAB: FILES */}
-        {activeTab === 'files' && (
-          <div>
-            <span className={styles.sectionTitle}>FILES</span>
-            {filesData.length === 0 ? (
-              <span style={{ fontSize: '13px', color: 'var(--color-smoke)' }}>
-                No generated files for this run
-              </span>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {filesData.map((f) => (
-                  <div
-                    key={f.path}
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '12px',
-                      color: 'var(--color-chalk)',
-                      cursor: 'pointer',
-                      padding: '4px 6px',
-                      borderRadius: 4,
-                    }}
-                    onClick={() => onSelectFile && onSelectFile(f.path)}
-                  >
-                    {f.path}
-                  </div>
-                ))}
-              </div>
             )}
           </div>
         )}

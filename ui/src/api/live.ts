@@ -1,8 +1,10 @@
 import {
   ActionResult,
   Api,
+  BuildEvent,
+  CaseDetail,
+  CaseSummary,
   Conversation,
-  ConversationSummary,
   FileNode,
   GraphData,
   Health,
@@ -10,6 +12,7 @@ import {
   RunEvent,
   SendOptions,
   SkillInfo,
+  SourceInfo,
   TraceResponse,
   WhyResponse,
 } from './contract';
@@ -34,7 +37,6 @@ export class LiveApi implements Api {
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl || (import.meta.env.VITE_API_BASE as string) || '/api';
-    // Remove trailing slash if present
     if (this.baseUrl.endsWith('/')) {
       this.baseUrl = this.baseUrl.slice(0, -1);
     }
@@ -42,10 +44,15 @@ export class LiveApi implements Api {
 
   private async request<T>(path: string, options?: RequestInit): Promise<T> {
     const url = `${this.baseUrl}${path}`;
+    const headers: Record<string, string> = {};
+    if (!(options?.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const res = await fetch(url, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        ...headers,
         ...(options?.headers || {}),
       },
     });
@@ -75,13 +82,19 @@ export class LiveApi implements Api {
     return this.request<Health>('/health');
   }
 
-  async listConversations(): Promise<ConversationSummary[]> {
-    return this.request<ConversationSummary[]>('/chat/conversations');
+  async listConversations(): Promise<CaseSummary[]> {
+    return this.request<CaseSummary[]>('/chat/conversations');
   }
 
   async createConversation(): Promise<{ id: string }> {
     return this.request<{ id: string }>('/chat/conversations', {
       method: 'POST',
+    });
+  }
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    await this.request<void>(`/chat/conversations/${encodeURIComponent(conversationId)}`, {
+      method: 'DELETE',
     });
   }
 
@@ -94,6 +107,129 @@ export class LiveApi implements Api {
       }));
     }
     return conv;
+  }
+
+  async getCase(conversationId: string): Promise<CaseDetail> {
+    const detail = await this.request<CaseDetail>(`/chat/conversations/${encodeURIComponent(conversationId)}`);
+    if (detail && Array.isArray(detail.messages)) {
+      detail.messages = detail.messages.map((m) => ({
+        ...m,
+        blocks: filterValidBlocks(m.blocks),
+      }));
+    }
+    return detail;
+  }
+
+  async uploadText(conversationId: string, body: { name?: string; text: string }): Promise<SourceInfo> {
+    return this.request<SourceInfo>(
+      `/chat/conversations/${encodeURIComponent(conversationId)}/sources/text`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }
+    );
+  }
+
+  async uploadFiles(conversationId: string, files: File[]): Promise<SourceInfo[]> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    return this.request<SourceInfo[]>(
+      `/chat/conversations/${encodeURIComponent(conversationId)}/sources/files`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+  }
+
+  async removeSource(conversationId: string, sourceId: string): Promise<void> {
+    await this.request<void>(
+      `/chat/conversations/${encodeURIComponent(conversationId)}/sources/${encodeURIComponent(sourceId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+  }
+
+  async startBuild(conversationId: string, opts: { acknowledge_remote: boolean }): Promise<{ build_id: string }> {
+    return this.request<{ build_id: string }>(
+      `/chat/conversations/${encodeURIComponent(conversationId)}/build`,
+      {
+        method: 'POST',
+        body: JSON.stringify(opts),
+      }
+    );
+  }
+
+  subscribeBuild(
+    conversationId: string,
+    buildId: string,
+    opts: {
+      lastEventId?: number;
+      onEvent: (e: BuildEvent) => void;
+      onState: (s: 'open' | 'reconnecting' | 'closed') => void;
+    }
+  ): () => void {
+    let urlStr = `${this.baseUrl}/chat/conversations/${encodeURIComponent(conversationId)}/build/${encodeURIComponent(buildId)}/events`;
+    if (opts.lastEventId !== undefined) {
+      urlStr += `?last_event_id=${encodeURIComponent(String(opts.lastEventId))}`;
+    }
+
+    const fullUrl = urlStr.startsWith('http')
+      ? urlStr
+      : `${window.location.origin}${urlStr}`;
+
+    const es = new EventSource(fullUrl);
+
+    es.onopen = () => {
+      opts.onState('open');
+    };
+
+    es.onerror = () => {
+      if (es.readyState === EventSource.CLOSED) {
+        opts.onState('closed');
+      } else {
+        opts.onState('reconnecting');
+      }
+    };
+
+    const handleEvent = (e: MessageEvent) => {
+      try {
+        const parsed = JSON.parse(e.data) as BuildEvent;
+        if (parsed && parsed.type) {
+          opts.onEvent(parsed);
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.warn('Failed to parse SSE build_event:', e.data, err);
+        }
+      }
+    };
+
+    es.addEventListener('build_event', handleEvent);
+    es.addEventListener('message', handleEvent);
+
+    return () => {
+      es.close();
+      opts.onState('closed');
+    };
+  }
+
+  async cancelBuild(conversationId: string, buildId: string): Promise<void> {
+    await this.request<void>(
+      `/chat/conversations/${encodeURIComponent(conversationId)}/build/${encodeURIComponent(buildId)}/cancel`,
+      {
+        method: 'POST',
+      }
+    );
+  }
+
+  async getSuggestions(conversationId: string): Promise<string[]> {
+    return this.request<string[]>(
+      `/chat/conversations/${encodeURIComponent(conversationId)}/suggestions`
+    );
   }
 
   async sendMessage(
@@ -122,7 +258,6 @@ export class LiveApi implements Api {
       urlStr += `?last_event_id=${encodeURIComponent(String(opts.lastEventId))}`;
     }
 
-    // Handle relative or absolute URLs
     const fullUrl = urlStr.startsWith('http')
       ? urlStr
       : `${window.location.origin}${urlStr}`;
@@ -141,20 +276,24 @@ export class LiveApi implements Api {
       }
     };
 
-    es.addEventListener('pipeline_event', (e: MessageEvent) => {
+    const handleEvent = (e: MessageEvent) => {
       try {
         const parsed = JSON.parse(e.data);
         if (isRunEvent(parsed)) {
           opts.onEvent(parsed);
         } else if (import.meta.env.DEV) {
-          console.warn('Unknown or malformed pipeline event received:', parsed);
+          console.warn('Unknown or malformed run event received:', parsed);
         }
       } catch (err) {
         if (import.meta.env.DEV) {
-          console.warn('Failed to parse SSE pipeline_event data:', e.data, err);
+          console.warn('Failed to parse SSE run event data:', e.data, err);
         }
       }
-    });
+    };
+
+    es.addEventListener('pipeline_event', handleEvent);
+    es.addEventListener('run_event', handleEvent);
+    es.addEventListener('message', handleEvent);
 
     return () => {
       es.close();
@@ -240,10 +379,12 @@ export class LiveApi implements Api {
     return this.request<GraphData>('/atlas/graph');
   }
 
-  async expandNode(cid: string, hops: number): Promise<GraphData> {
-    return this.request<GraphData>(
-      `/graphs/domain?cid=${encodeURIComponent(cid)}&hops=${encodeURIComponent(String(hops))}`
-    );
+  async expandNode(cid: string, hops: number, conversationId?: string): Promise<GraphData> {
+    let url = `/graphs/domain?cid=${encodeURIComponent(cid)}&hops=${encodeURIComponent(String(hops))}`;
+    if (conversationId) {
+      url += `&conversation_id=${encodeURIComponent(conversationId)}`;
+    }
+    return this.request<GraphData>(url);
   }
 }
 

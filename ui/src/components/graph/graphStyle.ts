@@ -1,51 +1,74 @@
 import type { StylesheetStyle } from 'cytoscape';
 
-// Authoritative Hyperstudio Cytoscape stylesheet
-// Strictly uses ONLY allowed colors from Section 3.1
+// Hyperstudio Cytoscape stylesheet strictly compliant with Part 5.2 and 5.3 specifications
 export const cytoscapeStyles: StylesheetStyle[] = [
   // Core Node base
   {
     selector: 'node',
     style: {
       'font-family': 'IBM Plex Mono, monospace',
-      'font-size': '11px',
+      'font-size': '12px',
       'color': '#f3f3f3',
-      'text-valign': 'center',
+      'text-valign': 'bottom',
       'text-halign': 'center',
+      'text-margin-y': 10,
       'text-wrap': 'wrap',
-      'text-max-width': '80px',
+      'text-max-width': '110px',
+      'text-background-color': '#101010',
+      'text-background-opacity': 0.9,
+      'text-background-padding': '3px',
+      'text-background-shape': 'roundrectangle',
+      'min-zoomed-font-size': 8,
+      'z-index-compare': 'manual',
+      'z-index': 10,
       'border-width': '1px',
       'border-color': '#474747',
       'background-color': '#080808',
-      'width': '38px',
-      'height': '38px',
+      'width': '40px',
+      'height': '40px',
       'overlay-opacity': 0,
-      'content': 'data(label)',
+      'content': 'data(displayName)',
+      'transition-property': 'opacity, border-color, border-width, underlay-opacity',
+      'transition-duration': 0.3,
     },
   },
 
-  // Node types & shapes
-  // Customer: Smoke fill, Iron border, diamond
+  // Customer / Person: 44px, diamond shape
   {
-    selector: 'node[type = "customer"], node[type = "Customer"]',
+    selector: 'node[type = "Customer"], node[type = "customer"], node[type = "Person"], node[type = "person"]',
     style: {
       'shape': 'diamond',
       'background-color': '#9c9c9c',
       'border-color': '#474747',
-      'color': '#080808',
-      'width': '40px',
-      'height': '40px',
+      'color': '#f3f3f3',
+      'width': '44px',
+      'height': '44px',
+    },
+  },
+
+  // Organization
+  {
+    selector: 'node[type = "Organization"], node[type = "organization"], node[type = "Org"]',
+    style: {
+      'shape': 'round-rectangle',
+      'background-color': '#212121',
+      'border-color': '#474747',
+      'color': '#f3f3f3',
+      'width': '42px',
+      'height': '38px',
     },
   },
 
   // Entity (Phone, Address, BankAccount, Provider, InsuranceClaim): Carbon fill, Graphite border, ellipse
   {
-    selector: 'node[type = "entity"], node[type = "Entity"], node[type = "Phone"], node[type = "Address"], node[type = "BankAccount"], node[type = "Provider"], node[type = "InsuranceClaim"]',
+    selector: 'node[type = "entity"], node[type = "Entity"], node[type = "Phone"], node[type = "Address"], node[type = "BankAccount"], node[type = "Account"], node[type = "Provider"], node[type = "InsuranceClaim"]',
     style: {
       'shape': 'ellipse',
       'background-color': '#080808',
       'border-color': '#212121',
       'color': '#f3f3f3',
+      'width': '40px',
+      'height': '40px',
     },
   },
 
@@ -61,15 +84,15 @@ export const cytoscapeStyles: StylesheetStyle[] = [
       'height': '32px',
     },
   },
-  // Superseded finding: 30% opacity + dashed border
+
+  // Superseded finding
   {
-    selector: 'node[type = "finding"][status = "superseded"], node.superseded',
+    selector: 'node[status = "superseded"], node.superseded',
     style: {
       'opacity': 0.3,
       'border-style': 'dashed',
       'border-color': '#9c9c9c',
       'background-color': '#212121',
-      'color': '#9c9c9c',
     },
   },
 
@@ -99,89 +122,30 @@ export const cytoscapeStyles: StylesheetStyle[] = [
     },
   },
 
-  // Action: transparent fill, Compass Gold border, octagon
-  {
-    selector: 'node[type = "action"], node[type = "Action"]',
-    style: {
-      'shape': 'octagon',
-      'background-color': '#101010',
-      'border-color': '#6f6759',
-      'color': '#f3f3f3',
-      'width': '42px',
-      'height': '42px',
-    },
-  },
-
-  // Component: Card Slate fill, rectangle
-  {
-    selector: 'node[type = "component"], node[type = "Component"]',
-    style: {
-      'shape': 'rectangle',
-      'background-color': '#3b3d45',
-      'border-color': '#474747',
-      'color': '#f3f3f3',
-      'width': '48px',
-      'height': '32px',
-    },
-  },
-
-  // Contract: Carbon fill, Chalk border, barrel
-  {
-    selector: 'node[type = "contract"], node[type = "Contract"]',
-    style: {
-      'shape': 'barrel',
-      'background-color': '#080808',
-      'border-color': '#f3f3f3',
-      'color': '#f3f3f3',
-      'width': '44px',
-      'height': '36px',
-    },
-  },
-
-  // Artifact: Graphite fill, rectangle
-  {
-    selector: 'node[type = "artifact"], node[type = "Artifact"]',
-    style: {
-      'shape': 'rectangle',
-      'background-color': '#212121',
-      'border-color': '#474747',
-      'color': '#f3f3f3',
-      'width': '42px',
-      'height': '32px',
-    },
-  },
-
-  // Requirement: Carbon fill, Smoke border, round-tag
-  {
-    selector: 'node[type = "requirement"], node[type = "Requirement"]',
-    style: {
-      'shape': 'round-tag',
-      'background-color': '#080808',
-      'border-color': '#9c9c9c',
-      'color': '#f3f3f3',
-      'width': '44px',
-      'height': '34px',
-    },
-  },
-
-  // Violation: dashed Chalk border with "x" label prefix
-  {
-    selector: 'node[type = "violation"], node[type = "Violation"]',
-    style: {
-      'shape': 'round-rectangle',
-      'background-color': '#080808',
-      'border-style': 'dashed',
-      'border-color': '#f3f3f3',
-      'color': '#f3f3f3',
-    },
-  },
-
-  // Path Nodes: Signal White border and highlight
+  // Path Nodes: 2.5px Signal White border
   {
     selector: 'node[?on_path], node.on-path',
     style: {
       'border-color': '#ffffff',
-      'border-width': '2px',
+      'border-width': '2.5px',
+      'opacity': 1.0,
+      'z-index': 50,
+    },
+  },
+
+  // Non-path nodes: 70% opacity in Overview
+  {
+    selector: 'node.non-path',
+    style: {
+      'opacity': 0.7,
+    },
+  },
+
+  // Context Nodes: 40% opacity in Overview
+  {
+    selector: 'node[?context], node.context',
+    style: {
+      'opacity': 0.4,
     },
   },
 
@@ -190,43 +154,101 @@ export const cytoscapeStyles: StylesheetStyle[] = [
     selector: 'node:selected, node.selected',
     style: {
       'border-color': '#ffffff',
-      'border-width': '2px',
+      'border-width': '2.5px',
+      'z-index': 60,
     },
   },
 
-  // Context Nodes: dimmed to 35% opacity
+  // TOUR MODE HIGHLIGHTS
+  // Current tour stop focus node: 3px white border, underlay, 16px label
   {
-    selector: 'node[?context], node.context',
+    selector: 'node.current-tour-node',
     style: {
-      'opacity': 0.35,
+      'border-color': '#ffffff',
+      'border-width': '3px',
+      'underlay-color': '#f3f3f3',
+      'underlay-opacity': 0.12,
+      'underlay-padding': '10px',
+      'font-size': '16px',
+      'opacity': 1.0,
+      'z-index': 100,
     },
   },
 
-  // Edges
+  // Visited tour nodes: 2px white border
+  {
+    selector: 'node.visited-tour-node',
+    style: {
+      'border-color': '#ffffff',
+      'border-width': '2px',
+      'opacity': 1.0,
+      'z-index': 70,
+    },
+  },
+
+  // Visited tour edges: white line, width 3
+  {
+    selector: 'edge.visited-tour-edge',
+    style: {
+      'line-color': '#ffffff',
+      'target-arrow-color': '#ffffff',
+      'width': '3px',
+      'opacity': 1.0,
+      'z-index': 80,
+    },
+  },
+
+  // Tour active transitioning edge
+  {
+    selector: 'edge.active-tour-edge',
+    style: {
+      'line-color': '#ffffff',
+      'target-arrow-color': '#ffffff',
+      'width': '3px',
+      'opacity': 1.0,
+      'z-index': 90,
+    },
+  },
+
+  // Dimmed elements in tour
+  {
+    selector: '.dimmed',
+    style: {
+      'opacity': 0.22,
+    },
+  },
+
+  // Edges base: 1.5px, bezier, control-point-step-size 40
   {
     selector: 'edge',
     style: {
-      'width': '1px',
+      'width': '1.5px',
       'line-color': '#474747',
       'target-arrow-color': '#474747',
       'target-arrow-shape': 'triangle',
-      'arrow-scale': 0.8,
+      'arrow-scale': 1.0,
       'curve-style': 'bezier',
+      'control-point-step-size': 40,
       'font-family': 'IBM Plex Mono, monospace',
       'font-size': '10px',
       'color': '#9c9c9c',
       'text-rotation': 'autorotate',
       'text-margin-y': -8,
+      'text-background-color': '#101010',
+      'text-background-opacity': 0.9,
+      'text-background-padding': '2px',
+      'text-background-shape': 'roundrectangle',
+      'content': '', // Hidden by default for non-path edges
+      'transition-property': 'opacity, line-color, width',
+      'transition-duration': 0.3,
     },
   },
 
-  // Rejected Edges: dashed Smoke
+  // Edge label shown ONLY for path edges or when adjacent to hovered/selected
   {
-    selector: 'edge[rel = "REJECTED"], edge.rejected',
+    selector: 'edge[?on_path], edge.on-path, edge.show-label',
     style: {
-      'line-style': 'dashed',
-      'line-color': '#9c9c9c',
-      'target-arrow-color': '#9c9c9c',
+      'content': 'data(label)',
     },
   },
 
@@ -237,17 +259,17 @@ export const cytoscapeStyles: StylesheetStyle[] = [
       'width': '2.5px',
       'line-color': '#ffffff',
       'target-arrow-color': '#ffffff',
-      'z-index': 99,
+      'z-index': 40,
     },
   },
 
-  // Active / revealed step edge
+  // Rejected Edges: dashed Smoke
   {
-    selector: 'edge.active-step',
+    selector: 'edge[rel = "REJECTED"], edge.rejected',
     style: {
-      'width': '2.5px',
-      'line-color': '#ffffff',
-      'target-arrow-color': '#ffffff',
+      'line-style': 'dashed',
+      'line-color': '#9c9c9c',
+      'target-arrow-color': '#9c9c9c',
     },
   },
 ];

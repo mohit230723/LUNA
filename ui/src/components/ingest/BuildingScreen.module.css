@@ -1,0 +1,142 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 120px);
+  padding: 40px 24px;
+}
+
+.content {
+  max-width: 580px;
+  width: 100%;
+}
+
+.header {
+  margin-bottom: 36px;
+}
+
+.heading {
+  font-family: var(--font-primary);
+  font-size: var(--text-heading);
+  font-weight: 400;
+  color: var(--color-chalk);
+  letter-spacing: -0.31px;
+  margin: 0 0 10px 0;
+}
+
+.subheading {
+  font-family: var(--font-primary);
+  font-size: var(--text-body);
+  font-weight: 400;
+  color: var(--color-smoke);
+  margin: 0;
+}
+
+.stageList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  padding: 28px 24px;
+  margin-bottom: 32px;
+}
+
+.stageItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.iconWrap {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.hollowDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-smoke);
+}
+
+.pulseDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-pulse-green);
+  box-shadow: 0 0 6px var(--color-pulse-green);
+}
+
+.iconDone {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-graphite);
+  border: 1px solid var(--color-iron);
+}
+
+.iconFailed {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 60, 60, 0.15);
+  border: 1px solid #ff8888;
+}
+
+.stageDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stageName {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-chalk);
+  letter-spacing: 0.5px;
+}
+
+.stageCount {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-smoke);
+}
+
+.failedCard {
+  background: var(--color-carbon);
+  border: 1px dashed var(--color-chalk);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.failedTitle {
+  font-family: var(--font-primary);
+  font-size: 16px;
+  color: #ff8888;
+  margin-bottom: 8px;
+}
+
+.failedReason {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-smoke);
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.failedActions {
+  display: flex;
+  gap: 12px;
+}
+
+.footerActions {
+  display: flex;
+  justify-content: flex-start;
+}

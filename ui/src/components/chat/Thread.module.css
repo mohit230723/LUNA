@@ -1,122 +1,128 @@
 .threadContainer {
-  flex: 1;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  height: calc(100vh - 64px);
   position: relative;
-  overflow: hidden;
-  background-color: var(--color-obsidian);
+  background: var(--color-obsidian);
+  flex: 1;
+  min-width: 0;
+}
+
+.topStrip {
+  height: 48px;
+  border-bottom: 1px solid var(--color-graphite);
+  background: var(--color-carbon);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+.topStripText {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-smoke);
+  letter-spacing: 0.5px;
+}
+
+.addSourceBtn {
+  font-size: 12px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .offlineBanner {
-  background-color: var(--color-carbon);
-  border-bottom: 1px solid var(--color-graphite);
-  padding: 8px 16px;
-  text-align: center;
+  background: #3b2816;
+  border-bottom: 1px solid var(--color-compass-gold);
+  color: #ffcc66;
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-chalk);
+  font-size: 13px;
+  text-align: center;
+  padding: 8px 16px;
+  position: sticky;
+  top: 0;
   z-index: 20;
 }
 
 .scrollArea {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 24px 140px 24px;
   display: flex;
   flex-direction: column;
 }
 
 .innerColumn {
   width: 100%;
-  max-width: 760px;
+  max-width: 768px;
   margin: 0 auto;
-}
-
-/* Empty state */
-.emptyStateContainer {
+  padding: 32px 24px 120px 24px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  margin-top: 60px;
+  gap: 24px;
 }
 
-.emptyHeading {
-  font-family: var(--font-primary);
-  font-size: var(--text-heading);
-  font-weight: 400;
-  color: var(--color-chalk);
-  margin: 0 0 12px 0;
-}
-
-.emptySubline {
-  font-family: var(--font-primary);
-  font-size: var(--text-body);
-  color: var(--color-smoke);
-  margin: 0 0 40px 0;
-}
-
-.chipsGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  width: 100%;
-}
-
-@media (max-width: 600px) {
-  .chipsGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.promptChip {
-  background-color: var(--color-carbon);
-  border: 1px solid var(--color-graphite);
-  border-radius: var(--radius-card);
-  padding: 16px;
+.suggestionsSection {
+  margin-top: 16px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 12px;
-  cursor: pointer;
+}
+
+.suggestionsHeader {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-smoke);
+  letter-spacing: 0.5px;
+}
+
+.suggestionsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suggestionChip {
+  background: var(--color-carbon);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-tag);
+  padding: 12px 16px;
   text-align: left;
-  transition: all 0.15s ease;
-}
-
-.promptChip:hover {
-  border-color: var(--color-chalk);
-}
-
-.chipText {
   font-family: var(--font-mono);
   font-size: 13px;
   color: var(--color-chalk);
-  line-height: 1.4;
-  margin: 0;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-/* Pinned composer footer */
+.suggestionChip:hover {
+  border-color: var(--color-iron);
+  background: var(--color-graphite);
+}
+
+.jumpButton {
+  position: absolute;
+  bottom: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+}
+
 .composerFooter {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 16px 24px;
-  background: linear-gradient(to top, var(--color-obsidian) 75%, transparent);
+  background: linear-gradient(to top, var(--color-obsidian) 75%, transparent 100%);
+  padding: 16px 24px 24px 24px;
   pointer-events: none;
 }
 
 .composerInner {
-  max-width: 760px;
+  width: 100%;
+  max-width: 768px;
   margin: 0 auto;
   pointer-events: auto;
-}
-
-.jumpButton {
-  position: absolute;
-  bottom: 96px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 15;
 }

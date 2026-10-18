@@ -6,14 +6,19 @@ import styles from './Markdown.module.css';
 export interface MarkdownProps {
   content: string;
   onCidClick?: (cid: string) => void;
+  entityNames?: Record<string, string>;
   className?: string;
 }
 
 export const Markdown: React.FC<MarkdownProps> = ({
   content,
   onCidClick,
+  entityNames = {},
   className = '',
 }) => {
+  // Pre-process [[cid]] citations into special code syntax `cid:<cid>`
+  const processedContent = content.replace(/\[\[(.*?)\]\]/g, '`cid:$1`');
+
   return (
     <div className={`${styles.markdown} ${className}`}>
       <ReactMarkdown
@@ -34,20 +39,36 @@ export const Markdown: React.FC<MarkdownProps> = ({
             </a>
           ),
           code: ({ className: codeClassName, children, ...props }) => {
-            const codeString = String(children).trim();
-            // If the code is a customer ID (e.g. cust-000) and onCidClick is provided, render as clickable chip
-            if (onCidClick && /^cust-[a-zA-Z0-9_-]+$/.test(codeString)) {
+            const raw = String(children).trim();
+            if (raw.startsWith('cid:')) {
+              const cid = raw.slice(4);
+              const displayName = entityNames[cid] || cid;
               return (
                 <button
                   type="button"
                   className={styles.cidChip}
-                  onClick={() => onCidClick(codeString)}
-                  title={`Focus node ${codeString} in trace`}
+                  onClick={() => onCidClick && onCidClick(cid)}
+                  title={`Focus node ${cid} in trace`}
                 >
-                  {codeString}
+                  {displayName}
                 </button>
               );
             }
+
+            if (onCidClick && (/^[a-z0-9_-]+:[a-z0-9_-]+/i.test(raw) || /^cust-[a-zA-Z0-9_-]+$/.test(raw))) {
+              const displayName = entityNames[raw] || raw;
+              return (
+                <button
+                  type="button"
+                  className={styles.cidChip}
+                  onClick={() => onCidClick(raw)}
+                  title={`Focus node ${raw} in trace`}
+                >
+                  {displayName}
+                </button>
+              );
+            }
+
             return (
               <code className={`${styles.inlineCode} ${codeClassName || ''}`} {...props}>
                 {children}
@@ -60,7 +81,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
           td: ({ children }) => <td className={styles.td}>{children}</td>,
         }}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
     </div>
   );

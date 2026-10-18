@@ -90,7 +90,7 @@ export function runReducer(state: RunState, action: RunAction): RunState {
 
       // Track Agents
       if (event.type === 'agent_started') {
-        const id = (event.data['agent_id'] as string) || (event.data['id'] as string) || `agent_${newAgents.length}`;
+        const id = (event.data['agent_id'] as string) || (event.data['id'] as string) || `agent_${newAgents.length + 1}`;
         const skill = (event.data['skill'] as string) || 'generic-skill';
         if (!newAgents.some((a) => a.id === id)) {
           newAgents.push({
@@ -98,7 +98,7 @@ export function runReducer(state: RunState, action: RunAction): RunState {
             skill,
             status: 'running',
             tool_calls: 0,
-            backend: event.backend || 'scripted',
+            backend: event.backend || 'llm',
           });
         }
       }
@@ -126,8 +126,9 @@ export function runReducer(state: RunState, action: RunAction): RunState {
       }
 
       // Track Findings
-      if (event.type === 'promoted') {
-        const items = event.data['findings'] as FindingInfo[] | undefined;
+      if (event.type === 'promoted' || event.type === 'finding') {
+        const items = (event.data['findings'] as FindingInfo[] | undefined) ||
+                      (event.data['items'] as FindingInfo[] | undefined);
         if (Array.isArray(items)) {
           for (const item of items) {
             const idx = newFindings.findIndex((f) => f.id === item.id);
@@ -137,27 +138,15 @@ export function runReducer(state: RunState, action: RunAction): RunState {
         }
       }
 
-      // Track Actions
-      if (event.type === 'action_proposed') {
-        const act = event.data as unknown as ActionRequest;
-        if (act && act.action_id) {
-          const idx = newActions.findIndex((a) => a.action_id === act.action_id);
-          if (idx >= 0) newActions[idx] = act;
-          else newActions.push(act);
-        }
-      }
-
       // Track Blocks
-      if (event.type === 'routed') {
-        newBlocks.push({
-          type: 'routing',
-          data: {
-            pack: (event.data['pack'] as any) || 'investigate',
-            intent: (event.data['intent'] as string) || '',
-            confidence: Number(event.data['confidence'] || 1),
-            backend: event.backend || 'scripted',
-          },
-        });
+      if (event.type === 'plan') {
+        const subtasks = event.data['subtasks'] as any;
+        if (Array.isArray(subtasks)) {
+          newBlocks.push({
+            type: 'plan',
+            data: { subtasks },
+          });
+        }
       }
 
       if (event.type === 'skill_assigned') {
@@ -171,17 +160,18 @@ export function runReducer(state: RunState, action: RunAction): RunState {
       }
 
       if (event.type === 'answer') {
-        const ans = event.data['text'] as any;
-        if (ans) {
-          newBlocks.push({
-            type: 'answer',
-            data: {
-              text: typeof ans === 'string' ? ans : ans.text || '',
-              cited_cids: Array.isArray(ans.cited_cids) ? ans.cited_cids : [],
-              backend: event.backend || 'scripted',
-            },
-          });
-        }
+        const text = (event.data['text'] as string) || '';
+        const cited_cids = (event.data['cited_cids'] as string[]) || [];
+        const model = (event.data['model'] as string) || undefined;
+        newBlocks.push({
+          type: 'answer',
+          data: {
+            text,
+            cited_cids,
+            backend: event.backend || 'llm',
+            model,
+          },
+        });
       }
 
       return {

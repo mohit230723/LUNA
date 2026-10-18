@@ -24,6 +24,7 @@ def get_seeded_capabilities() -> list[CapabilityDef]:
         CapabilityDef(name="rank_influence", description="Rank entity centrality and graph influence"),
         CapabilityDef(name="explain_connection", description="Trace and articulate shortest connection paths"),
         CapabilityDef(name="detect_amount_anomalies", description="Detect statistical outliers in transaction amounts"),
+        CapabilityDef(name="trace_connections", description="Trace multi-hop connection paths and suspect links across entities"),
     ]
 
 
@@ -36,6 +37,8 @@ def get_seeded_tools() -> list[ToolDef]:
         ToolDef(name="shortest_path", description="Compute shortest path between two entities"),
         ToolDef(name="claim_amount_outliers", description="Identify claim amounts exceeding statistical thresholds"),
         ToolDef(name="ask_graph", description="Natural language Cypher query tool via GraphRAG SDK"),
+        ToolDef(name="trace_connections", description="Trace multi-hop connection paths outward from an entity"),
+        ToolDef(name="find_suspect_links", description="Find shared links and connection strengths among entities"),
     ]
 
 
@@ -111,6 +114,16 @@ def get_seeded_skills() -> list[SkillDef]:
             exposes=["claim_amount_outliers", "ask_graph"],
             restricted=False,
             scores=[SkillScore(task_type="fraud_ring_investigation", score=0.60, runs=5)],
+        ),
+        SkillDef(
+            id="connection-tracer",
+            name="Connection Tracer",
+            prompt_fragment="Trace connection paths outward from entities and identify suspect links.",
+            capabilities=["trace_connections"],
+            requires=[],
+            exposes=["trace_connections", "find_suspect_links", "ask_graph"],
+            restricted=False,
+            scores=[SkillScore(task_type="fraud_ring_investigation", score=0.85, runs=5)],
         ),
     ]
 

@@ -46,3 +46,8 @@ htmlcov/
 # UI
 ui/node_modules/
 ui/dist/
+ui/test-results/
+
+# Case data & workspaces
+data/
+workspaces/

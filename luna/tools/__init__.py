@@ -6,6 +6,8 @@ from luna.tools.algorithms import (
     pagerank_top,
     shortest_path,
     claim_amount_outliers,
+    trace_connections,
+    find_suspect_links,
 )
 
 __all__ = [
@@ -14,4 +16,6 @@ __all__ = [
     "pagerank_top",
     "shortest_path",
     "claim_amount_outliers",
+    "trace_connections",
+    "find_suspect_links",
 ]

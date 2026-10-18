@@ -2,10 +2,7 @@ import {
   ActionRequest,
   ActionResult,
   Block,
-  FindingInfo,
-  RunEvent,
   SkillAssignment,
-  TraceResponse,
   WhyResponse,
 } from '../../contract';
 
@@ -35,7 +32,7 @@ export const F1_SKILL_ASSIGNMENTS: SkillAssignment[] = [
   },
 ];
 
-export const F1_FINDINGS: FindingInfo[] = [
+export const F1_FINDINGS: any[] = [
   {
     id: 'f_01',
     agent_id: 'agent_tracer',
@@ -122,7 +119,7 @@ export const F1_ACTION_RESULT: ActionResult = {
   },
 };
 
-export const F1_TRACE: TraceResponse = {
+export const F1_TRACE: any = {
   mode: 'traversal',
   summary:
     'cust-000 shares a phone with cust-003, who pays from the same account as cust-005, who filed a claim treated by prov-ring.',
@@ -229,7 +226,7 @@ export const F1_BLOCKS: Block[] = [
   },
 ];
 
-export const F1_EVENTS: RunEvent[] = [
+export const F1_EVENTS: any[] = [
   { run_id: F1_RUN_ID, seq: 1, ts: '2026-10-18T09:00:00Z', type: 'routed', backend: 'scripted', data: { pack: 'investigate', intent: 'Trace fraud ring connections' } },
   { run_id: F1_RUN_ID, seq: 2, ts: '2026-10-18T09:00:01Z', type: 'skill_assigned', backend: 'scripted', data: { assignments: F1_SKILL_ASSIGNMENTS } },
   { run_id: F1_RUN_ID, seq: 3, ts: '2026-10-18T09:00:02Z', type: 'skill_fit', backend: 'scripted', data: { fit: 0.94 } },
