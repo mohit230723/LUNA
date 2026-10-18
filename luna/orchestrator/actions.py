@@ -388,15 +388,40 @@ def execute_action(
     try:
         # 4. Apply Domain Graph Mutation to all targets
         for cid in target_cids:
+            existing_runs_rec = store.query(
+                domain_graph_name,
+                f"MATCH (c:{LABEL_CUSTOMER} {{cid: $cid}}) RETURN c.flag_runs AS runs",
+                {"cid": cid},
+            )
+            existing_runs: list[str] = []
+            if existing_runs_rec and existing_runs_rec[0].get("runs"):
+                r_val = existing_runs_rec[0]["runs"]
+                if isinstance(r_val, list):
+                    existing_runs = [str(x) for x in r_val]
+                elif isinstance(r_val, str):
+                    try:
+                        p = json.loads(r_val)
+                        if isinstance(p, list):
+                            existing_runs = [str(x) for x in p]
+                    except Exception:
+                        pass
+            if effective_run_id not in existing_runs:
+                existing_runs.append(effective_run_id)
+
             mutate_cypher = (
                 f"MATCH (c:{LABEL_CUSTOMER} {{cid: $cid}}) "
-                "SET c.flagged = true, c.flag_run = $run_id, c.flagged_at = $timestamp "
+                "SET c.flagged = true, c.flag_run = $run_id, c.flagged_at = $timestamp, c.flag_runs = $flag_runs "
                 "RETURN c.cid AS cid"
             )
             store.query(
                 domain_graph_name,
                 mutate_cypher,
-                {"cid": cid, "run_id": effective_run_id, "timestamp": now},
+                {
+                    "cid": cid,
+                    "run_id": effective_run_id,
+                    "timestamp": now,
+                    "flag_runs": existing_runs,
+                },
             )
         details = f"Flagged {len(target_cids)} customer(s) in operational domain graph (run {effective_run_id}): {', '.join(target_cids)}."
 
@@ -488,21 +513,58 @@ def evaluate_outcomes(
                 pass
         return None
 
-    # Query flagged customers in domain graph (scoped to run_id if provided)
-    if run_id:
-        flagged_query = (
-            f"MATCH (c:{LABEL_CUSTOMER} {{flagged: true, flag_run: $run_id}}) "
-            "RETURN c.cid AS cid"
-        )
-        records = store.query(domain_name, flagged_query, {"run_id": run_id})
-    else:
-        flagged_query = (
-            f"MATCH (c:{LABEL_CUSTOMER} {{flagged: true}}) "
-            "RETURN c.cid AS cid"
-        )
-        records = store.query(domain_name, flagged_query)
+    # Query flagged customers: derive from run memory Action/Outcome first to be concurrency-safe
+    flagged_cids: set[str] = set()
+    found_in_run_graph = False
 
-    flagged_cids = {r["cid"] for r in records}
+    if effective_run_graph:
+        try:
+            act_recs = store.query(
+                effective_run_graph,
+                f"MATCH (a:{LABEL_ACTION}) WHERE a.status IN ['EXECUTED', 'EXECUTING'] "
+                "RETURN a.target_cids AS target_cids, a.target_cid AS target_cid",
+            )
+            if act_recs:
+                for r in act_recs:
+                    tc = r.get("target_cids")
+                    if isinstance(tc, list):
+                        for x in tc:
+                            if x:
+                                flagged_cids.add(str(x))
+                    elif r.get("target_cid"):
+                        flagged_cids.add(str(r["target_cid"]))
+            else:
+                out_recs = store.query(
+                    effective_run_graph,
+                    f"MATCH (o:{LABEL_OUTCOME}) RETURN o.target_cids AS target_cids, o.target_cid AS target_cid",
+                )
+                if out_recs:
+                    for r in out_recs:
+                        tc = r.get("target_cids")
+                        if isinstance(tc, list):
+                            for x in tc:
+                                if x:
+                                    flagged_cids.add(str(x))
+                        elif r.get("target_cid"):
+                            flagged_cids.add(str(r["target_cid"]))
+        except Exception:
+            pass
+
+    if not flagged_cids:
+        if run_id:
+            flagged_query = (
+                f"MATCH (c:{LABEL_CUSTOMER} {{flagged: true}}) "
+                "WHERE c.flag_run = $run_id OR $run_id IN coalesce(c.flag_runs, []) "
+                "RETURN c.cid AS cid"
+            )
+            records = store.query(domain_name, flagged_query, {"run_id": run_id})
+        else:
+            flagged_query = (
+                f"MATCH (c:{LABEL_CUSTOMER} {{flagged: true}}) "
+                "RETURN c.cid AS cid"
+            )
+            records = store.query(domain_name, flagged_query)
+        flagged_cids = {r["cid"] for r in records}
 
     # Query all customers in domain to identify total negative population
     all_cust_records = store.query(domain_name, f"MATCH (c:{LABEL_CUSTOMER}) RETURN c.cid AS cid")
@@ -571,20 +633,45 @@ def reset_flags(
         Number of customers whose flags were cleared.
     """
     if run_id:
-        cypher = (
-            f"MATCH (c:{LABEL_CUSTOMER} {{flag_run: $run_id}}) "
-            "SET c.flagged = false, c.flag_run = null, c.flagged_at = null "
-            "RETURN count(c) AS reset_count"
+        # Match customers where flag_run == run_id OR run_id is in flag_runs
+        cust_recs = store.query(
+            domain_graph_name,
+            f"MATCH (c:{LABEL_CUSTOMER}) "
+            "WHERE c.flag_run = $run_id OR c.flag_runs IS NOT NULL "
+            "RETURN c.cid AS cid, c.flag_run AS flag_run, c.flag_runs AS flag_runs",
+            {"run_id": run_id},
         )
-        recs = store.query(domain_graph_name, cypher, {"run_id": run_id})
+        reset_count = 0
+        for r in cust_recs:
+            cid = r["cid"]
+            fr = r.get("flag_run")
+            raw_runs = r.get("flag_runs") or []
+            runs = [str(x) for x in raw_runs] if isinstance(raw_runs, list) else []
+            if fr == run_id or run_id in runs:
+                reset_count += 1
+                filtered_runs = [x for x in runs if x != run_id]
+                new_flag_run = filtered_runs[-1] if filtered_runs else None
+                new_flagged = bool(filtered_runs)
+                store.query(
+                    domain_graph_name,
+                    f"MATCH (c:{LABEL_CUSTOMER} {{cid: $cid}}) "
+                    "SET c.flagged = $flagged, c.flag_run = $flag_run, c.flag_runs = $flag_runs",
+                    {
+                        "cid": cid,
+                        "flagged": new_flagged,
+                        "flag_run": new_flag_run,
+                        "flag_runs": filtered_runs if filtered_runs else None,
+                    },
+                )
+        return reset_count
     else:
         cypher = (
             f"MATCH (c:{LABEL_CUSTOMER}) "
-            "WHERE c.flagged = true OR c.flag_run IS NOT NULL "
-            "SET c.flagged = false, c.flag_run = null, c.flagged_at = null "
+            "WHERE c.flagged = true OR c.flag_run IS NOT NULL OR c.flag_runs IS NOT NULL "
+            "SET c.flagged = false, c.flag_run = null, c.flagged_at = null, c.flag_runs = null "
             "RETURN count(c) AS reset_count"
         )
         recs = store.query(domain_graph_name, cypher)
+        return int(recs[0]["reset_count"]) if recs else 0
 
-    return int(recs[0]["reset_count"]) if recs else 0
 

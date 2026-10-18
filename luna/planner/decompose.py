@@ -17,6 +17,7 @@ def decompose_task(
     task_text: str,
     task_type: str,
     llm: LLMClient,
+    strict_llm: bool = False,
 ) -> list[Subtask]:
     """Decompose high-level task text into capability-aligned subtasks using LLM.
 
@@ -24,6 +25,7 @@ def decompose_task(
         task_text: Human-submitted task instruction
         task_type: Categorical task type (e.g. 'fraud_ring_investigation')
         llm: LLMClient instance for structured generation
+        strict_llm: If True, raises LLMUnavailableError on LLM failure instead of fallback
 
     Returns:
         List of Subtasks with assigned capabilities.
@@ -65,13 +67,20 @@ def decompose_task(
         "Break down this task into ordered subtasks with required capabilities."
     )
 
-    response = llm.complete(user_prompt, system=system_prompt, json_schema=schema)
+    try:
+        response = llm.complete(user_prompt, system=system_prompt, json_schema=schema)
+    except Exception as e:
+        if strict_llm:
+            from luna.agents.exceptions import LLMUnavailableError
+            raise LLMUnavailableError(f"LLM decomposition failed under strict mode: {e}") from e
+        response = None
 
     subtasks_data: list[dict[str, Any]] = []
     if isinstance(response, dict) and "subtasks" in response and isinstance(response["subtasks"], list):
         subtasks_data = response["subtasks"]
     elif isinstance(response, list):
         subtasks_data = response
+
 
     if not subtasks_data:
         # Deterministic default decomposition for fraud_ring_investigation

@@ -41,6 +41,12 @@ def extract_subgraph_slice(
     if k_hops < 0 or k_hops > 5:
         raise ValueError("k_hops must be between 0 and 5")
 
+    # Ensure target graph is fresh
+    try:
+        store.delete_graph(target_graph)
+    except Exception:
+        pass
+
     # Step 1: Collect seed nodes
     seed_query = (
         "MATCH (anchor) WHERE anchor.cid IN $seed_cids "

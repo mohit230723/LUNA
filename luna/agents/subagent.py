@@ -61,6 +61,10 @@ class SubAgent:
                         if isinstance(cluster, list) and target_cid in cluster:
                             for c in cluster:
                                 evidence_cids.add(str(c))
+                # Check financial / phone clusters to distinguish fraud ring from address household
+                fin_args = {"cids": self.config.target_cids, "rel_types": ["BankAccount", "Phone"]}
+                fin_res = await self.mcp_client.call_tool("connected_components", fin_args)
+                observations["financial_clusters"] = fin_res
             except Exception as e:
                 observations["connected_components_error"] = str(e)
 
@@ -186,18 +190,35 @@ class SubAgent:
                         evidence_cids=sorted(evidence_cids),
                     )
 
-            if isinstance(clusters, list):
-                target_cluster = next((cl for cl in clusters if target_cid in cl), None)
-                if target_cluster and len(target_cluster) >= 4:
+            fin_clusters = observations.get("financial_clusters")
+            if isinstance(fin_clusters, list):
+                target_fin_cluster = next((cl for cl in fin_clusters if target_cid in cl), None)
+                if target_fin_cluster and len(target_fin_cluster) >= 2:
                     return Finding(
                         agent_id=self.config.agent_id,
                         skill_id=self.config.skill_id,
                         target_cid=target_cid,
                         verdict="suspicious",
-                        confidence=0.88,
+                        confidence=0.90,
                         reasoning=(
-                            f"Customer {target_cid} is part of a densely connected component "
-                            f"of {len(target_cluster)} entities in the slice graph."
+                            f"Customer {target_cid} is part of a financial/contact sharing cluster "
+                            f"of {len(target_fin_cluster)} entities in the slice graph."
+                        ),
+                        evidence_cids=sorted(evidence_cids),
+                    )
+
+            if isinstance(clusters, list):
+                target_cluster = next((cl for cl in clusters if target_cid in cl), None)
+                if target_cluster and len(target_cluster) >= 2:
+                    return Finding(
+                        agent_id=self.config.agent_id,
+                        skill_id=self.config.skill_id,
+                        target_cid=target_cid,
+                        verdict="benign",
+                        confidence=0.80,
+                        reasoning=(
+                            f"Customer {target_cid} is connected to other entities only through Address "
+                            f"(benign household/family cluster)."
                         ),
                         evidence_cids=sorted(evidence_cids),
                     )

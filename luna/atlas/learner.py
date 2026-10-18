@@ -1,7 +1,9 @@
-"""Cross-run learning engine updating atlas skill reputation scores via Exponential Moving Average."""
-
+import threading
 from datetime import datetime, timezone
 from typing import Any, Optional
+
+_learner_lock = threading.Lock()
+
 
 from luna.graph.store import GraphStore
 from luna.graph.schema import (
@@ -43,69 +45,72 @@ def update_skill_score(
     Returns:
         Dictionary with updated skill_id, task_type, new_score, runs, and last_updated.
     """
-    now = datetime.now(timezone.utc).isoformat()
+    with _learner_lock:
+        now = datetime.now(timezone.utc).isoformat()
 
-    # 1. Check if relationship exists
-    check_query = (
-        f"MATCH (s:{LABEL_SKILL} {{id: $skill_id}})-[r:{REL_SUCCEEDED_ON}]->(t:{LABEL_TASK_TYPE} {{name: $task_type}}) "
-        "RETURN r.score AS score, r.runs AS runs"
-    )
-    existing = store.query(atlas_graph, check_query, {"skill_id": skill_id, "task_type": task_type})
-
-    if existing and existing[0].get("score") is not None:
-        old_score = float(existing[0]["score"])
-        old_runs = int(existing[0].get("runs", 0))
-        new_score = (1.0 - alpha) * old_score + (alpha * reward)
-        new_runs = old_runs + 1
-
-        update_query = (
+        # 1. Check if relationship exists
+        check_query = (
             f"MATCH (s:{LABEL_SKILL} {{id: $skill_id}})-[r:{REL_SUCCEEDED_ON}]->(t:{LABEL_TASK_TYPE} {{name: $task_type}}) "
-            "SET r.score = $new_score, r.runs = $new_runs, r.last_updated = $timestamp "
-            "RETURN s.id AS skill_id, t.name AS task_type, r.score AS new_score, r.runs AS runs, r.last_updated AS last_updated"
+            "RETURN r.score AS score, r.runs AS runs"
         )
-        res = store.query(
-            atlas_graph,
-            update_query,
-            {
-                "skill_id": skill_id,
-                "task_type": task_type,
-                "new_score": new_score,
-                "new_runs": new_runs,
-                "timestamp": now,
-            },
-        )
-    else:
-        # H6: MERGE a missing SUCCEEDED_ON at 0.5 baseline prior
-        default_prior = 0.50
-        new_score = (1.0 - alpha) * default_prior + (alpha * reward)
-        new_runs = 1
-        create_query = (
-            f"MERGE (s:{LABEL_SKILL} {{id: $skill_id}}) "
-            f"MERGE (t:{LABEL_TASK_TYPE} {{name: $task_type}}) "
-            f"MERGE (s)-[r:{REL_SUCCEEDED_ON}]->(t) "
-            "ON CREATE SET r.score = $new_score, r.runs = $new_runs, r.last_updated = $timestamp "
-            "ON MATCH SET r.score = $new_score, r.runs = $new_runs, r.last_updated = $timestamp "
-            "RETURN s.id AS skill_id, t.name AS task_type, r.score AS new_score, r.runs AS runs, r.last_updated AS last_updated"
-        )
-        res = store.query(
-            atlas_graph,
-            create_query,
-            {
-                "skill_id": skill_id,
-                "task_type": task_type,
-                "new_score": new_score,
-                "new_runs": new_runs,
-                "timestamp": now,
-            },
-        )
+        existing = store.query(atlas_graph, check_query, {"skill_id": skill_id, "task_type": task_type})
 
-    return {
-        "skill_id": skill_id,
-        "task_type": task_type,
-        "new_score": float(res[0]["new_score"]),
-        "runs": int(res[0]["runs"]),
-        "last_updated": res[0]["last_updated"],
-    }
+
+        if existing and existing[0].get("score") is not None:
+            old_score = float(existing[0]["score"])
+            old_runs = int(existing[0].get("runs", 0))
+            new_score = (1.0 - alpha) * old_score + (alpha * reward)
+            new_runs = old_runs + 1
+
+            update_query = (
+                f"MATCH (s:{LABEL_SKILL} {{id: $skill_id}})-[r:{REL_SUCCEEDED_ON}]->(t:{LABEL_TASK_TYPE} {{name: $task_type}}) "
+                "SET r.score = $new_score, r.runs = $new_runs, r.last_updated = $timestamp "
+                "RETURN s.id AS skill_id, t.name AS task_type, r.score AS new_score, r.runs AS runs, r.last_updated AS last_updated"
+            )
+            res = store.query(
+                atlas_graph,
+                update_query,
+                {
+                    "skill_id": skill_id,
+                    "task_type": task_type,
+                    "new_score": new_score,
+                    "new_runs": new_runs,
+                    "timestamp": now,
+                },
+            )
+        else:
+            # H6: MERGE a missing SUCCEEDED_ON at 0.5 baseline prior
+            default_prior = 0.50
+            new_score = (1.0 - alpha) * default_prior + (alpha * reward)
+            new_runs = 1
+            create_query = (
+                f"MERGE (s:{LABEL_SKILL} {{id: $skill_id}}) "
+                f"MERGE (t:{LABEL_TASK_TYPE} {{name: $task_type}}) "
+                f"MERGE (s)-[r:{REL_SUCCEEDED_ON}]->(t) "
+                "ON CREATE SET r.score = $new_score, r.runs = $new_runs, r.last_updated = $timestamp "
+                "ON MATCH SET r.score = $new_score, r.runs = $new_runs, r.last_updated = $timestamp "
+                "RETURN s.id AS skill_id, t.name AS task_type, r.score AS new_score, r.runs AS runs, r.last_updated AS last_updated"
+            )
+            res = store.query(
+                atlas_graph,
+                create_query,
+                {
+                    "skill_id": skill_id,
+                    "task_type": task_type,
+                    "new_score": new_score,
+                    "new_runs": new_runs,
+                    "timestamp": now,
+                },
+            )
+
+        return {
+            "skill_id": skill_id,
+            "task_type": task_type,
+            "new_score": float(res[0]["new_score"]),
+            "runs": int(res[0]["runs"]),
+            "last_updated": res[0]["last_updated"],
+        }
+
 
 
 def learn_from_run(

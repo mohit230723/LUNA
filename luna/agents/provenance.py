@@ -46,3 +46,7 @@ class ToolCallLog:
             _walk(entry["result"])
 
         return observed
+
+    # Canonical alias
+    observed_cids = observed_strings
+

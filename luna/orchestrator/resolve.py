@@ -93,6 +93,7 @@ def resolve_conflicts(
     w_evid: float = W_EVID,
     w_skill: float = W_SKILL,
     llm_client: Optional[LLMClient] = None,
+    atlas_graph: Optional[str] = None,
 ) -> list[Decision]:
     """Evaluate active conflicting findings, arbitrate winner per side, and persist Decision nodes.
 
@@ -109,10 +110,13 @@ def resolve_conflicts(
         w_evid: Weight for evidence presence
         w_skill: Weight for skill reputation
         llm_client: Optional LLMClient for qualitative arbitration
+        atlas_graph: Optional alias for atlas_graph_name
 
     Returns:
         List of created Decision objects.
     """
+    effective_atlas = atlas_graph or atlas_graph_name
+
     # 1. Identify distinct target customers with active findings
     find_targets_query = (
         f"MATCH (f:{LABEL_FINDING})-[:{REL_ASSESSES}]->(c:{LABEL_CUSTOMER}) "
@@ -154,7 +158,7 @@ def resolve_conflicts(
             sk_id = f.get("skill_id", "")
             if sk_id and sk_id not in skill_scores_snapshot:
                 skill_scores_snapshot[sk_id] = _get_skill_score(
-                    store, atlas_graph_name, sk_id, task_type=task_type
+                    store, effective_atlas, sk_id, task_type=task_type
                 )
 
         # Helper to score an individual finding:

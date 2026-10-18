@@ -42,6 +42,13 @@ from luna.orchestrator.explain import (
     explain_customer,
     explain_action,
 )
+from luna.orchestrator.pipeline import (
+    LunaPipeline,
+    PipelineConfig,
+    PipelineEvent,
+    PipelineRunResult,
+    find_seeds,
+)
 
 __all__ = [
     "extract_subgraph_slice",
@@ -75,5 +82,11 @@ __all__ = [
     "ExplainResult",
     "explain_customer",
     "explain_action",
+    "LunaPipeline",
+    "PipelineConfig",
+    "PipelineEvent",
+    "PipelineRunResult",
+    "find_seeds",
 ]
+
 
