@@ -165,7 +165,7 @@ def register_forge_routes(
         def work() -> list[dict]:
             rows = store.query(
                 atlas_graph,
-                f"MATCH (s:{LABEL_SKILL}) "
+                f"MATCH (s:{LABEL_SKILL}) WHERE s.source IS NOT NULL "
                 f"OPTIONAL MATCH (s)-[:{REL_PROVIDES}]->(c:{LABEL_CAPABILITY}) "
                 f"OPTIONAL MATCH (s)-[:{REL_TARGETS}]->(t:{LABEL_TECHNOLOGY}) "
                 "RETURN s.id AS id, s.name AS name, s.description AS description, "
@@ -196,7 +196,7 @@ def register_forge_routes(
             params = {"id": skill_id}
             rows = store.query(
                 atlas_graph,
-                f"MATCH (s:{LABEL_SKILL} {{id: $id}}) RETURN s",
+                f"MATCH (s:{LABEL_SKILL} {{id: $id}}) WHERE s.source IS NOT NULL RETURN s",
                 params,
             )
             if not rows:
@@ -244,7 +244,7 @@ def register_forge_routes(
                 for r in store.query(
                     atlas_graph,
                     f"MATCH (:{LABEL_SKILL} {{id: $id}})-[:{REL_REQUIRES}]->(r:{LABEL_SKILL}) "
-                    "RETURN r.id AS n ORDER BY n",
+                    "WHERE r.source IS NOT NULL RETURN r.id AS n ORDER BY n",
                     params,
                 )
             ]
@@ -253,7 +253,7 @@ def register_forge_routes(
                 for r in store.query(
                     atlas_graph,
                     f"MATCH (r:{LABEL_SKILL})-[:{REL_REQUIRES}]->(:{LABEL_SKILL} {{id: $id}}) "
-                    "RETURN r.id AS n ORDER BY n",
+                    "WHERE r.source IS NOT NULL RETURN r.id AS n ORDER BY n",
                     params,
                 )
             ]

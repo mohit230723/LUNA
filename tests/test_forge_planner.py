@@ -218,3 +218,16 @@ def test_plan_is_deterministic(live_store, atlas):
     a = build_plan(live_store, "website with React", atlas_graph=atlas)
     b = build_plan(live_store, "website with React", atlas_graph=atlas)
     assert a.model_dump() == b.model_dump()
+
+
+def test_plan_excludes_legacy_skills(live_store, atlas):
+    # A legacy (no source) skill that PROVIDES a forge capability is never a candidate.
+    live_store.query(
+        atlas,
+        "CREATE (s:Skill {id: 'aaa-legacy-frontend', name: 'Legacy', status: 'approved', restricted: false}) "
+        "WITH s MATCH (c:Capability {name: 'implement_frontend'}), (t:Technology {name: 'React'}) "
+        "CREATE (s)-[:PROVIDES]->(c), (s)-[:TARGETS]->(t)",
+    )
+    d = build_plan(live_store, "website with React", atlas_graph=atlas)
+    assert task(d, "implement_frontend").skill_id == "react-vite-pages"
+    assert all(c.skill_id != "aaa-legacy-frontend" for recs in d.candidates.values() for c in recs)

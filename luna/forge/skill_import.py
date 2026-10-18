@@ -41,7 +41,8 @@ LLM_TIMEOUT_S = 10.0
 def _find_cycle(store, atlas_graph: str, doc: SkillDoc) -> list[str] | None:
     rows = store.query(
         atlas_graph,
-        f"MATCH (a:{LABEL_SKILL})-[:{REL_REQUIRES}]->(b:{LABEL_SKILL}) RETURN a.id AS a, b.id AS b",
+        f"MATCH (a:{LABEL_SKILL})-[:{REL_REQUIRES}]->(b:{LABEL_SKILL}) "
+        "WHERE a.source IS NOT NULL AND b.source IS NOT NULL RETURN a.id AS a, b.id AS b",
     )
     adj: dict[str, list[str]] = {}
     for r in rows:
@@ -60,6 +61,17 @@ def _find_cycle(store, atlas_graph: str, doc: SkillDoc) -> list[str] | None:
         return None
 
     return dfs(doc.id, [doc.id])
+
+
+def _check_ownership(skill_id: str, existing_source: str | None, exists: bool, source: str) -> None:
+    """Forge skills (those with a ``source``) share the Skill id space with legacy
+    skills; an import may only update a forge skill of the same source."""
+    if not exists:
+        return
+    if not existing_source or existing_source != source:
+        # Legacy (no source) ids are reserved; upload/mcp may not overwrite repo
+        # skills, and repo imports may not overwrite upload/mcp skills.
+        raise ForgeError("invalid", f"skill id '{skill_id}' is reserved")
 
 
 def _names(store, atlas_graph: str, label: str) -> dict[str, str]:
@@ -101,15 +113,16 @@ def import_skill(
     atlas_graph: str = GRAPH_ATLAS,
     llm=None,
 ) -> ImportResult:
+    existing = store.query(
+        atlas_graph,
+        f"MATCH (s:{LABEL_SKILL} {{id: $id}}) RETURN s.content_hash AS h, s.status AS st, s.source AS src",
+        {"id": doc.id},
+    )
+    _check_ownership(doc.id, existing[0].get("src") if existing else None, bool(existing), source)
+
     cycle = _find_cycle(store, atlas_graph, doc)
     if cycle:
         raise ForgeError("invalid", "requires cycle: " + " -> ".join(cycle))
-
-    existing = store.query(
-        atlas_graph,
-        f"MATCH (s:{LABEL_SKILL} {{id: $id}}) RETURN s.content_hash AS h, s.status AS st",
-        {"id": doc.id},
-    )
     changed = not existing or existing[0]["h"] != doc.content_hash
     if not changed and existing[0].get("st"):
         status = existing[0]["st"]
@@ -196,7 +209,9 @@ def import_skill(
         )
     for req in doc.requires:
         found = store.query(
-            atlas_graph, f"MATCH (r:{LABEL_SKILL} {{id: $rid}}) RETURN r.id AS id", {"rid": req}
+            atlas_graph,
+            f"MATCH (r:{LABEL_SKILL} {{id: $rid}}) WHERE r.source IS NOT NULL RETURN r.id AS id",
+            {"rid": req},
         )
         if not found:
             warnings.append(f"unknown required skill '{req}'")
@@ -204,7 +219,7 @@ def import_skill(
         store.query(
             atlas_graph,
             f"MATCH (s:{LABEL_SKILL} {{id: $id}}) MATCH (r:{LABEL_SKILL} {{id: $rid}}) "
-            f"MERGE (s)-[:{REL_REQUIRES}]->(r)",
+            f"WHERE r.source IS NOT NULL MERGE (s)-[:{REL_REQUIRES}]->(r)",
             {"id": doc.id, "rid": req},
         )
 
@@ -318,12 +333,14 @@ def set_skill_status(
     atlas_graph: str = GRAPH_ATLAS,
 ) -> None:
     rows = store.query(
-        atlas_graph, f"MATCH (s:{LABEL_SKILL} {{id: $id}}) RETURN s.id AS id", {"id": skill_id}
+        atlas_graph,
+        f"MATCH (s:{LABEL_SKILL} {{id: $id}}) WHERE s.source IS NOT NULL RETURN s.id AS id",
+        {"id": skill_id},
     )
     if not rows:
         raise ForgeError("not_found", f"skill '{skill_id}' not found")
     store.query(
         atlas_graph,
-        f"MATCH (s:{LABEL_SKILL} {{id: $id}}) SET s.status = $status",
+        f"MATCH (s:{LABEL_SKILL} {{id: $id}}) WHERE s.source IS NOT NULL SET s.status = $status",
         {"id": skill_id, "status": status},
     )

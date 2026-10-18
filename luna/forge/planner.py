@@ -27,6 +27,10 @@ NEEDS_INPUT_QUESTION = (
 )
 
 
+# Forge-managed skills carry a ``source``; legacy/investigation skills do not.
+FORGE_SKILL = "s.source IS NOT NULL"
+
+
 class _Graph:
     """Snapshot of the atlas data the planner needs, loaded with a handful of queries."""
 
@@ -45,7 +49,7 @@ class _Graph:
         self.skills: dict[str, dict] = {}
         for r in q(
             g,
-            f"MATCH (s:{LABEL_SKILL}) "
+            f"MATCH (s:{LABEL_SKILL}) WHERE {FORGE_SKILL} "
             f"OPTIONAL MATCH (s)-[r:{REL_SUCCEEDED_ON}]->(:{LABEL_TASK_TYPE} {{name: $tt}}) "
             "RETURN s.id AS id, s.status AS status, s.restricted AS restricted, r.score AS score",
             {"tt": TASK_TYPE_SOFTWARE_BUILD},
@@ -58,14 +62,15 @@ class _Graph:
                 }
         self.provides: dict[str, set[str]] = {}  # skill -> capabilities
         self.providers: dict[str, set[str]] = {}  # capability -> skills
-        for r in q(g, f"MATCH (s:{LABEL_SKILL})-[:{REL_PROVIDES}]->(c:{LABEL_CAPABILITY}) RETURN s.id AS s, c.name AS c"):
+        for r in q(g, f"MATCH (s:{LABEL_SKILL})-[:{REL_PROVIDES}]->(c:{LABEL_CAPABILITY}) WHERE {FORGE_SKILL} RETURN s.id AS s, c.name AS c"):
             self.provides.setdefault(r["s"], set()).add(r["c"])
             self.providers.setdefault(r["c"], set()).add(r["s"])
         self.targets: dict[str, set[str]] = {}  # skill -> technologies
-        for r in q(g, f"MATCH (s:{LABEL_SKILL})-[:{REL_TARGETS}]->(t:{LABEL_TECHNOLOGY}) RETURN s.id AS s, t.name AS t"):
+        for r in q(g, f"MATCH (s:{LABEL_SKILL})-[:{REL_TARGETS}]->(t:{LABEL_TECHNOLOGY}) WHERE {FORGE_SKILL} RETURN s.id AS s, t.name AS t"):
             self.targets.setdefault(r["s"], set()).add(r["t"])
         self.requires: dict[str, set[str]] = {}
-        for r in q(g, f"MATCH (a:{LABEL_SKILL})-[:{REL_REQUIRES}]->(b:{LABEL_SKILL}) RETURN a.id AS a, b.id AS b"):
+        for r in q(g, f"MATCH (a:{LABEL_SKILL})-[:{REL_REQUIRES}]->(b:{LABEL_SKILL}) "
+            "WHERE a.source IS NOT NULL AND b.source IS NOT NULL RETURN a.id AS a, b.id AS b"):
             self.requires.setdefault(r["a"], set()).add(r["b"])
         self.before: dict[str, set[str]] = {}
         for r in q(g, f"MATCH (a:{LABEL_CAPABILITY})-[:{REL_BEFORE}]->(b:{LABEL_CAPABILITY}) RETURN a.name AS a, b.name AS b"):

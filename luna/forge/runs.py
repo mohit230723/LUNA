@@ -148,7 +148,8 @@ def skill_checklist(store, skill_id: str, atlas_graph: str = GRAPH_ATLAS) -> lis
         return []
     rows = store.query(
         atlas_graph,
-        f"MATCH (:{LABEL_SKILL} {{id: $id}})-[:{REL_HAS_CHECK}]->(c:{LABEL_CHECKLIST_ITEM}) "
+        f"MATCH (s:{LABEL_SKILL} {{id: $id}})-[:{REL_HAS_CHECK}]->(c:{LABEL_CHECKLIST_ITEM}) "
+        "WHERE s.source IS NOT NULL "
         "RETURN c.check_id AS id, c.text AS text, c.order AS ord ORDER BY ord",
         {"id": skill_id},
     )

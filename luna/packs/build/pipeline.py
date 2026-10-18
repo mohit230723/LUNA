@@ -131,7 +131,7 @@ class BuildPipeline(PackPipeline):
             skills = self.store.query(
                 self.config.atlas_graph,
                 f"MATCH (s:{LABEL_SKILL})-[:PROVIDES]->(c:Capability {{name: $cap}}) "
-                "WHERE coalesce(s.restricted, false) = false "
+                "WHERE coalesce(s.restricted, false) = false AND s.source IS NULL "
                 "RETURN s.id AS id, s.name AS name LIMIT 1",
                 {"cap": cap},
             )

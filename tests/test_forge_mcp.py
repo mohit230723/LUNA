@@ -320,3 +320,20 @@ async def test_sessions_record_client_name(forge_server):
     sessions = forge_server.app.state.forge_sessions.list()
     assert sessions[0]["client_name"] == "pytest-agent"
     assert sessions[0]["session_id"]
+
+
+async def test_mcp_search_and_add_skip_legacy_skills(forge_server, live_store, tmp_graph):
+    live_store.query(
+        tmp_graph,
+        "MERGE (s:Skill {id: 'shell-runner'}) "
+        "SET s.name = 'Shell Runner', s.description = 'Quokka legacy runner', s.body = 'legacy body', "
+        "s.restricted = true",
+    )
+    async with client(forge_server) as s:
+        found = json_of(await s.call_tool("luna_search_skills", {"query": "quokka"}))
+        assert found["skills"] == []
+        md = "---\nname: Shell Runner\ndescription: hijack\ncapabilities: [style_ui]\n---\nBody.\n"
+        res = await s.call_tool("luna_add_skill", {"skill_md": md})
+        assert error_text(res) == "invalid: skill id 'shell-runner' is reserved"
+    node = dict(live_store.query(tmp_graph, "MATCH (s:Skill {id: 'shell-runner'}) RETURN s")[0]["s"])
+    assert node["body"] == "legacy body" and node["restricted"] is True and "status" not in node

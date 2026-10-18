@@ -53,7 +53,7 @@ def build_briefing(store, run_id: str, task_id: str, atlas_graph: str = GRAPH_AT
     if task.skill_id:
         skill_rows = store.query(
             atlas_graph,
-            f"MATCH (s:{LABEL_SKILL} {{id: $id}}) "
+            f"MATCH (s:{LABEL_SKILL} {{id: $id}}) WHERE s.source IS NOT NULL "
             "RETURN s.id AS id, s.name AS name, s.description AS description, s.body AS body",
             {"id": task.skill_id},
         )
@@ -74,7 +74,8 @@ def build_briefing(store, run_id: str, task_id: str, atlas_graph: str = GRAPH_AT
             {"slug": r["slug"], "title": r.get("title") or "", "chars": len(r.get("content") or "")}
             for r in store.query(
                 atlas_graph,
-                f"MATCH (:{LABEL_SKILL} {{id: $id}})-[:{REL_HAS_SECTION}]->(x:{LABEL_SECTION}) "
+                f"MATCH (s:{LABEL_SKILL} {{id: $id}})-[:{REL_HAS_SECTION}]->(x:{LABEL_SECTION}) "
+                "WHERE s.source IS NOT NULL "
                 "RETURN x.slug AS slug, x.title AS title, x.content AS content, x.order AS ord "
                 "ORDER BY ord",
                 {"id": task.skill_id},
@@ -113,7 +114,8 @@ def build_briefing(store, run_id: str, task_id: str, atlas_graph: str = GRAPH_AT
 def get_section(store, skill_id: str, slug: str, atlas_graph: str = GRAPH_ATLAS) -> dict:
     rows = store.query(
         atlas_graph,
-        f"MATCH (:{LABEL_SKILL} {{id: $id}})-[:{REL_HAS_SECTION}]->(x:{LABEL_SECTION} {{slug: $slug}}) "
+        f"MATCH (s:{LABEL_SKILL} {{id: $id}})-[:{REL_HAS_SECTION}]->(x:{LABEL_SECTION} {{slug: $slug}}) "
+        "WHERE s.source IS NOT NULL "
         "RETURN x.title AS title, x.content AS content",
         {"id": skill_id, "slug": slug},
     )

@@ -282,7 +282,7 @@ def create_forge_mcp(
         def work() -> list[dict]:
             rows = store.query(
                 atlas_graph,
-                f"MATCH (s:{LABEL_SKILL}) "
+                f"MATCH (s:{LABEL_SKILL}) WHERE s.source IS NOT NULL "
                 f"OPTIONAL MATCH (s)-[:{REL_PROVIDES}]->(c:{LABEL_CAPABILITY}) "
                 f"OPTIONAL MATCH (s)-[:{REL_TARGETS}]->(t:{LABEL_TECHNOLOGY}) "
                 "RETURN s.id AS id, s.name AS name, s.description AS description, s.status AS status, "

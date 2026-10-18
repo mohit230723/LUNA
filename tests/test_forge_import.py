@@ -179,3 +179,67 @@ def test_import_skill_dir(live_store, atlas, tmp_path):
     assert res.skill_id == "my-skill" and res.status == "approved"
     n = q(live_store, atlas, "MATCH (:Skill {id: 'my-skill'})-[:HAS_SECTION]->(x:Section) RETURN count(x) AS n")
     assert n[0]["n"] == 3
+
+
+def _seed_legacy(store, g, sid="entity-linker"):
+    """A legacy/investigation skill: no ``source``, restricted, with its own edges."""
+    q(store, g,
+      "CREATE (s:Skill {id: $id, name: 'Entity Linker', body: 'legacy body', prompt_fragment: 'legacy', "
+      "restricted: true}) WITH s MATCH (c:Capability {name: 'implement_backend'}) CREATE (s)-[:PROVIDES]->(c)",
+      {"id": sid})
+
+
+def _legacy_state(store, g, sid="entity-linker"):
+    node = dict(q(store, g, "MATCH (s:Skill {id: $id}) RETURN s", {"id": sid})[0]["s"])
+    caps = q(store, g, "MATCH (:Skill {id: $id})-[:PROVIDES]->(c:Capability) RETURN c.name AS n", {"id": sid})
+    return {
+        "body": node.get("body"), "pf": node.get("prompt_fragment"), "r": node.get("restricted"),
+        "st": node.get("status"), "src": node.get("source"), "caps": sorted(r["n"] for r in caps),
+    }
+
+
+@pytest.mark.parametrize("source", ["upload", "mcp", "repo"])
+def test_import_rejects_legacy_skill_id(live_store, atlas, source):
+    _seed_legacy(live_store, atlas)
+    before = _legacy_state(live_store, atlas)
+    with pytest.raises(ForgeError) as e:
+        import_skill(live_store, doc_with("entity-linker", capabilities=["implement_frontend"]), source, atlas)
+    assert e.value.code == "invalid" and "skill id 'entity-linker' is reserved" in str(e.value)
+    after = _legacy_state(live_store, atlas)
+    assert after == before
+    assert after["body"] == "legacy body" and after["r"] is True and after["st"] is None and after["src"] is None
+    assert after["caps"] == ["implement_backend"]
+
+
+def test_mcp_import_cannot_overwrite_repo_skill(live_store, atlas):
+    import_skill(live_store, doc_with("backend-api", capabilities=["implement_backend"]), "repo", atlas)
+    for source in ("mcp", "upload"):
+        with pytest.raises(ForgeError) as e:
+            import_skill(live_store, doc_with("backend-api", body="Hijacked."), source, atlas)
+        assert "reserved" in str(e.value)
+    row = q(live_store, atlas, "MATCH (s:Skill {id: 'backend-api'}) RETURN s.status AS st, s.source AS src, s.body AS b")[0]
+    assert row["st"] == "approved" and row["src"] == "repo" and row["b"].strip() == "Body."
+
+
+def test_repo_import_cannot_overwrite_uploaded_skill(live_store, atlas):
+    import_skill(live_store, doc_with("u1"), "upload", atlas)
+    with pytest.raises(ForgeError):
+        import_skill(live_store, doc_with("u1", body="Other."), "repo", atlas)
+    # Same-source updates still work.
+    res = import_skill(live_store, doc_with("u1", body="Updated."), "upload", atlas)
+    assert res.changed and res.status == "pending_review"
+
+
+def test_requires_on_legacy_skill_is_unknown(live_store, atlas):
+    _seed_legacy(live_store, atlas)
+    res = import_skill(live_store, doc_with("s1", requires=["entity-linker"]), "repo", atlas)
+    assert res.warnings == ["unknown required skill 'entity-linker'"]
+    assert q(live_store, atlas, "MATCH (:Skill {id: 's1'})-[r:REQUIRES]->() RETURN count(r) AS n")[0]["n"] == 0
+
+
+def test_set_status_ignores_legacy_skill(live_store, atlas):
+    _seed_legacy(live_store, atlas)
+    with pytest.raises(ForgeError) as e:
+        set_skill_status(live_store, "entity-linker", "approved", atlas)
+    assert e.value.code == "not_found"
+    assert _legacy_state(live_store, atlas)["st"] is None

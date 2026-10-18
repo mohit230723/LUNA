@@ -253,3 +253,10 @@ def test_store_query_timeout_maps_to_503(live_store, tmp_graph, monkeypatch):
         r = c.get("/api/forge/skills")
         r2 = c.get("/api/forge/runs")
     assert r.status_code == 503 and r2.status_code == 503
+
+
+def test_skills_routes_hide_legacy_skills(client, live_store, tmp_graph):
+    live_store.query(tmp_graph, "CREATE (:Skill {id: 'entity-linker', name: 'Entity Linker', body: 'legacy'})")
+    assert "entity-linker" not in [s["id"] for s in client.get("/api/forge/skills").json()]
+    assert client.get("/api/forge/skills/entity-linker").status_code == 404
+    assert client.post("/api/forge/skills/entity-linker/approve").status_code == 404
