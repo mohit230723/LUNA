@@ -21,10 +21,10 @@ export function lintContent(filePath, content) {
   const errors = [];
   const lines = content.split('\n');
 
-  // Check 1: Shadows & Blur
-  if (/(box-shadow|text-shadow|filter:\s*blur)/i.test(content)) {
+  // Check 1: Shadows & Blur (backdrop-filter is allowed: it is the glass effect on the nav)
+  if (/(box-shadow|text-shadow|(?<!backdrop-)filter:\s*blur)/i.test(content)) {
     lines.forEach((line, idx) => {
-      if (/(box-shadow|text-shadow|filter:\s*blur)/i.test(line)) {
+      if (/(box-shadow|text-shadow|(?<!backdrop-)filter:\s*blur)/i.test(line)) {
         errors.push({ file: filePath, line: idx + 1, rule: 'no-shadow-or-blur', message: `Prohibited shadow or blur: "${line.trim()}"` });
       }
     });

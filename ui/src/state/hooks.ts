@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { getApi, Health, RunEvent, TraceResponse } from '../api';
 import { createInitialRunState, runReducer, RunState } from './runReducer';
 
@@ -11,9 +11,9 @@ export function useRun(runId: string | undefined): {
   const api = getApi();
 
   useEffect(() => {
-    if (!runId) return;
-
+    // Always clear previous run state (also when the case changes and there is no live run).
     dispatch({ type: 'RESET_RUN', runId });
+    if (!runId) return;
 
     const unsubscribe = api.subscribeRun(runId, {
       lastEventId: runState.lastEventId,
@@ -65,29 +65,47 @@ export function useTrace(runId: string | undefined): {
   return { trace, isLoading, error, reload: load };
 }
 
+// One shared health request for every component that shows backend status.
+let sharedHealth: Health | null = null;
+let sharedHealthAt = 0;
+let sharedHealthInflight: Promise<Health | null> | null = null;
+const healthListeners = new Set<(h: Health | null) => void>();
+
+async function fetchSharedHealth(force = false): Promise<Health | null> {
+  if (!force && sharedHealthInflight) return sharedHealthInflight;
+  if (!force && sharedHealth && Date.now() - sharedHealthAt < 5000) return sharedHealth;
+  sharedHealthInflight = getApi()
+    .health()
+    .then((h) => h as Health | null)
+    .catch(() => null)
+    .then((h) => {
+      sharedHealth = h;
+      sharedHealthAt = Date.now();
+      sharedHealthInflight = null;
+      healthListeners.forEach((fn) => fn(h));
+      return h;
+    });
+  return sharedHealthInflight;
+}
+
 export function useHealth(): {
   health: Health | null;
   isOnline: boolean;
 } {
-  const [health, setHealth] = useState<Health | null>(null);
-  const api = getApi();
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const check = async () => {
-    if (typeof document !== 'undefined' && document.hidden) return;
-    try {
-      const res = await api.health();
-      setHealth(res);
-    } catch {
-      setHealth(null);
-    }
-  };
+  const [health, setHealth] = useState<Health | null>(sharedHealth);
 
   useEffect(() => {
-    check();
-    timerRef.current = setInterval(check, 30000);
+    healthListeners.add(setHealth);
+    if (!(typeof document !== 'undefined' && document.hidden)) {
+      void fetchSharedHealth();
+    }
+    const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      void fetchSharedHealth(true);
+    }, 30000);
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      healthListeners.delete(setHealth);
+      clearInterval(timer);
     };
   }, []);
 

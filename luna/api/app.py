@@ -30,7 +30,7 @@ from luna.conversation.store import ConversationStore
 from luna.cases.store import CaseStore
 from luna.ingest.builder import build_context_graph
 from luna.investigate.pipeline import InvestigationPipeline
-from luna.investigate.trace import build_trace_response, build_why_response, generate_suggestions
+from luna.investigate.trace import build_trace_response, build_why_response, generate_suggestions, resolve_run_graph
 from luna.investigate.seed import seed_investigation_atlas
 from luna.packs.registry import default_registry, PackRegistry
 from luna.packs.router import route_prompt
@@ -349,6 +349,8 @@ def create_app(
             content={"error": "Internal Server Error", "detail": str(exc)},
         )
 
+    _llm_health_cache: dict[str, Any] = {}
+
     @app.get("/api/health")
     @app.get("/health")
     def health_check():
@@ -360,8 +362,16 @@ def create_app(
         except Exception:
             pass
 
-        llm = get_llm()
-        llm_info = llm.info()
+        # LLM reachability pings the provider (slow for remote gateways); cache it briefly so the
+        # UI's frequent health polls stay fast.
+        now = time.time()
+        cached = _llm_health_cache.get("value")
+        if cached and now - _llm_health_cache.get("at", 0.0) < 20.0:
+            llm_info = cached
+        else:
+            llm_info = get_llm().info()
+            _llm_health_cache["value"] = llm_info
+            _llm_health_cache["at"] = now
 
         return {
             "status": "ok" if (falkordb_ok and llm_info.get("reachable")) else "degraded",
@@ -670,7 +680,7 @@ def create_app(
         try:
             return build_why_response(graph_store, run_id, cid)
         except Exception:
-            run_graph = f"run_{run_id}" if not run_id.startswith("run_") else run_id
+            run_graph = resolve_run_graph(graph_store, run_id)
             try:
                 explanation = explain_customer(graph_store, run_graph, cid)
                 return explanation.model_dump()
@@ -682,8 +692,21 @@ def create_app(
         """Return traversal trace graph, ordered steps, and path node IDs (Part 3.6)."""
         ctx_graph = None
         inv_state = investigation_registry.get(run_id)
-        if inv_state:
-            c = case_store.get_case(inv_state.case_id)
+        case_id = inv_state.case_id if inv_state else None
+        if not case_id:
+            # After a restart the in-memory registry is empty; the saved assistant turn still
+            # names its run, so recover the case (and its context graph) from the turn.
+            try:
+                rows = graph_store.query(
+                    case_store.graph_name,
+                    "MATCH (c:Conversation)-[:HAS_TURN]->(t:Turn {run_id: $rid}) RETURN c.id AS id LIMIT 1",
+                    {"rid": run_id},
+                )
+                case_id = rows[0]["id"] if rows else None
+            except Exception:
+                case_id = None
+        if case_id:
+            c = case_store.get_case(case_id)
             if c:
                 ctx_graph = c.get("context_graph")
 
@@ -694,7 +717,7 @@ def create_app(
 
         # Fallback to legacy structure
         state = registry.get(run_id)
-        run_graph = f"run_{run_id}" if not run_id.startswith("run_") else run_id
+        run_graph = resolve_run_graph(graph_store, run_id)
 
         try:
             step_query = (

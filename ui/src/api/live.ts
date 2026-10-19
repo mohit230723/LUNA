@@ -209,6 +209,10 @@ export class LiveApi implements Api {
         const parsed = JSON.parse(e.data) as BuildEvent;
         if (parsed && parsed.type) {
           opts.onEvent(parsed);
+          if (parsed.type === 'completed' || parsed.type === 'failed' || parsed.type === 'cancelled') {
+            es.close();
+            opts.onState('closed');
+          }
         }
       } catch (err) {
         if (import.meta.env.DEV) {
@@ -290,6 +294,12 @@ export class LiveApi implements Api {
         const parsed = JSON.parse(e.data);
         if (isRunEvent(parsed)) {
           opts.onEvent(parsed);
+          // The server ends the stream after a terminal event; close here so the browser
+          // does not auto-reconnect and replay the whole run.
+          if (parsed.type === 'completed' || parsed.type === 'failed' || parsed.type === 'cancelled') {
+            es.close();
+            opts.onState('closed');
+          }
         } else if (import.meta.env.DEV) {
           console.warn('Unknown or malformed run event received:', parsed);
         }

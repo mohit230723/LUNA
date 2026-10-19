@@ -1,5 +1,9 @@
 .hero {
-  padding-top: 80px;
+  padding-top: 88px;
+  /* A faint pool of light behind the headline gives the glass cards something to refract. */
+  background:
+    radial-gradient(ellipse 60% 38% at 50% 14%, rgba(255, 255, 255, 0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 82% 52%, rgba(152, 255, 56, 0.045) 0%, transparent 70%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -15,6 +19,7 @@
   color: var(--color-chalk);
   margin: 0 0 24px 0;
   max-width: 900px;
+  text-wrap: balance;
 }
 
 .subheadline {
@@ -36,7 +41,7 @@
 }
 
 .badgeRow {
-  margin-bottom: 48px;
+  margin-bottom: 56px;
 }
 
 .constellationBand {

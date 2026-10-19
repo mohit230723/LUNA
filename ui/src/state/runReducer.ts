@@ -41,7 +41,7 @@ export type RunAction =
   | { type: 'ADD_EVENT'; event: RunEvent }
   | { type: 'SET_STATUS'; status: RunStatus }
   | { type: 'UPDATE_ACTION'; action: ActionRequest }
-  | { type: 'RESET_RUN'; runId: string };
+  | { type: 'RESET_RUN'; runId?: string };
 
 export function runReducer(state: RunState, action: RunAction): RunState {
   switch (action.type) {

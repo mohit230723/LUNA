@@ -8,13 +8,34 @@ from luna.graph.store import GraphStore
 from luna.investigate.recorder import describe_edge
 
 
+
+def resolve_run_graph(store: GraphStore, run_id: str) -> str:
+    """Return the FalkorDB graph that holds a run.
+
+    Investigation runs are stored as ``run_<run_id>`` where the id itself starts with ``run_``
+    (e.g. ``run_run_ab12cd34``), while older pipelines normalise the prefix away. Pick whichever
+    graph actually exists.
+    """
+    candidates = [f"run_{run_id}"]
+    if run_id.startswith("run_"):
+        candidates.append(run_id)
+    try:
+        existing = set(store.list_graphs())
+    except Exception:
+        return candidates[0]
+    for name in candidates:
+        if name in existing:
+            return name
+    return candidates[0]
+
+
 def build_trace_response(
     store: GraphStore,
     run_id: str,
     ctx_graph: Optional[str] = None,
 ) -> dict[str, Any]:
     """Build the TraceResponse per Part 3.6 specifications."""
-    run_graph = f"run_{run_id}" if not run_id.startswith("run_") else run_id
+    run_graph = resolve_run_graph(store, run_id)
 
     # 1. Fetch TraversalStep nodes from run graph
     step_rows = store.query(
@@ -466,7 +487,7 @@ def build_why_response(
     target_cid: str,
 ) -> dict[str, Any]:
     """Build Why explainability response adapted for generic investigation findings (Part 3.7)."""
-    run_graph = f"run_{run_id}" if not run_id.startswith("run_") else run_id
+    run_graph = resolve_run_graph(store, run_id)
 
     # 1. Fetch findings involving target_cid (either as subject, evidence, or customer)
     f_rows = store.query(

@@ -29,3 +29,15 @@
     z-index: 30;
   }
 }
+
+.loadingCase {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-12);
+  color: var(--color-smoke);
+  font-family: var(--font-primary);
+  font-size: var(--text-caption);
+  letter-spacing: 0.5px;
+}

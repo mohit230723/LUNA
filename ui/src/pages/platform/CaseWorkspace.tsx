@@ -8,6 +8,7 @@ import { IngestScreen } from '../../components/ingest/IngestScreen';
 import { BuildingScreen } from '../../components/ingest/BuildingScreen';
 import { LlmBlockerCard } from '../../components/ingest/LlmBlockerCard';
 import { getApi } from '../../api';
+import { Spinner } from '../../components/ui/Spinner';
 import { conversationReducer, initialConversationState } from '../../state/conversationReducer';
 import { useRun } from '../../state/hooks';
 import type {
@@ -33,7 +34,7 @@ export const CaseWorkspace: React.FC = () => {
   // Case & conversations state
   const [cases, setCases] = useState<CaseSummary[]>([]);
   const [caseDetail, setCaseDetail] = useState<CaseDetail | null>(null);
-  const [, setCaseLoading] = useState(false);
+  const [caseLoading, setCaseLoading] = useState(false);
 
   // Build state
   const [activeBuildId, setActiveBuildId] = useState<string | null>(null);
@@ -42,9 +43,13 @@ export const CaseWorkspace: React.FC = () => {
   const [buildError, setBuildError] = useState<string>('');
 
   // Investigation run state
+  // activeRunId: latest run of the open case (trace / details navigation).
+  // liveRunId: only a run started in this session; history is rendered from saved turns and
+  // is never re-streamed.
   const [activeRunId, setActiveRunId] = useState<string | undefined>(undefined);
+  const [liveRunId, setLiveRunId] = useState<string | undefined>(undefined);
   const [convState, dispatchConv] = useReducer(conversationReducer, initialConversationState);
-  const { runState, connectionState } = useRun(activeRunId);
+  const { runState, connectionState } = useRun(liveRunId);
 
   // Suggestions
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -139,6 +144,7 @@ export const CaseWorkspace: React.FC = () => {
     } else {
       setCaseDetail(null);
       setActiveRunId(undefined);
+      setLiveRunId(undefined);
       dispatchConv({
         type: 'LOAD_CONVERSATION',
         conversation: { id: '', title: '', messages: [] },
@@ -280,6 +286,7 @@ export const CaseWorkspace: React.FC = () => {
     try {
       const { run_id } = await api.sendMessage(conversationId, { content, options });
       setActiveRunId(run_id);
+      setLiveRunId(run_id);
       await loadCase(conversationId);
       await loadCaseList();
     } catch (err: any) {
@@ -302,6 +309,7 @@ export const CaseWorkspace: React.FC = () => {
 
   const handleNewCase = () => {
     setActiveRunId(undefined);
+    setLiveRunId(undefined);
     setCaseDetail(null);
     navigate('/platform?tab=cases');
   };
@@ -404,6 +412,10 @@ export const CaseWorkspace: React.FC = () => {
         <main className={styles.mainArea}>
           {isLlmUnreachable ? (
             <LlmBlockerCard llmInfo={health?.llm} onCheckAgain={fetchHealth} />
+          ) : caseLoading && conversationId && !caseDetail ? (
+            <div className={styles.loadingCase} role="status" aria-live="polite">
+              <Spinner /> <span>Opening case…</span>
+            </div>
           ) : isBuilding ? (
             <BuildingScreen
               events={buildEvents}
