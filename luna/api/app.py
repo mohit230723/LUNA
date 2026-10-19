@@ -768,8 +768,8 @@ def create_app(
             e_rows = graph_store.query(
                 run_graph,
                 "MATCH (a)-[r]->(b) "
-                "RETURN id(r) AS id, coalesce(a.cid, a.id, str(id(a))) AS src, "
-                "       coalesce(b.cid, b.id, str(id(b))) AS dst, type(r) AS rel "
+                "RETURN id(r) AS id, coalesce(a.cid, a.id, toString(id(a))) AS src, "
+                "       coalesce(b.cid, b.id, toString(id(b))) AS dst, type(r) AS rel "
                 "LIMIT 1201",
             )
             edges = []
@@ -798,7 +798,8 @@ def create_app(
     @app.get("/api/atlas/graph")
     def get_atlas_graph():
         """Get atlas graph topology."""
-        return get_graph_topology("atlas")
+        # Call with explicit values: the route function's defaults are FastAPI Query objects.
+        return get_graph_topology("atlas", cid=None, hops=1, conversation_id=None)
 
     @app.get("/api/graphs/{scope}")
     def get_graph_topology(
@@ -857,9 +858,9 @@ def create_app(
 
                 e_query = (
                     "MATCH (a)-[r]->(b) "
-                    "WHERE (coalesce(a.cid, a.id, str(id(a))) IN $nids) AND (coalesce(b.cid, b.id, str(id(b))) IN $nids) "
-                    "RETURN id(r) AS id, coalesce(a.cid, a.id, str(id(a))) AS src, "
-                    "       coalesce(b.cid, b.id, str(id(b))) AS dst, type(r) AS rel, properties(r) AS props "
+                    "WHERE (coalesce(a.cid, a.id, toString(id(a))) IN $nids) AND (coalesce(b.cid, b.id, toString(id(b))) IN $nids) "
+                    "RETURN id(r) AS id, coalesce(a.cid, a.id, toString(id(a))) AS src, "
+                    "       coalesce(b.cid, b.id, toString(id(b))) AS dst, type(r) AS rel, properties(r) AS props "
                     "LIMIT 1501"
                 )
                 e_rows = graph_store.query(graph_name, e_query, {"nids": list(node_ids)})
@@ -903,8 +904,8 @@ def create_app(
             # Check edges (up to 1501 to check truncation)
             edge_query = (
                 "MATCH (a)-[r]->(b) WHERE type(r) <> 'MENTIONED_IN' "
-                "RETURN id(r) AS id, coalesce(a.cid, a.id, str(id(a))) AS src, "
-                "       coalesce(b.cid, b.id, str(id(b))) AS dst, type(r) AS rel, properties(r) AS props "
+                "RETURN id(r) AS id, coalesce(a.cid, a.id, toString(id(a))) AS src, "
+                "       coalesce(b.cid, b.id, toString(id(b))) AS dst, type(r) AS rel, properties(r) AS props "
                 "LIMIT 1501"
             )
             e_rows = graph_store.query(graph_name, edge_query)
@@ -1324,35 +1325,66 @@ def create_app(
         return {"status": "cancelled", "run_id": run_id}
 
     @app.get("/api/atlas/skills")
-    def list_atlas_skills():
-        """Return catalog of all skills across investigate and build packs."""
+    def list_atlas_skills(pack: Optional[str] = None):
+        """Return the skill catalog (investigate and build packs) in the shape the Skill Atlas page expects.
+
+        Forge skills (added through MCP or upload) have their own library on the Platform Skills tab.
+        """
         try:
-            query = (
-                "MATCH (s:Skill)-[:PROVIDES]->(c:Capability) "
-                "WHERE s.source IS NULL "
+            def rows_for(cypher: str) -> list[dict[str, Any]]:
+                return graph_store.query(atlas_graph, cypher)
+
+            base = rows_for(
+                "MATCH (s:Skill) WHERE s.source IS NULL "
                 "OPTIONAL MATCH (s)-[:IN_PACK]->(p:Pack) "
-                "OPTIONAL MATCH (s)-[:TARGETS]->(t:Technology) "
-                "OPTIONAL MATCH (s)-[r:SUCCEEDED_ON]->(tt:TaskType) "
                 "RETURN s.id AS id, s.name AS name, s.restricted AS restricted, "
-                "       s.prompt_fragment AS prompt_fragment, c.name AS capability, "
-                "       p.name AS pack, collect(DISTINCT t.name) AS technologies, "
-                "       avg(r.score) AS track_record"
+                "       s.prompt_fragment AS prompt_fragment, s.description AS description, "
+                "       head(collect(DISTINCT p.name)) AS pack"
             )
-            rows = graph_store.query(atlas_graph, query)
+            caps: dict[str, list[str]] = {}
+            for r in rows_for("MATCH (s:Skill)-[:PROVIDES]->(c:Capability) RETURN s.id AS id, c.name AS name"):
+                caps.setdefault(r["id"], []).append(r["name"])
+            techs: dict[str, list[str]] = {}
+            for r in rows_for("MATCH (s:Skill)-[:TARGETS]->(t:Technology) RETURN s.id AS id, t.name AS name"):
+                techs.setdefault(r["id"], []).append(r["name"])
+            reqs: dict[str, list[str]] = {}
+            for r in rows_for("MATCH (s:Skill)-[:REQUIRES]->(q:Skill) RETURN s.id AS id, q.id AS name"):
+                reqs.setdefault(r["id"], []).append(r["name"])
+            tools: dict[str, list[str]] = {}
+            for r in rows_for("MATCH (s:Skill)-[:EXPOSES]->(t:Tool) RETURN s.id AS id, t.name AS name"):
+                tools.setdefault(r["id"], []).append(r["name"])
+            score: dict[str, tuple[float, int]] = {}
+            for r in rows_for(
+                "MATCH (s:Skill)-[r:SUCCEEDED_ON]->(:TaskType) "
+                "RETURN s.id AS id, avg(r.score) AS score, sum(r.runs) AS runs"
+            ):
+                score[r["id"]] = (float(r.get("score") or 0.0), int(r.get("runs") or 0))
+
             skills = []
-            for r in rows:
+            for r in base:
+                sid = r["id"]
+                skill_pack = r.get("pack") or "investigate"
+                if pack and skill_pack != pack:
+                    continue
+                sc, runs = score.get(sid, (0.8, 0))
+                fragment = r.get("prompt_fragment") or ""
                 skills.append({
-                    "id": r["id"],
-                    "name": r.get("name", r["id"]),
+                    "id": sid,
+                    "name": r.get("name") or sid,
+                    "pack": skill_pack,
+                    "capabilities": sorted(caps.get(sid, [])),
+                    "technologies": sorted(techs.get(sid, [])),
+                    "requires": sorted(reqs.get(sid, [])),
+                    "tools": sorted(tools.get(sid, [])),
+                    "score": round(sc, 2),
+                    "runs": runs,
                     "restricted": bool(r.get("restricted", False)),
-                    "prompt_fragment": r.get("prompt_fragment", ""),
-                    "capability": r.get("capability", ""),
-                    "pack": r.get("pack") or "investigate",
-                    "technologies": [t for t in (r.get("technologies") or []) if t],
-                    "track_record": round(float(r.get("track_record") or 0.8), 2),
+                    "description": r.get("description") or fragment,
+                    "prompt_fragment": fragment,
                 })
-            return skills
-        except Exception as err:
+            return sorted(skills, key=lambda k: (k["pack"], k["name"]))
+        except Exception:
+            logging.getLogger(__name__).exception("Failed to list atlas skills")
             return []
 
     if forge_endpoint is not None:

@@ -27,10 +27,15 @@ describe('Home Page', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Give LUNA a task\. A main agent plans it as a graph, assigns skills to sub-agents by query/i
+        /Give LUNA a case or a build\. It plans the work as a graph, equips sub-agents with skills by query/i
       )
     ).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /TRY THE PLATFORM/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /OPEN THE PLATFORM/i }).length).toBeGreaterThan(0);
+
+    // 1b. Two ways to use LUNA (Cases and coding agents over MCP)
+    expect(screen.getByText('Investigate connected data')).toBeInTheDocument();
+    expect(screen.getByText('Give your coding agent skills')).toBeInTheDocument();
+    expect(screen.getByLabelText('Connect command')).toHaveTextContent('claude mcp add --transport http luna');
 
     // 2. FeatureGrid ("WHAT IT DOES")
     expect(screen.getByText('WHAT IT DOES')).toBeInTheDocument();
