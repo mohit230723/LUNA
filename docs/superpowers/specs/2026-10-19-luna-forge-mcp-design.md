@@ -236,7 +236,7 @@ Re-assembly does not re-apply learning.
 |---|---|
 | `GET /api/forge/agents` | Connected sessions |
 | `GET /api/forge/runs`, `GET /api/forge/runs/{run_id}` | Run list; run detail with tasks, assignments, candidates, results, report |
-| `GET /api/forge/events` | SSE: `agent_connected`, `agent_seen`, `run_created`, `task_updated`, `task_stalled`, `run_assembled`, `skill_imported` |
+| `GET /api/forge/events` | SSE: `agent_connected`, `agent_seen`, `run_created`, `task_updated`, `task_stalled`, `run_assembled`, `skill_imported`. First frame is `event: hello` (no id) with `{"seq", "current", "restarted"}`: the stream resumes after `seq`. No cursor (`after` / `Last-Event-ID`) → start at the current seq (no replay); a cursor beyond the current seq (backend restarted) → replay from 0 with `restarted: true`. Clients reset their last-seen seq to `seq` on hello. |
 | `GET /api/forge/skills`, `GET /api/forge/skills/{id}` | Library list; detail with sections, checklist and graph neighbourhood |
 | `POST /api/forge/skills/upload` | Multipart SKILL.md (+ references) → `pending_review` |
 | `POST /api/forge/skills/{id}/approve`, `POST /api/forge/skills/{id}/reject` | Review gate |

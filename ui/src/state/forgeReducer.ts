@@ -13,6 +13,8 @@ export type ForgeAction =
   | { type: 'runs'; runs: ForgeRunSummary[] }
   | { type: 'run'; run: ForgeRunDetail | null }
   | { type: 'event'; event: ForgeEvent }
+  /** SSE hello: events with seq > `seq` follow (resets after a backend restart). */
+  | { type: 'hello'; seq: number }
   | { type: 'connection'; state: ForgeState['connection'] };
 
 export const initialForgeState: ForgeState = {
@@ -68,6 +70,8 @@ export function forgeReducer(state: ForgeState, action: ForgeAction): ForgeState
       return { ...state, activeRun: action.run };
     case 'connection':
       return { ...state, connection: action.state };
+    case 'hello':
+      return { ...state, lastSeq: Math.max(0, action.seq) };
     case 'event': {
       const { event } = action;
       if (event.seq <= state.lastSeq) return state;
@@ -93,7 +97,10 @@ export function forgeReducer(state: ForgeState, action: ForgeAction): ForgeState
         case 'run_assembled': {
           const report = (data.report ?? null) as ForgeReport | null;
           const runId = str(data.run_id);
-          const runs = base.runs.map((r) => (r.run_id === runId && report ? { ...r, status: report.status } : r));
+          // Backend marks a run 'assembled' once its report is complete; an
+          // incomplete report leaves the run status unchanged.
+          const assembled = report?.status !== 'incomplete';
+          const runs = base.runs.map((r) => (r.run_id === runId && assembled ? { ...r, status: 'assembled' } : r));
           const active = base.activeRun;
           if (active && active.run.run_id === runId) {
             return {
@@ -101,7 +108,7 @@ export function forgeReducer(state: ForgeState, action: ForgeAction): ForgeState
               runs,
               activeRun: {
                 ...active,
-                run: report ? { ...active.run, status: report.status } : active.run,
+                run: assembled ? { ...active.run, status: 'assembled' } : active.run,
                 report,
               },
             };

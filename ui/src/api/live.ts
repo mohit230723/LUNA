@@ -9,6 +9,7 @@ import {
   ForgeAgent,
   ForgeConnectInfo,
   ForgeEvent,
+  ForgeHello,
   ForgeImportResult,
   ForgeRunDetail,
   ForgeRunSummary,
@@ -416,6 +417,7 @@ export class LiveApi implements Api {
     lastEventId?: number;
     onEvent: (e: ForgeEvent) => void;
     onState: (s: 'open' | 'reconnecting' | 'closed') => void;
+    onHello?: (h: ForgeHello) => void;
   }): () => void {
     let urlStr = `${this.baseUrl}/forge/events`;
     if (opts.lastEventId !== undefined) {
@@ -441,6 +443,21 @@ export class LiveApi implements Api {
         }
       }
     };
+
+    // First frame of every (re)connection: where the stream resumes, and whether
+    // the backend restarted (its seq went backwards).
+    es.addEventListener('hello', ((e: MessageEvent) => {
+      try {
+        const h = JSON.parse(e.data) as ForgeHello;
+        if (h && typeof h.seq === 'number') {
+          opts.onHello?.({ seq: h.seq, current: Number(h.current ?? h.seq), restarted: Boolean(h.restarted) });
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.warn('Failed to parse forge SSE hello:', e.data, err);
+        }
+      }
+    }) as EventListener);
 
     // Frames carry a named `event:` field, so each type needs its own listener.
     for (const t of [

@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from luna.forge.events import SKILL_IMPORTED, ForgeEventBus
+from luna.forge.events import HELLO, SKILL_IMPORTED, ForgeEventBus
 from luna.forge.mcp_server import allowed_hosts_from_env, forge_allowed_hosts
 from luna.forge.models import ForgeError, is_store_unavailable
 from luna.forge.runs import get_run, list_runs
@@ -183,18 +183,34 @@ def register_forge_routes(
             return get_run(store, run_id)
 
     @router.get("/events")
-    async def forge_events(request: Request, after: int = 0, max_events: int = 0) -> StreamingResponse:
-        seq = after
+    async def forge_events(
+        request: Request, after: int | None = None, max_events: int = 0
+    ) -> StreamingResponse:
+        # Cursor: Last-Event-ID (browser reconnect) wins over ?after. Without
+        # either, start at the bus's current seq (no replay of old events: the
+        # client loaded fresh state over REST). A cursor beyond the current seq
+        # means the backend restarted (new bus): replay from 0.
+        cursor: int | None = after
         last_id = request.headers.get("last-event-id")
         if last_id is not None:
             try:
-                seq = int(last_id)
+                cursor = int(last_id)
             except ValueError:
                 pass
-        seq = max(0, seq)
+        current = bus.current_seq()
+        restarted = False
+        if cursor is None:
+            seq = current
+        elif cursor > current:
+            seq, restarted = 0, True
+        else:
+            seq = max(0, cursor)
         limit = max(0, max_events)
+        hello = {"seq": seq, "current": current, "restarted": restarted}
 
         async def stream():
+            # The hello frame has no id: so it never moves the browser's Last-Event-ID.
+            yield f"event: {HELLO}\ndata: {json.dumps(hello)}\n\n"
             cursor = seq
             sent = 0
             while True:

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import type { ForgeEvent, ForgeReport, ForgeRunDetail } from '../api/contract';
+import type { ForgeEvent, ForgeHello, ForgeReport, ForgeRunDetail } from '../api/contract';
 import { MockApi } from '../api/mock/mockApi';
 import { Platform } from '../pages/Platform';
 
@@ -38,6 +38,7 @@ const RUN_ID = 'run-portfolio-1';
 
 let api: MockApi;
 let emit: (e: ForgeEvent) => void;
+let hello: ((h: ForgeHello) => void) | undefined;
 let serverRun: ForgeRunDetail;
 
 vi.mock('../api', async (importOriginal) => {
@@ -68,6 +69,7 @@ async function setup() {
   });
   api.subscribeForge = (opts) => {
     emit = opts.onEvent;
+    hello = opts.onHello;
     opts.onState('open');
     return () => opts.onState('closed');
   };
@@ -162,6 +164,51 @@ describe('Platform Agents tab', () => {
       emit({ seq: 3, ts: '2026-10-19T09:20:00+00:00', type: 'run_assembled', data: { run_id: RUN_ID, report: REPORT } });
     });
     expect(await screen.findByText(/3\/3 tasks complete/)).toBeInTheDocument();
+  });
+
+  it('polls agents, runs and the active run every 30 s', async () => {
+    const spy = vi.spyOn(globalThis, 'setInterval');
+    api.forgeRuns = vi.fn(api.forgeRuns.bind(api));
+    api.forgeAgents = vi.fn(api.forgeAgents.bind(api));
+    await renderPlatform();
+    await screen.findByRole('article', { name: /implement frontend/i });
+    // Other hooks (health check) also tick every 30 s; fire every such interval once.
+    const polls = spy.mock.calls.filter(([, ms]) => ms === 30_000);
+    expect(polls.length).toBeGreaterThan(0);
+    const runsBefore = (api.forgeRuns as ReturnType<typeof vi.fn>).mock.calls.length;
+    const runBefore = (api.forgeRun as ReturnType<typeof vi.fn>).mock.calls.length;
+    await act(async () => {
+      for (const [cb] of polls) (cb as () => void)();
+    });
+    expect((api.forgeRuns as ReturnType<typeof vi.fn>).mock.calls.length).toBe(runsBefore + 1);
+    expect((api.forgeAgents as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(1);
+    expect((api.forgeRun as ReturnType<typeof vi.fn>).mock.calls.length).toBe(runBefore + 1);
+    spy.mockRestore();
+  });
+
+  it('applies events again after a backend restart hello', async () => {
+    api.forgeRuns = vi.fn(api.forgeRuns.bind(api));
+    await renderPlatform();
+    const card = await screen.findByRole('article', { name: /implement frontend/i });
+    await waitFor(() => expect(hello).toBeDefined());
+    act(() => {
+      emit({ seq: 40, ts: '2026-10-19T09:10:00+00:00', type: 'agent_seen', data: { session_id: 'x' } });
+    });
+    const runsBefore = (api.forgeRuns as ReturnType<typeof vi.fn>).mock.calls.length;
+    act(() => hello!({ seq: 0, current: 1, restarted: true }));
+    await waitFor(() =>
+      expect((api.forgeRuns as ReturnType<typeof vi.fn>).mock.calls.length).toBe(runsBefore + 1)
+    );
+    // A low seq from the new bus is no longer dropped.
+    act(() => {
+      emit({
+        seq: 1,
+        ts: '2026-10-19T09:11:00+00:00',
+        type: 'task_updated',
+        data: { run_id: RUN_ID, task_id: 'implement_frontend', status: 'failed' },
+      });
+    });
+    expect(await within(card).findByText(/failed/i)).toBeInTheDocument();
   });
 
   it('Cases tab still renders case workspace', async () => {

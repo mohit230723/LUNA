@@ -390,6 +390,14 @@ export interface ForgeEvent {
   data: Record<string, unknown>;
 }
 
+/** First SSE frame of every forge event stream: events with seq > `seq` follow. */
+export interface ForgeHello {
+  seq: number;
+  current: number;
+  /** True when the client's cursor was ahead of the server (backend restarted). */
+  restarted: boolean;
+}
+
 export interface ForgeSkillSummary {
   id: string;
   name: string;
@@ -495,6 +503,7 @@ export interface Api {
     lastEventId?: number;
     onEvent: (e: ForgeEvent) => void;
     onState: (s: 'open' | 'reconnecting' | 'closed') => void;
+    onHello?: (h: ForgeHello) => void;
   }): () => void;
   forgeSkills(): Promise<ForgeSkillSummary[]>;
   forgeSkill(id: string): Promise<ForgeSkillDetail>;

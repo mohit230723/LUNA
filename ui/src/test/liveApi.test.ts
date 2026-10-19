@@ -235,4 +235,51 @@ describe('API Mode Switching', () => {
     expect(body.get('skill')).toBeInstanceOf(File);
     expect(body.getAll('references')).toHaveLength(2);
   });
+
+  it('forge: subscribeForge surfaces the hello frame and events', () => {
+    type Listener = (e: MessageEvent) => void;
+    class FakeEventSource {
+      static CLOSED = 2;
+      static last: FakeEventSource | null = null;
+      url: string;
+      readyState = 1;
+      onopen: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      listeners: Record<string, Listener[]> = {};
+      constructor(url: string) {
+        this.url = url;
+        FakeEventSource.last = this;
+      }
+      addEventListener(type: string, fn: Listener) {
+        (this.listeners[type] ??= []).push(fn);
+      }
+      emit(type: string, data: unknown) {
+        for (const fn of this.listeners[type] ?? []) fn({ data: JSON.stringify(data) } as MessageEvent);
+      }
+      close() {
+        this.readyState = 2;
+      }
+    }
+    const orig = globalThis.EventSource;
+    globalThis.EventSource = FakeEventSource as unknown as typeof EventSource;
+    try {
+      const api = new LiveApi('/api');
+      const hellos: unknown[] = [];
+      const events: unknown[] = [];
+      const unsub = api.subscribeForge({
+        onEvent: (e) => events.push(e),
+        onState: () => undefined,
+        onHello: (h) => hellos.push(h),
+      });
+      const es = FakeEventSource.last!;
+      expect(es.url).toMatch(/\/api\/forge\/events$/);
+      es.emit('hello', { seq: 0, current: 3, restarted: true });
+      es.emit('run_created', { seq: 1, ts: 't', type: 'run_created', data: { run_id: 'r' } });
+      expect(hellos).toEqual([{ seq: 0, current: 3, restarted: true }]);
+      expect(events).toHaveLength(1);
+      unsub();
+    } finally {
+      globalThis.EventSource = orig;
+    }
+  });
 });

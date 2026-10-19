@@ -62,3 +62,11 @@ def test_sessions_list_newest_first():
     reg.touch("a", now=T0)
     reg.touch("b", now=T0 + timedelta(seconds=5))
     assert [s["session_id"] for s in reg.list(now=T0 + timedelta(seconds=6))] == ["b", "a"]
+
+
+def test_bus_current_seq():
+    bus = ForgeEventBus()
+    assert bus.current_seq() == 0
+    bus.publish("x", {})
+    bus.publish("x", {})
+    assert bus.current_seq() == 2

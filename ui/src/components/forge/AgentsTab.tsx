@@ -50,6 +50,15 @@ export const AgentsTab: React.FC = () => {
     }
   }, []);
 
+  const loadRuns = useCallback(async () => {
+    try {
+      const runs = await getApi().forgeRuns();
+      if (mounted.current) dispatch({ type: 'runs', runs });
+    } catch {
+      // transient; the poll retries
+    }
+  }, []);
+
   // Initial load: connect info, agents and runs; select the newest run.
   const loadAll = useCallback(async () => {
     const api = getApi();
@@ -96,6 +105,15 @@ export const AgentsTab: React.FC = () => {
       unsub = getApi().subscribeForge({
         onEvent,
         onState: (s) => dispatch({ type: 'connection', state: s }),
+        onHello: (h) => {
+          dispatch({ type: 'hello', seq: h.seq });
+          if (h.restarted) {
+            // New backend process: resync everything over REST.
+            loadAgents();
+            loadRuns();
+            if (selectedRef.current) loadRun(selectedRef.current);
+          }
+        },
       });
     } catch {
       // No EventSource available: stay usable on the 30 s poll alone.
@@ -105,7 +123,7 @@ export const AgentsTab: React.FC = () => {
       unsub();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [loadRun]);
+  }, [loadRun, loadAgents, loadRuns]);
 
   // Load the selected run whenever the selection changes.
   useEffect(() => {
@@ -114,14 +132,15 @@ export const AgentsTab: React.FC = () => {
     else dispatch({ type: 'run', run: null });
   }, [selectedRunId, loadRun]);
 
-  // Periodic reconciliation: agent idle/connected labels and the active run.
+  // Periodic reconciliation: agent idle/connected labels, the run list and the active run.
   useEffect(() => {
     const id = setInterval(() => {
       loadAgents();
+      loadRuns();
       if (selectedRef.current) loadRun(selectedRef.current);
     }, POLL_MS);
     return () => clearInterval(id);
-  }, [loadAgents, loadRun]);
+  }, [loadAgents, loadRuns, loadRun]);
 
   // One-second clock for lease countdowns and "last seen" ages.
   useEffect(() => {

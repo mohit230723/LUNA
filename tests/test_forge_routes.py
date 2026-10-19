@@ -187,6 +187,21 @@ def test_skill_detail_neighbourhood(client):
     assert client.get("/api/forge/skills/missing").status_code == 404
 
 
+def sse_frames(text: str) -> list[dict]:
+    """Parse SSE text into [{"event", "id", "data"}] (comments skipped)."""
+    out = []
+    for block in text.split("\n\n"):
+        frame: dict = {}
+        for line in block.split("\n"):
+            if line.startswith(":") or ": " not in line:
+                continue
+            k, v = line.split(": ", 1)
+            frame[k] = json.loads(v) if k == "data" else v
+        if frame:
+            out.append(frame)
+    return out
+
+
 def test_events_stream_replays_after(client):
     bus = client.app.state.forge_bus
     first = bus.publish(RUN_CREATED, {"run_id": "a"})["seq"]
@@ -196,8 +211,10 @@ def test_events_stream_replays_after(client):
         text = "".join(resp.iter_text())
     assert f"id: {second}\n" in text and f"id: {first}\n" not in text
     assert "event: run_created\n" in text
-    data = json.loads(text.split("data: ", 1)[1].split("\n", 1)[0])
-    assert data["data"] == {"run_id": "b"}
+    frames = sse_frames(text)
+    assert frames[0]["event"] == "hello" and frames[0]["data"]["restarted"] is False
+    assert "id" not in frames[0]
+    assert frames[1]["data"]["data"] == {"run_id": "b"}
 
     # Last-Event-ID wins over ?after
     with client.stream(
@@ -318,3 +335,35 @@ def test_default_host_list_rejects_testserver(live_store, tmp_graph, monkeypatch
     monkeypatch.delenv("LUNA_MCP_ALLOWED_HOSTS", raising=False)
     with TestClient(make_app(live_store, tmp_graph)) as c:
         assert c.get("/api/forge/agents").status_code == 421
+
+
+def test_events_no_cursor_does_not_replay(client):
+    import threading
+    import time
+
+    bus = client.app.state.forge_bus
+    old = bus.publish(RUN_CREATED, {"run_id": "old"})["seq"]
+
+    def publish_later():
+        time.sleep(0.5)
+        bus.publish(RUN_CREATED, {"run_id": "new"})
+
+    t = threading.Thread(target=publish_later)
+    t.start()
+    with client.stream("GET", "/api/forge/events?max_events=1") as resp:
+        frames = sse_frames("".join(resp.iter_text()))
+    t.join()
+    assert frames[0] == {"event": "hello", "data": {"seq": old, "current": old, "restarted": False}}
+    assert [f["data"]["data"]["run_id"] for f in frames[1:]] == ["new"]
+
+
+def test_events_cursor_beyond_current_replays_from_zero(client):
+    bus = client.app.state.forge_bus
+    current = bus.publish(RUN_CREATED, {"run_id": "after-restart"})["seq"]
+    with client.stream(
+        "GET", "/api/forge/events?max_events=1", headers={"Last-Event-ID": str(current + 1000)}
+    ) as resp:
+        frames = sse_frames("".join(resp.iter_text()))
+    assert frames[0]["event"] == "hello"
+    assert frames[0]["data"] == {"seq": 0, "current": current, "restarted": True}
+    assert frames[1]["id"] == "1"

@@ -15,6 +15,7 @@ TASK_UPDATED = "task_updated"
 TASK_STALLED = "task_stalled"
 RUN_ASSEMBLED = "run_assembled"
 SKILL_IMPORTED = "skill_imported"
+HELLO = "hello"  # first SSE frame only; never published on the bus
 
 MAX_EVENTS = 500
 
@@ -40,6 +41,11 @@ class ForgeEventBus:
             self._events.append(ev)
             self.condition.notify_all()
             return ev
+
+    def current_seq(self) -> int:
+        """Sequence number of the newest published event (0 if none)."""
+        with self.condition:
+            return self._seq
 
     def wait_after(self, seq: int, timeout: float) -> list[dict[str, Any]]:
         """Return events newer than ``seq``; block up to ``timeout`` if none."""

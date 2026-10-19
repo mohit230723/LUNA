@@ -60,7 +60,29 @@ describe('forgeReducer', () => {
     const report = { run_id: 'r1', status: 'complete' as const, missing: [], tasks: [], overlaps: {}, gaps: [], summary: 's' };
     s = forgeReducer(s, { type: 'event', event: ev(9, 'run_assembled', { run_id: 'r1', report }) });
     expect(s.activeRun!.report).toEqual(report);
-    expect(s.runs[0]!.status).toBe('complete');
+    // Backend's term for a run whose report is complete.
+    expect(s.runs[0]!.status).toBe('assembled');
+    expect(s.activeRun!.run.status).toBe('assembled');
+  });
+
+  it('leaves run status alone for an incomplete report', () => {
+    let s = withRun();
+    s = forgeReducer(s, { type: 'runs', runs: [{ run_id: 'r1', prompt: 'p', status: 'running', created_at: '', task_count: 2 }] });
+    const report = { run_id: 'r1', status: 'incomplete' as const, missing: ['x'], tasks: [], overlaps: {}, gaps: [], summary: 's' };
+    s = forgeReducer(s, { type: 'event', event: ev(2, 'run_assembled', { run_id: 'r1', report }) });
+    expect(s.runs[0]!.status).toBe('running');
+    expect(s.activeRun!.report).toEqual(report);
+  });
+
+  it('resets lastSeq on hello so a restarted backend is heard again', () => {
+    let s = withRun();
+    s = forgeReducer(s, { type: 'event', event: ev(50, 'task_updated', { run_id: 'r1', task_id: 'verify_contracts', status: 'ready' }) });
+    expect(s.lastSeq).toBe(50);
+    s = forgeReducer(s, { type: 'hello', seq: 0 });
+    expect(s.lastSeq).toBe(0);
+    s = forgeReducer(s, { type: 'event', event: ev(1, 'task_updated', { run_id: 'r1', task_id: 'verify_contracts', status: 'done' }) });
+    expect(task(s, 'verify_contracts').status).toBe('done');
+    expect(s.lastSeq).toBe(1);
   });
 
   it('tracks connection state', () => {

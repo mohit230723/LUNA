@@ -210,8 +210,11 @@ export const forgeMockMethods: Pick<Api, ForgeMethods> = {
   subscribeForge: (opts) => {
     let cancelled = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const pending = scriptedEvents().filter((e) => e.seq > (opts.lastEventId ?? 0));
+    const after = opts.lastEventId ?? 0;
+    const pending = scriptedEvents().filter((e) => e.seq > after);
     opts.onState('open');
+    // The mock "bus" plays its scripted demo after the cursor, like a live stream would.
+    opts.onHello?.({ seq: after, current: after, restarted: false });
     pending.forEach((e, i) => {
       timers.push(
         setTimeout(() => {
