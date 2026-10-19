@@ -49,6 +49,7 @@ def assign_skills_to_subtasks(
         # Query atlas for all skills providing this subtask's capability
         query = (
             f"MATCH (s:{LABEL_SKILL})-[:{REL_PROVIDES}]->(c:{LABEL_CAPABILITY} {{name: $cap}}) "
+            "WHERE s.source IS NULL "  # forge skills are gated by human review; never auto-assigned here
             f"OPTIONAL MATCH (s)-[r:{REL_SUCCEEDED_ON}]->(t:{LABEL_TASK_TYPE} {{name: $task_type}}) "
             f"OPTIONAL MATCH (s)-[:{REL_REQUIRES}]->(req:{LABEL_SKILL}) "
             "RETURN s.id AS id, s.name AS name, s.prompt_fragment AS prompt_fragment, "

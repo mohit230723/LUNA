@@ -80,6 +80,8 @@ class OpenAICompatibleLLM:
 
         payload = {
             "model": self.model,
+
+            "stream": False,
             "messages": messages,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
@@ -128,6 +130,8 @@ class OpenAICompatibleLLM:
 
         payload = {
             "model": self.model,
+
+            "stream": False,
             "messages": messages,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
@@ -160,6 +164,8 @@ class OpenAICompatibleLLM:
             )
             repair_payload = {
                 "model": self.model,
+
+                "stream": False,
                 "messages": [
                     {"role": "system", "content": "You are a JSON repair assistant. Fix the JSON and return ONLY valid JSON."},
                     {"role": "user", "content": repair_user},
@@ -217,6 +223,8 @@ class OpenAICompatibleLLM:
         for _ in range(max_steps):
             payload = {
                 "model": self.model,
+
+                "stream": False,
                 "messages": history,
                 "temperature": self.temperature,
                 "max_tokens": self.max_tokens,

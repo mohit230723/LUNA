@@ -339,6 +339,7 @@ class InvestigationPipeline:
                 GRAPH_ATLAS,
                 "MATCH (k:Skill)-[:PROVIDES]->(c:Capability {name: $cap}) "
                 "MATCH (k)-[:IN_PACK]->(p:Pack {name: 'investigate'}) "
+                "WHERE k.source IS NULL "
                 "OPTIONAL MATCH (k)-[:EXPOSES]->(t:Tool) "
                 "RETURN k.id AS id, k.name AS name, k.prompt_fragment AS prompt, "
                 "       k.score AS score, k.restricted AS restricted, collect(t.name) AS tools "

@@ -1302,6 +1302,7 @@ def create_app(
         try:
             query = (
                 "MATCH (s:Skill)-[:PROVIDES]->(c:Capability) "
+                "WHERE s.source IS NULL "
                 "OPTIONAL MATCH (s)-[:IN_PACK]->(p:Pack) "
                 "OPTIONAL MATCH (s)-[:TARGETS]->(t:Technology) "
                 "OPTIONAL MATCH (s)-[r:SUCCEEDED_ON]->(tt:TaskType) "
