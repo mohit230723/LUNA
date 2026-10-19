@@ -34,6 +34,12 @@ Do it.
 """
 
 
+@pytest.fixture(autouse=True)
+def _allow_testclient_host(monkeypatch):
+    # TestClient sends "Host: testserver"; allow it via config, never in production code.
+    monkeypatch.setenv("LUNA_MCP_ALLOWED_HOSTS", "testserver")
+
+
 def make_app(live_store, tmp_graph):
     return create_app(
         store=live_store,
@@ -260,3 +266,55 @@ def test_skills_routes_hide_legacy_skills(client, live_store, tmp_graph):
     assert "entity-linker" not in [s["id"] for s in client.get("/api/forge/skills").json()]
     assert client.get("/api/forge/skills/entity-linker").status_code == 404
     assert client.post("/api/forge/skills/entity-linker/approve").status_code == 404
+
+
+def _pending_skill(client) -> str:
+    md = SKILL_MD.replace("Upload Probe", "Origin Probe")
+    return upload(client, md).json()["skill_id"]
+
+
+def _status(client, sid) -> str:
+    return client.get(f"/api/forge/skills/{sid}").json()["status"]
+
+
+def test_approve_cross_site_origin_403(client):
+    sid = _pending_skill(client)
+    r = client.post(f"/api/forge/skills/{sid}/approve", headers={"Origin": "https://evil.example"})
+    assert r.status_code == 403 and r.json() == {"error": "origin not allowed"}
+    assert _status(client, sid) == "pending_review"
+    for path in ("/api/forge/skills/reimport", f"/api/forge/skills/{sid}/reject"):
+        assert client.post(path, headers={"Origin": "https://evil.example"}).status_code == 403
+    files = [("skill", ("SKILL.md", SKILL_MD.encode(), "text/markdown"))]
+    up = client.post("/api/forge/skills/upload", files=files, headers={"Origin": "https://evil.example"})
+    assert up.status_code == 403
+    assert _status(client, sid) == "pending_review"
+
+
+def test_approve_allowed_origin_204(client):
+    sid = _pending_skill(client)
+    r = client.post(f"/api/forge/skills/{sid}/approve", headers={"Origin": "http://localhost:5173"})
+    assert r.status_code == 204 and _status(client, sid) == "approved"
+    # Same-origin (bundled UI served by the backend itself).
+    r = client.post(f"/api/forge/skills/{sid}/reject", headers={"Origin": "http://testserver"})
+    assert r.status_code == 204 and _status(client, sid) == "rejected"
+
+
+def test_approve_without_origin_204(client):
+    sid = _pending_skill(client)
+    assert client.post(f"/api/forge/skills/{sid}/approve").status_code == 204
+    assert _status(client, sid) == "approved"
+
+
+def test_foreign_host_421(client):
+    for path in ("/api/forge/skills", "/api/forge/connect", "/api/forge/runs"):
+        r = client.get(path, headers={"Host": "evil.example"})
+        assert r.status_code == 421 and r.json() == {"error": "host not allowed"}
+    assert client.get("/api/forge/agents", headers={"Host": "localhost:8000"}).status_code == 200
+    assert client.get("/api/forge/agents", headers={"Host": "127.0.0.1"}).status_code == 200
+    assert client.get("/api/forge/agents", headers={"Host": "localhost.evil.example"}).status_code == 421
+
+
+def test_default_host_list_rejects_testserver(live_store, tmp_graph, monkeypatch):
+    monkeypatch.delenv("LUNA_MCP_ALLOWED_HOSTS", raising=False)
+    with TestClient(make_app(live_store, tmp_graph)) as c:
+        assert c.get("/api/forge/agents").status_code == 421

@@ -247,7 +247,7 @@ python -m uvicorn luna.api.app:app --port 8000
 
 ### 2. Optional bearer token
 
-Set `LUNA_MCP_TOKEN` before starting the backend to require `Authorization: Bearer <token>` on `/mcp` (401 otherwise). The `/api/forge/*` routes stay unauthenticated.
+Set `LUNA_MCP_TOKEN` before starting the backend to require `Authorization: Bearer <token>` on `/mcp` (401 otherwise). The `/api/forge/*` routes stay unauthenticated. They are guarded instead: every `/api/forge/*` request whose `Host` is not loopback (`localhost`, `127.0.0.1`, `[::1]`, any port) or listed in `LUNA_MCP_ALLOWED_HOSTS` gets 421 `{"error": "host not allowed"}`, and the state-changing routes (upload, approve, reject, reimport) return 403 `{"error": "origin not allowed"}` when an `Origin` header is present and is neither in `LUNA_CORS_ORIGINS` nor the backend's own origin. Requests without `Origin` (curl, scripts) pass.
 
 ### 3. Claude Code
 

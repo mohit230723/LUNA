@@ -10,12 +10,13 @@ from typing import Any, Callable, Iterator
 
 import anyio
 import redis.exceptions
-from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from luna.forge.events import SKILL_IMPORTED, ForgeEventBus
+from luna.forge.mcp_server import allowed_hosts_from_env, forge_allowed_hosts
 from luna.forge.models import ForgeError, is_store_unavailable
 from luna.forge.runs import get_run, list_runs
 from luna.forge.sessions import SessionRegistry
@@ -63,6 +64,33 @@ def _http_errors() -> Iterator[None]:
         raise
 
 
+class _ForgeGuardError(Exception):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+
+
+def _host_allowed(host: str, patterns: list[str]) -> bool:
+    """Exact host match, or ``name:*`` matching ``name:<port>`` (same rules as the MCP transport)."""
+    host = host.strip().lower()
+    for p in patterns:
+        p = p.strip().lower()
+        if p.endswith(":*"):
+            base = p[:-2]
+            if host.startswith(base + ":") and host[len(base) + 1:].isdigit():
+                return True
+        elif host == p:
+            return True
+    return False
+
+
+def _origin_allowed(origin: str, request: Request, cors_origins: list[str]) -> bool:
+    if "*" in cors_origins or origin in cors_origins:
+        return True
+    # Same-origin (e.g. the bundled UI served by this backend); Host is already checked.
+    return origin == f"{request.url.scheme}://{request.headers.get('host', '')}"
+
+
 def _connect_snippets(mcp_url: str) -> dict[str, str]:
     def antigravity(headers: bool) -> str:
         server: dict[str, Any] = {"serverUrl": mcp_url}
@@ -91,7 +119,34 @@ def register_forge_routes(
     atlas_graph: str,
     skills_dir: Path,
     llm_factory: Callable[[], Any] | None = None,
+    cors_origins: list[str] | None = None,
+    allowed_hosts: list[str] | None = None,
 ) -> None:
+    """Register /api/forge/* on ``app``.
+
+    Every route rejects a ``Host`` outside ``allowed_hosts`` (default: loopback
+    plus ``LUNA_MCP_ALLOWED_HOSTS``) with 421 (DNS rebinding). State-changing
+    (non-GET) routes reject a present ``Origin`` outside ``cors_origins`` with
+    403, so cross-site pages cannot fire simple POSTs at them.
+    """
+    hosts = list(allowed_hosts) if allowed_hosts is not None else forge_allowed_hosts(allowed_hosts_from_env())
+    origins = list(cors_origins or [])
+
+    async def guard(request: Request) -> None:
+        if not _host_allowed(request.headers.get("host", ""), hosts):
+            raise _ForgeGuardError(421, "host not allowed")
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            origin = request.headers.get("origin")
+            if origin is not None and not _origin_allowed(origin, request, origins):
+                raise _ForgeGuardError(403, "origin not allowed")
+
+    async def guard_error(_request: Request, exc: Exception) -> JSONResponse:
+        assert isinstance(exc, _ForgeGuardError)
+        return JSONResponse({"error": str(exc)}, status_code=exc.status)
+
+    app.add_exception_handler(_ForgeGuardError, guard_error)
+    router = APIRouter(prefix="/api/forge", dependencies=[Depends(guard)])
+
     def _llm():
         if llm_factory is None:
             return None
@@ -104,7 +159,7 @@ def register_forge_routes(
         with _http_errors():
             return await anyio.to_thread.run_sync(fn)
 
-    @app.get("/api/forge/connect")
+    @router.get("/connect")
     def forge_connect(request: Request) -> dict:
         mcp_url = f"{str(request.base_url)}mcp"
         return {
@@ -113,21 +168,21 @@ def register_forge_routes(
             "snippets": _connect_snippets(mcp_url),
         }
 
-    @app.get("/api/forge/agents")
+    @router.get("/agents")
     def forge_agents() -> list[dict]:
         return sessions.list()
 
-    @app.get("/api/forge/runs")
+    @router.get("/runs")
     def forge_runs() -> list[dict]:
         with _http_errors():
             return list_runs(store)
 
-    @app.get("/api/forge/runs/{run_id}")
+    @router.get("/runs/{run_id}")
     def forge_run(run_id: str) -> dict:
         with _http_errors():
             return get_run(store, run_id)
 
-    @app.get("/api/forge/events")
+    @router.get("/events")
     async def forge_events(request: Request, after: int = 0, max_events: int = 0) -> StreamingResponse:
         seq = after
         last_id = request.headers.get("last-event-id")
@@ -160,7 +215,7 @@ def register_forge_routes(
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
-    @app.get("/api/forge/skills")
+    @router.get("/skills")
     async def forge_skills() -> list[dict]:
         def work() -> list[dict]:
             rows = store.query(
@@ -190,7 +245,7 @@ def register_forge_routes(
 
         return await _blocking(work)
 
-    @app.get("/api/forge/skills/{skill_id}")
+    @router.get("/skills/{skill_id}")
     async def forge_skill(skill_id: str) -> dict:
         def work() -> dict:
             params = {"id": skill_id}
@@ -298,7 +353,7 @@ def register_forge_routes(
             raise HTTPException(status_code=413, detail=f"{what} exceeds the {limit // 1024} KB limit")
         return data
 
-    @app.post("/api/forge/skills/upload")
+    @router.post("/skills/upload")
     async def forge_skill_upload(request: Request) -> dict:
         # Reject oversized bodies before Starlette parses or spools the multipart form.
         try:
@@ -345,7 +400,7 @@ def register_forge_routes(
         bus.publish(SKILL_IMPORTED, {"skill_id": result.skill_id, "status": result.status})
         return result.model_dump()
 
-    @app.post("/api/forge/skills/reimport")
+    @router.post("/skills/reimport")
     async def forge_skill_reimport() -> list[dict]:
         results = await _blocking(lambda: import_repo_skills(store, skills_dir, atlas_graph))
         for r in results:
@@ -358,10 +413,12 @@ def register_forge_routes(
         bus.publish(SKILL_IMPORTED, {"skill_id": skill_id, "status": status})
         return Response(status_code=204)
 
-    @app.post("/api/forge/skills/{skill_id}/approve", status_code=204)
+    @router.post("/skills/{skill_id}/approve", status_code=204)
     async def forge_skill_approve(skill_id: str) -> Response:
         return await _set_status(skill_id, "approved")
 
-    @app.post("/api/forge/skills/{skill_id}/reject", status_code=204)
+    @router.post("/skills/{skill_id}/reject", status_code=204)
     async def forge_skill_reject(skill_id: str) -> Response:
         return await _set_status(skill_id, "rejected")
+
+    app.include_router(router)

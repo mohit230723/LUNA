@@ -53,6 +53,7 @@ __all__ = [
     "BUILD_PROMPT_NAME",
     "DEFAULT_ALLOWED_HOSTS",
     "create_forge_mcp",
+    "forge_allowed_hosts",
     "forge_asgi_app",
     "start_lease_sweep",
     "sweep_leases_once",
@@ -155,10 +156,7 @@ def create_forge_mcp(
     atlas_graph: str = GRAPH_ATLAS,
     allowed_hosts: list[str] | None = None,
 ) -> FastMCP:
-    hosts = list(DEFAULT_ALLOWED_HOSTS)
-    for h in allowed_hosts or []:
-        if h and h not in hosts:
-            hosts.append(h)
+    hosts = forge_allowed_hosts(allowed_hosts)
     mcp = FastMCP(
         "luna",
         streamable_http_path="/",
@@ -340,6 +338,15 @@ class _BearerASGI:
 def forge_asgi_app(mcp: FastMCP, token: str | None) -> ASGIApp:
     mcp.streamable_http_app()  # creates mcp.session_manager on first call
     return _BearerASGI(StreamableHTTPASGIApp(mcp.session_manager), token)
+
+
+def forge_allowed_hosts(extra: list[str] | None = None) -> list[str]:
+    """Loopback hosts (any port) plus ``extra`` (e.g. ``LUNA_MCP_ALLOWED_HOSTS``)."""
+    hosts = list(DEFAULT_ALLOWED_HOSTS)
+    for h in extra or []:
+        if h and h not in hosts:
+            hosts.append(h)
+    return hosts
 
 
 def allowed_hosts_from_env() -> list[str]:

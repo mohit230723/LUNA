@@ -40,6 +40,7 @@ from luna.forge.sessions import SessionRegistry
 from luna.forge.mcp_server import (
     allowed_hosts_from_env,
     create_forge_mcp,
+    forge_allowed_hosts,
     forge_asgi_app,
     start_lease_sweep,
 )
@@ -1336,7 +1337,8 @@ def create_app(
 
     if forge_enabled:
         register_forge_routes(app, graph_store, forge_bus, forge_sessions, atlas_graph, forge_skills_dir,
-                              llm_factory=forge_llm_factory)
+                              llm_factory=forge_llm_factory, cors_origins=origins,
+                              allowed_hosts=forge_allowed_hosts(allowed_hosts_from_env()))
 
     ui_dist_dir = Path("ui/dist")
     if ui_dist_dir.is_dir():
