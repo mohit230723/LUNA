@@ -1,260 +1,305 @@
-# LUNA OS — Autonomous Graph-Orchestrated Chat Platform
+# LUNA OS
 
-[![Architecture: Graph-Native Multi-Agent](https://img.shields.io/badge/Architecture-Graph--Native%20Multi--Agent-00ff66?style=flat-square)](#architecture)
-[![Database: FalkorDB](https://img.shields.io/badge/Graph%20DB-FalkorDB%20Docker-blue?style=flat-square)](https://falkordb.com)
-[![Frontend: Hyperstudio Spec](https://img.shields.io/badge/UI-Hyperstudio%20%7C%20React%20%2B%20Vite%20%2B%20Cytoscape-black?style=flat-square)](#hyperstudio-ui)
-[![Security: Zero-Leak API Keys](https://img.shields.io/badge/Security-Zero--Leak%20API%20Keys-success?style=flat-square)](#security--governance)
+**A graph-native platform for AI agents.** LUNA does two things, both backed by one FalkorDB graph:
 
-**LUNA OS** is an autonomous, graph-orchestrated multi-agent chat platform. Behind a single unified chat interface, LUNA dynamically routes user prompts into domain-specialized **Packs** (`investigate` and `software-build`). Every plan, decision, skill assignment, agent traversal step, evidence link, and generated artifact is persisted directly into **FalkorDB** as an auditable property graph.
+1. **Cases** - paste or upload messy data, LUNA builds a context graph from it, and sub-agents answer questions by walking that graph. Every answer comes with citations, a replayable trace and an honest "not checked" list.
+2. **Forge (MCP)** - any coding agent (Claude Code, Antigravity) connects to LUNA over MCP. LUNA plans a build request as a task graph, picks a skill for each task from a skill graph, and the agent does the work and reports back. New skills wait for human review.
+
+> Stack: Python 3.11 / FastAPI / FastMCP, FalkorDB (Cypher), React + Vite + Cytoscape UI, any OpenAI-compatible, Anthropic, Gemini or Ollama model.
+
+## Contents
+
+- [Quick start](#quick-start)
+- [Configuration and checking your LLM key](#configuration-and-checking-your-llm-key)
+- [The graph map](#the-graph-map) - nodes, relationships and how agents query them
+- [How it reasons](#how-it-reasons) - multi-hop, graph tools, MCP tool selection, actions, explainability
+- [Using it](#using-it)
+- [Project layout](#project-layout)
+- [Tests and checks](#tests-and-checks)
+- [Security](#security)
 
 ---
 
-## Architecture Overview
+## Quick start
+
+Requirements: Python 3.11+, Node 18+, Docker (for FalkorDB), and a model endpoint with an API key (or a local Ollama).
+
+```bash
+git clone https://github.com/mohit230723/LUNA.git
+cd LUNA
+
+# 1. Graph database
+docker compose up -d                     # FalkorDB on localhost:6379
+
+# 2. Backend
+python -m venv .venv
+source .venv/bin/activate                # Windows: .venv\Scripts\activate
+pip install -e .
+cp .env.example .env                     # then edit the LUNA_LLM_* lines (next section)
+python -m uvicorn luna.api.app:app --host 127.0.0.1 --port 8000
+
+# 3. UI (second terminal)
+cd ui && npm install && npm run dev      # http://localhost:5173
+```
+
+Open http://localhost:5173 and choose **Platform**. The nav badge reads **BACKEND ONLINE** when the API, FalkorDB and the model are reachable (`GET /api/health`).
+
+## Configuration and checking your LLM key
+
+All model settings live in `.env` (git-ignored). The backend reads it at startup, so restart it after any change.
+
+```bash
+LUNA_LLM_PROVIDER=openai_compatible      # ollama | openai_compatible | anthropic | gemini
+LUNA_LLM_BASE_URL=https://api.openai.com/v1
+LUNA_LLM_MODEL=gpt-4o-mini
+LUNA_LLM_API_KEY=<your key>
+LUNA_LLM_TIMEOUT_S=120
+```
+
+Examples: a local gateway such as OmniRoute uses `LUNA_LLM_BASE_URL=http://localhost:20128/v1` and a model or combo name from `GET /v1/models`. Anthropic and Gemini use their own provider value and key. Local Ollama needs no key.
+
+Check the key and endpoint in one command (it never prints the key):
+
+```bash
+python scripts/check_llm.py              # provider, model, base URL, one test completion
+```
+
+Then check both features end to end:
+
+```bash
+python scripts/check_cases_flow.py       # builds a graph from the demo brief and answers a question (1-2 min)
+python scripts/forge_smoke.py --url http://127.0.0.1:8000/mcp   # MCP plan, claim, submit, assemble: ends with SMOKE OK
+```
+
+If the model is unreachable or the key is wrong, the Cases build and questions fail with a clear provider error rather than a silent empty graph, and the health badge shows the model as unreachable. The MCP smoke test does not need a model, only FalkorDB.
+
+---
+
+## The graph map
+
+LUNA keeps several FalkorDB graphs. Each has one job.
+
+| Graph | Holds | Written by |
+|---|---|---|
+| `atlas` | The skill library: skills, capabilities, technologies, tools, policy, track record | seed data, Forge skill import, run learning |
+| `ctx_<case>` | One case's context graph: entities, relationships, source quotes | Cases ingest |
+| `run_<id>` | One run's memory: plan, decisions, findings, traversal steps | investigation pipeline |
+| `conversations` | Case threads, turns, links to runs | Cases and chat |
+| Forge run graph | Build runs: task DAG, assignments, candidates, results | MCP tools |
+
+### Atlas: skills and the evidence for choosing them
 
 ```mermaid
-flowchart TD
-    User([User Prompt]) --> ChatBox[Hyperstudio Chat Box / API Gateway]
-    ChatBox --> Router{Dynamic Router\nroute_prompt\nLLM + Keyword Fallback}
+graph LR
+    Pack((Pack)) ---|IN_PACK| Skill
+    Skill((Skill)) -->|PROVIDES| Cap((Capability))
+    Skill -->|TARGETS| Tech((Technology))
+    Skill -->|EXPOSES| Tool((Tool))
+    Skill -->|REQUIRES| Skill2((Skill))
+    Skill -->|SUCCEEDED_ON score, runs| TT((TaskType))
+    Skill -->|HAS_SECTION| Sec((Section))
+    Skill -->|HAS_CHECK| Chk((ChecklistItem))
+```
 
-    subgraph Packs ["Pack Abstraction Layer"]
-        Router -->|investigate| InvPack[Investigate Pack\nFraud & Entity Linkage]
-        Router -->|software-build| BuildPack[Software-Build Pack\nCodebase Generator]
-    end
+A skill has `restricted`, and imported skills carry `source` and a review `status` (`pending`, `approved`, `rejected`). `SUCCEEDED_ON.score` is an exponential moving average updated after approved runs.
 
-    subgraph InvestigatePipeline ["Investigate Pack Flow"]
-        InvPack --> Seeds[Detect Seeds & Targets]
-        Seeds --> RepScore[Atlas Skill Scoring & Assignment]
-        RepScore --> SubAgents[Parallel Subagents\nPrivate Graph Slices]
-        SubAgents --> TraversalRec[TraversalRecorder\nStep-by-Step Entity Graph Hops]
-        TraversalRec --> SideRes[Deterministic Side Resolution]
-        SideRes --> CorrGate[Corroboration Gating]
-        CorrGate --> AnswerInv[Compose Answer\nStrict Entity Citation Enforcement]
-    end
+### Context graph: what a case contains
 
-    subgraph BuildPipeline ["Software-Build Pack Flow"]
-        BuildPack --> Understand[Requirement Extraction & Tech Check]
-        Understand --> BlueprintDAG[Blueprint DAG Generation\nTopological Wave Sorting]
-        BlueprintDAG --> Wave1[Wave 1: Database Entities]
-        Wave1 --> Wave2[Wave 2: Backend Routes & Logic]
-        Wave2 --> Wave3[Wave 3: Frontend Views & Contracts]
-        Wave3 --> ContractVerify[Deterministic Contract Verifier\nRoute / Fetch / Schema Check]
-        ContractVerify --> Assembly[Sandbox Workspace Assembly\nFile Tree & ZIP Generation]
-    end
+The model proposes entities, and every one is verified against an exact quote in the source before it is loaded.
 
-    subgraph HumanGate ["Human-in-the-Loop Governance"]
-        CorrGate --> ActionInv[PENDING: flag_for_review Action]
-        Assembly --> ActionBuild[PENDING: run_build_check Action]
-        ActionInv --> ApprovalGate{Human Approval\nPOST /api/runs/{id}/approve}
-        ActionBuild --> ApprovalGate
-        ApprovalGate -->|Approved| ExecDomain[Mutate Domain / Execute Build Check]
-        ApprovalGate -->|Approved| LearnAtlas[Cross-Run Atlas Learning\nUpdate SUCCEEDED_ON Edges]
-    end
+```mermaid
+graph LR
+    P((Person)) -->|CO_MANAGES| A((Account))
+    P -->|FINANCIAL_CONSULTANT_TO| O((Organization))
+    A -->|TRANSFERRED_TO| O
+    A -->|PAYS_FROM| T((Transaction))
+    O -->|REGISTERED_AT| Ad((Address))
+    P -.->|MENTIONED_IN quote, locator| S[(Source)]
+    O -.->|MENTIONED_IN| S
+    A -.->|POSSIBLY_SAME_AS score| A2((Account))
+```
 
-    subgraph FalkorDB ["FalkorDB Property Graphs"]
-        AtlasDB[(atlas Graph\nSkills, Capabilities, Tech, Packs)]
-        DomainDB[(domain Graph\nCustomers, Claims, Accounts, Policies)]
-        RunDB[(run_<id> Graphs\nTasks, Decisions, Findings, Steps, Artifacts)]
-        ConvDB[(conversations Graph\nThreads, Turns, Run References)]
-    end
+Node types: Person, Organization, Account, Transaction, Address, Location, Phone, Email, Device, Event, Document, Asset. Relationship names are chosen by the extractor from the text (examples above come from the demo brief). Every node has a stable `cid`, duplicates are merged by entity resolution, and weak matches become `POSSIBLY_SAME_AS` instead of being merged silently.
 
-    SubAgents -.-> DomainDB
-    RepScore -.-> AtlasDB
-    LearnAtlas -.-> AtlasDB
-    TraversalRec -.-> RunDB
-    BlueprintDAG -.-> RunDB
-    ChatBox -.-> ConvDB
+### Run memory: why the agents did what they did
+
+```mermaid
+graph LR
+    Task((Task)) -->|HAS_SUBTASK| Sub((Subtask))
+    Dec((Decision)) -->|FOR| Sub
+    Dec -->|CHOSE| SR((SkillRef))
+    Dec -->|REJECTED reason| SR2((SkillRef))
+    Ag((Agent)) -->|EQUIPPED| SR
+    Ag -->|FILED| F((Finding))
+    F -->|CITES| N((Entity cid))
+    F -->|HAS_STEP| TS((TraversalStep))
+    Ans((Answer)) -->|ANSWERED_BY| F
+```
+
+### Forge runs: build plans over MCP
+
+```mermaid
+graph LR
+    R((Run)) --> T1((Task))
+    T1 -->|DEPENDS_ON| T0((Task))
+    T1 -->|ASSIGNED| As((Assignment))
+    T1 -->|CONSIDERED| C((Candidate))
+    T1 -->|HAS_RESULT| Res((Result))
 ```
 
 ---
 
-## Key Capabilities & Design Pillars
+## How it reasons
 
-### 1. Two Specialized Packs Behind One Chat Box
-* **`investigate` Pack:** Detects fraud rings, traces hidden multi-hop connections between customers and entities, detects claim outliers, resolves conflicting agent claims deterministically, and produces anti-hallucination answers backed strictly by observed graph paths (`(:Answer)-[:CITES]->(:Customer)`).
-* **`software-build` Pack:** Generates fullstack software applications from prompt specifications. Deconstructs requirements into a typed component & contract Directed Acyclic Graph (DAG), executes generation across sequential topological waves (Database $\to$ Backend $\to$ Frontend), enforces deterministic contract verification (matching endpoints, fetch paths, and schemas), and packages code safely into sandboxed zip bundles.
+### Multi-hop reasoning
 
-### 2. Autonomous Skill Assignment & Skill-Fit Governance
-* Agents dynamically query the `atlas` graph for skills matching capabilities and target technologies.
-* Subagents execute an internal **skill-fit check** against their assigned subtask before execution. If fit falls below $0.6$, the orchestrator reassigns to the next-ranked skill.
-* Policy-restricted skills (such as unauthorized `shell-runner` or `bulk-linker`) are automatically filtered and recorded in provenance logs as `(:Decision)-[:REJECTED {reason: 'policy_restricted'}]->(:SkillRef)`.
+A question such as "Who is connected to account ACC-9821 and how are they linked to Apex Holdings?" is not answered by one lookup. The investigation pipeline:
 
-### 3. Grounded Traversal & Anti-Hallucination Answers
-* Graph queries during investigations are tracked step-by-step in `run_<id>` using `TraversalStep` nodes (`from_cid`, `to_cid`, `rel`, `tool`).
-* Every citation in `compose_answer` is validated against CIDs actually observed in the run memory graph. Phantom or hallucinated entity IDs are purged and flagged.
+1. **Route and seed** - detect the entities named in the question and resolve them to `cid`s in the case graph.
+2. **Plan** - split the question into sub-tasks, each needing a capability (trace relationships, find shared attributes, detect clusters, build a timeline, check sources, ask the graph).
+3. **Walk** - each sub-agent runs a bounded tool loop over its own private slice of the graph, hopping outward from the seeds (up to three hops) and reading the edges it finds.
+4. **Verify** - a finding is kept only if every entity it cites actually appeared in that agent's own tool output. Findings that cite unseen evidence are rejected with the reason `evidence_not_observed`.
+5. **Compose** - the answer is written from verified findings only, with a confidence score and a list of what was not checked.
 
-### 4. Pluggable LLM Providers with Zero-Leak Security
-* Built-in support for **Ollama** (local/offline default), **OpenAI-compatible endpoints** (vLLM, Groq, DeepSeek, OpenAI), and **Anthropic** (Claude 3.5 Sonnet / Haiku).
-* Zero external third-party SDK dependencies (uses Python standard library `urllib.request`).
-* Sensitive API keys (`LUNA_LLM_API_KEY`, `ANTHROPIC_API_KEY`) are masked in all logs, audit records, and serialized objects (displaying only the first 3 characters, e.g., `sk-***`).
+For the demo brief the walk finds `ACC-9821 -TRANSFERRED_TO-> Apex Holdings LLC` directly, and a second path through a person who co-manages the account and consults for the company.
 
-### 5. Hyperstudio Design Aesthetics
-* Rebuilt from the ground up matching the **Hyperstudio Design Specification**:
-  * Ultra-strict 12-color palette (Pitch Black `#0a0b0e`, Crisp Neutral White `#ffffff`, Terminal Green `#00ff66`, Amber `#ffaa00`, Signal Red `#ff3344`, Cyber Cyan `#00ccff`).
-  * Pure typography pairing: **Satoshi** (geometric display) + **IBM Plex Mono** (technical clarity).
-  * Absolutely **zero box-shadows and zero backdrop-filter blurs**; depth is achieved exclusively through 1px border contrasts, hairline rules, and high-density information architecture.
-  * Interactive **Cytoscape.js** visualizers with step scrubbers (`1x`, `2x`, `5x`, Play/Pause) for both investigation traversal and blueprint dependency DAGs.
+### Graph queries and algorithms as agent tools
 
----
+Agents never get raw database access. They get a small set of read-only tools, and the skill they are equipped with decides which ones they may call.
 
-## Project Structure
-
-```
-d:\LUNA\
-├── luna/                       # Core Python Backend Engine
-│   ├── api/                    # FastAPI REST & SSE Streaming App
-│   ├── atlas/                  # Global Atlas Catalog & Seeding
-│   ├── conversation/           # Persistent Graph Memory (conversations)
-│   ├── domain/                 # Domain Knowledge Graph & Fraud Generators
-│   ├── graph/                  # FalkorDB Client & Frozen Schema Contract
-│   ├── llm/                    # Provider Abstraction (Ollama, OpenAI, Anthropic, Mock)
-│   ├── orchestrator/           # Orchestrator, Resolution, Actions, Traversal
-│   ├── packs/                  # Pack Registry, Router & Implementations
-│   │   ├── base.py             # Pack & PackPipeline Protocol
-│   │   ├── investigate.py      # Investigate Pack Wrapping LunaPipeline
-│   │   ├── registry.py         # Dynamic Pack Registration
-│   │   ├── router.py           # Intelligent Prompt Classifier & Fallback
-│   │   └── build/              # Software-Build Pack Engine
-│   │       ├── blueprint.py    # Component/Contract DAG & Topological Sort
-│   │       ├── pack.py         # BuildPack Implementation
-│   │       ├── pipeline.py     # 3-Wave Builder & Gated Actions
-│   │       ├── sandbox.py      # Sandboxed File Workspace with Path Protection
-│   │       ├── seed.py         # Atlas Seeding (Techs, Capabilities, Skills)
-│   │       ├── understand.py   # Tech & Requirement Extractor
-│   │       └── verifier.py     # Deterministic Route/Fetch Contract Checker
-│   ├── forge/                  # Forge MCP server (/mcp) and /api/forge/* for coding agents (see docs/runbook.md#connect-a-coding-agent)
-│   ├── planner/                # Task Decomposition & Skill Assignment
-│   └── tools/                  # Algorithmic & Graph Tools (PageRank, ShortestPath, etc.)
-├── ui/                         # Hyperstudio Frontend (Vite + React + TypeScript)
-│   ├── src/
-│   │   ├── api/                # LiveApi, MockApi, SSE Client & Type Contract
-│   │   ├── components/         # Hyperstudio Primitives, Chat Blocks, Graph Viewers
-│   │   ├── pages/              # Home, Skills Atlas, Platform Chat, How It Works
-│   │   └── state/              # Pure Reducers & Stage Derivations
-│   └── tests/                  # Vitest Unit Tests & Playwright E2E Suites
-├── scripts/
-│   └── demo_conversations.py   # Headless Runner for Scenarios D1–D5
-└── docs/                       # Architectural Specs & Reports
-    ├── schema.md               # Frozen Graph Schema Contract
-    ├── phase5_report.md        # Comprehensive Rebuild Engineering Report
-    └── demo_script.md          # 4-Minute Presentation Script
-```
-
----
-
-## Quickstart Guide
-
-### 1. Prerequisites
-- **Python:** 3.12+ (Windows / Linux / macOS)
-- **Node.js:** v20+ or v22+
-- **Docker:** Docker Desktop running with Compose support
-
-### 2. Start FalkorDB
-Start the FalkorDB graph database container:
-```bash
-docker compose up -d
-```
-Verify the container is listening on port `6379`:
-```bash
-docker ps --filter "ancestor=falkordb/falkordb"
-```
-
-### 3. Start Backend Server
-Install Python dependencies and run the FastAPI server:
-```bash
-# In repository root:
-python -m uvicorn luna.api.app:app --host 0.0.0.0 --port 8000 --reload
-```
-The REST API will be accessible at `http://localhost:8000`, and OpenAPI documentation at `http://localhost:8000/docs`.
-
-### 4. Start Hyperstudio Frontend
-```bash
-cd ui
-npm install
-npm run dev
-```
-Open `http://localhost:5173` in your browser.
-
-### 5. Run Scripted Headless Demo Scenarios
-To run all 5 canonical scenarios (D1 Investigate, D2 Build, D3 Context Follow-up, D4 Clarification, D5 Policy Rejection) end-to-end without a browser:
-```bash
-python scripts/demo_conversations.py
-```
-
----
-
-## LLM Provider Configuration
-
-Configure your LLM backend via environment variables:
-
-| Environment Variable | Allowed Values | Default | Description |
+| Skill | Capability | Tools | What the tool does |
 |---|---|---|---|
-| `LUNA_LLM_PROVIDER` | `ollama`, `openai`, `anthropic`, `mock` | `ollama` | Active LLM client implementation. |
-| `LUNA_LLM_BASE_URL` | URL string | `http://localhost:11434` | Endpoint for Ollama or OpenAI-compatible service. |
-| `LUNA_LLM_MODEL` | Model string | `llama3.2` | Global default model identifier. |
-| `LUNA_MODEL_INVESTIGATE` | Model string | None | Optional model override for the `investigate` pack. |
-| `LUNA_MODEL_BUILD` | Model string | None | Optional model override for the `software-build` pack. |
-| `LUNA_LLM_API_KEY` | Secret string | None | API key for OpenAI-compatible providers (vLLM, DeepSeek, OpenAI). |
-| `ANTHROPIC_API_KEY` | Secret string | None | API key for Anthropic Claude. |
+| Relationship Tracer | trace_relationships | `neighbors`, `paths_between`, `shortest_path` | Cypher variable-length path search `(a)-[*1..n]-(b)`, ranked by length and confidence |
+| Shared Attribute Finder | find_shared_attributes | `shared_attributes`, `common_neighbors` | Pattern `(a)-[]->(x)<-[]-(b)` for shared accounts, phones, addresses |
+| Cluster Detector | detect_clusters | `cluster_of`, `central_nodes` | Connected components (BFS / union-find) and degree centrality |
+| Timeline Builder | build_timeline | `timeline` | Dated events around an entity in order |
+| Source Checker | check_sources | `source_mentions` | The exact quote and locator behind a claim |
+| Graph QA | query_graph | `ask_graph` | Model-written read-only Cypher, validated before it runs |
 
-### Example: Running with Local Ollama
-```bash
-set LUNA_LLM_PROVIDER=ollama
-set LUNA_LLM_MODEL=llama3.2
+Tool names given to a model are resolved against real `cid`s, so a shortened or mistyped id still lands on the right node.
+
+### Tool selection through MCP
+
+There are two layers of tool selection.
+
+**Which skill gets a task** is a graph query, not a model guess. For each sub-task, the Atlas is asked for skills that `PROVIDE` the needed capability, drops restricted skills and unapproved imports, checks `REQUIRES` prerequisites, and ranks the rest by `SUCCEEDED_ON` score. The winner is recorded as `Decision -CHOSE-> Skill`, and each loser as `Decision -REJECTED {reason}-> Skill`.
+
+**Which tool the agent calls** is limited by its skill's `EXPOSES` edges. In Forge, the coding agent talks to LUNA through six MCP tools at `http://localhost:8000/mcp` (Streamable HTTP):
+
+| MCP tool | Purpose |
+|---|---|
+| `luna_plan` | Turn a request into a run with a task DAG in dependency waves |
+| `luna_get_skill` | Claim a task and fetch its skill (instructions, checklist, references) |
+| `luna_submit` | Report a task's result: summary, files, checklist checks |
+| `luna_assemble` | Combine all results into one report: tasks, files, gaps |
+| `luna_search_skills` | Search the skill graph by text |
+| `luna_add_skill` | Propose a `SKILL.md`; it stays `pending` until a person approves it |
+
+It also exposes a `luna-build` prompt that gives the agent the playbook.
+
+```mermaid
+sequenceDiagram
+    participant U as You
+    participant A as Coding agent
+    participant M as LUNA MCP
+    participant G as Atlas graph
+    U->>A: build me a portfolio website
+    A->>M: luna_plan(prompt)
+    M->>G: skills PROVIDING each capability, ranked by SUCCEEDED_ON
+    G-->>M: chosen skill + rejected candidates
+    M-->>A: run with task DAG in waves
+    loop each ready task
+        A->>M: luna_get_skill(task)
+        M-->>A: instructions + checklist
+        A->>A: do the work
+        A->>M: luna_submit(result)
+    end
+    A->>M: luna_assemble(run)
+    M-->>A: report: 3/3 tasks, files, gaps
 ```
 
-### Example: Running with OpenAI / DeepSeek / vLLM
-```bash
-set LUNA_LLM_PROVIDER=openai
-set LUNA_LLM_BASE_URL=https://api.openai.com/v1
-set LUNA_LLM_API_KEY=sk-proj-...
-set LUNA_LLM_MODEL=gpt-4o-mini
-```
+### Actions based on what the graph shows
 
-### Example: Running with Anthropic Claude
-```bash
-set LUNA_LLM_PROVIDER=anthropic
-set ANTHROPIC_API_KEY=sk-ant-...
-set LUNA_LLM_MODEL=claude-3-5-sonnet-20241022
-```
+Graph results drive concrete next steps, with a human in the loop wherever something changes:
+
+- **Skill assignment** - the winning skill, and the equipped agent, are written into the run graph before any work starts.
+- **Task ordering** - `DEPENDS_ON` edges become waves; a task is released only when its dependencies are done.
+- **Review gate** - a skill uploaded in the UI or added over MCP is stored as `pending` and is never assigned until a person approves it in **Platform -> Skills**.
+- **Approval-gated actions** - investigation runs can propose actions (for example flag an entity for review). They stay pending until `POST /api/runs/{id}/actions/{action_id}/approve` is called with an approver name.
+- **Learning** - approved runs update `SUCCEEDED_ON` scores, so better skills win next time.
+
+### Explainable results
+
+Nothing is a black box, and the explanation is stored in the graph, not generated afterwards.
+
+- **Citations** - every claim in an answer links to real entities in the case graph.
+- **View trace** - replays the investigation hop by hop. Every edge in the path carries the quote from the source text that supports it.
+- **Why** - shows the evidence chain behind one finding.
+- **Not checked** - the answer states what the agents did not cover, such as hop limits.
+- **Why this skill** - for any task, shows the chosen skill and the rejected candidates with reasons.
+- **Assembly report** - for builds: tasks, files, checklist results and gaps.
 
 ---
 
-## API Reference
+## Using it
 
-### Core Chat & Conversation Endpoints
-- `POST /api/chat/conversations`: Create a new conversation thread.
-- `GET /api/chat/conversations`: List existing conversation threads.
-- `GET /api/chat/conversations/{conv_id}`: Retrieve conversation history, turns, and linked runs.
-- `POST /api/chat/conversations/{conv_id}/messages`: Submit a user prompt to a conversation thread. Initiates routing and starts background execution.
-- `POST /api/runs/{run_id}/answer`: Submit an answer to a clarification question (`needs_input`), resuming a paused run.
-- `POST /api/runs/{run_id}/cancel`: Signal immediate cancellation of an active run.
+### Cases
 
-### Human-in-the-Loop Approval Endpoints
-- `POST /api/runs/{run_id}/actions/{action_id}/approve`: Approve a pending governance action (`flag_for_review` or `run_build_check`).
-- `POST /api/runs/{run_id}/approve`: Convenient alias to approve the first pending action of a run.
-- `POST /api/runs/{run_id}/actions/{action_id}/reject`: Reject a proposed action with audit reasoning.
+1. **Platform -> Cases -> New case**, paste text (or upload a file), **Add to case**.
+2. **Build context graph** (Parse, Extract, Resolve, Load). The demo brief is `demo/silverline_brief.txt`.
+3. Ask a question and watch the live pipeline: Routed, Planned, Skills assigned, Agents working, Verified, Answer.
+4. Open **View trace** or **Why** on the answer.
 
-### Trace & Artifact Endpoints
-- `GET /api/runs/{run_id}/trace`: Retrieve Cytoscape-formatted graph trace for visual replay. Returns nodes, edges, ordered traversal steps, and critical path node IDs.
-- `GET /api/runs/{run_id}/download`: Download assembled software-build zip archive (`workspaces/<run_id>.zip`).
-- `GET /api/runs/{run_id}/artifacts/{file_path:path}`: Stream an individual generated file from the sandboxed workspace.
-- `GET /api/atlas/skills`: Retrieve the complete catalog of skills, capabilities, and technologies.
+### Connect a coding agent
 
-### Forge (coding-agent MCP)
-- `/mcp` (Streamable HTTP MCP) and `/api/forge/*` (connect, agents, runs, skills, SSE events): implemented in `luna/forge/`; setup and smoke results in [docs/runbook.md](docs/runbook.md#connect-a-coding-agent).
+```bash
+# Claude Code
+claude mcp add --transport http luna http://localhost:8000/mcp
+```
 
----
+Antigravity: add `{"mcpServers": {"luna": {"serverUrl": "http://localhost:8000/mcp"}}}` to its MCP config. Then run the `luna-build` prompt with a request such as "build me a portfolio website with React" and watch **Platform -> Agents**. To require a token, set `LUNA_MCP_TOKEN` and send it as a bearer token.
 
-## Security & Governance Guarantees
+### Add skills
 
-1. **Sandboxed Workspace Protection:** All file writes during software builds are strictly jailed within `workspaces/<run_id>/<component>/`. Paths containing `..`, absolute paths, or symbolic links attempting to escape the component root are actively rejected with security exceptions.
-2. **Deterministic Parameterized Cypher:** Every Cypher query executed against FalkorDB uses parameterized queries (`$param`). Raw string concatenation of user prompts into Cypher strings is strictly forbidden.
-3. **Zero-Leak Secret Masking:** API keys are never written to logs, graph properties, or frontend responses. Keys are masked during initialization and logged only as `sk-***`.
-4. **Approval Barrier Enforcement:** High-impact domain actions (such as mutating production customer records or executing shell build checks) cannot be executed by subagents autonomously; they are proposed in a `PENDING` state and require explicit human review.
-5. **Anti-Hallucination Citations:** Generated answers citing entity IDs are verified against nodes physically resident in the run memory graph. Hallucinated IDs are discarded and audited.
+**Platform -> Skills -> Add a skill**, upload a `SKILL.md` (`demo/sample-skill/SKILL.md` is an example). Approve it in the review queue to make it assignable. The **Skill Atlas** page shows the whole skill graph.
+
+A full walkthrough with timings is in [docs/DEMO.md](docs/DEMO.md), and the 4-minute video script is in [docs/VIDEO_SCRIPT_4MIN.md](docs/VIDEO_SCRIPT_4MIN.md).
 
 ---
 
-## License
+## Project layout
 
-Apache-2.0. Copyright (c) 2026 LUNA OS Authors.
+```
+luna/
+  api/            FastAPI app, REST + SSE endpoints
+  forge/          MCP server, run planner, skill import, assembly
+  atlas/          skill graph seed, assignment, learning
+  cases/          case store and workspace API
+  ingest/         parse, extract, resolve, load into the context graph
+  investigate/    investigation pipeline, graph tools, trace recorder
+  llm/            provider clients (OpenAI-compatible, Anthropic, Gemini, Ollama)
+  graph/          FalkorDB store and schema constants
+ui/               React + Vite + Cytoscape front end
+skills/           bundled SKILL.md library
+demo/             demo brief and sample skill
+scripts/          check_llm, check_cases_flow, forge_smoke
+docs/             demo guide, specs, reports
+```
+
+## Tests and checks
+
+```bash
+pytest                                   # unit tests; integration tests need FalkorDB running
+cd ui && npm test                        # UI tests
+python scripts/check_llm.py              # model key and endpoint
+python scripts/check_cases_flow.py       # Cases end to end
+python scripts/forge_smoke.py --url http://127.0.0.1:8000/mcp
+```
+
+Some older tests predate the Cases and Forge work and are known to fail; the three scripts above are the supported end-to-end checks.
+
+## Security
+
+- API keys are read server-side from `.env` or the environment. They are never logged, returned by the API or stored in graphs, and `.env` is git-ignored.
+- The REST API has no login and is meant for a developer workstation. Do not expose it publicly as is. The MCP endpoint can require a bearer token (`LUNA_MCP_TOKEN`).
+- A skill is text injected into an agent prompt, so uploaded or MCP-added skills are held for review and never assigned automatically. Agent graph tools are read-only.
