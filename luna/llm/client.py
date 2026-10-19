@@ -69,6 +69,33 @@ class LLMClient(Protocol):
         ...
 
 
+
+def describe_tool(t: Any) -> str:
+    """Render one tool for a text tool-loop prompt.
+
+    Accepts tool objects (name/description/parameters) and plain callables such as bound
+    methods, deriving the name from __name__, the description from the docstring and the
+    parameters from the signature, so models see real tool names instead of reprs.
+    """
+    import inspect
+
+    name = getattr(t, "name", None) or getattr(t, "__name__", None) or str(t)
+    desc = getattr(t, "description", None) or (inspect.getdoc(t) or "").strip().split(chr(10))[0]
+    params = getattr(t, "parameters", None)
+    if not params and callable(t):
+        params = {}
+        try:
+            for pname, prm in inspect.signature(t).parameters.items():
+                if pname in ("self", "args", "kwargs"):
+                    continue
+                ann = "" if prm.annotation is inspect.Parameter.empty else str(prm.annotation).replace("typing.", "")
+                default = "" if prm.default is inspect.Parameter.empty else f" = {prm.default!r}"
+                params[pname] = f"{ann}{default}".strip() or "any"
+        except (TypeError, ValueError):
+            params = {}
+    return f"- {name}: {desc}" + chr(10) + f"  Parameters: {json.dumps(params or {})}"
+
+
 def extract_json_from_text(text: str) -> dict[str, Any]:
     """Attempt to parse JSON from text, extracting markdown code blocks if necessary."""
     text_clean = text.strip()
@@ -263,12 +290,7 @@ class OllamaLLM:
         max_steps: int = 8,
     ) -> str:
         """Run tool loop by formatting tools and processing calls sequentially."""
-        tools_desc = []
-        for t in tools:
-            name = getattr(t, "name", str(t))
-            desc = getattr(t, "description", "")
-            params = getattr(t, "parameters", {})
-            tools_desc.append(f"- {name}: {desc}\n  Parameters: {json.dumps(params)}")
+        tools_desc = [describe_tool(t) for t in tools]
         tools_str = "\n".join(tools_desc)
 
         tool_prompt = (

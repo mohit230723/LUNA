@@ -1207,7 +1207,11 @@ def create_app(
         message_id = f"msg_{uuid.uuid4().hex[:8]}"
 
         # Add user turn
-        case_store.add_turn(conversation_id, role="user", text=question)
+        case_store.add_turn(
+            conversation_id,
+            role="user",
+            blocks=[{"type": "text", "data": {"markdown": question}}],
+        )
 
         inv_state = InvestigationRunState(run_id=run_id, case_id=conversation_id, question=question)
         investigation_registry[run_id] = inv_state

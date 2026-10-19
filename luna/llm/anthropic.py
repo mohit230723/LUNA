@@ -8,7 +8,7 @@ import re
 import urllib.request
 import urllib.error
 from typing import Any, Callable, Optional
-from luna.llm.client import LlmOutputError, extract_json_from_text
+from luna.llm.client import LlmOutputError, describe_tool, extract_json_from_text
 
 
 def _mask_api_key(key: Optional[str]) -> str:
@@ -192,12 +192,7 @@ class AnthropicLLM:
         call_tool: Callable[[str, dict[str, Any]], Any],
         max_steps: int = 8,
     ) -> str:
-        tools_desc = []
-        for t in tools:
-            name = getattr(t, "name", str(t))
-            desc = getattr(t, "description", "")
-            params = getattr(t, "parameters", {})
-            tools_desc.append(f"- {name}: {desc}\n  Parameters: {json.dumps(params)}")
+        tools_desc = [describe_tool(t) for t in tools]
         tools_str = "\n".join(tools_desc)
 
         tool_prompt = (
