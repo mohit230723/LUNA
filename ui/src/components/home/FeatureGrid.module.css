@@ -26,7 +26,10 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  gap: 0;
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-card);
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {
@@ -37,8 +40,9 @@
 
 .card {
   background-color: transparent;
-  border: 1px solid var(--color-graphite);
-  border-radius: var(--radius-card);
+  border: 0;
+  border-right: 1px solid var(--color-graphite);
+  border-bottom: 1px solid var(--color-graphite);
   padding: 48px;
   display: flex;
   flex-direction: column;
@@ -65,4 +69,23 @@
   line-height: 1.5;
   color: var(--color-smoke);
   margin: 0;
+}
+
+/* Cells share hairlines with the frame: drop the outer edge of the last column and row. */
+.card:nth-child(2n) {
+  border-right: 0;
+}
+
+.card:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+@media (max-width: 768px) {
+  .card {
+    border-right: 0;
+  }
+
+  .card:nth-last-child(2) {
+    border-bottom: 1px solid var(--color-graphite);
+  }
 }

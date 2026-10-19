@@ -34,11 +34,11 @@ export const Hero: React.FC = () => {
         </Badge>
       </div>
 
-      <TwoWays />
-
       <div className={styles.constellationBand}>
         <ConstellationCanvas />
       </div>
+
+      <TwoWays />
     </section>
   );
 };

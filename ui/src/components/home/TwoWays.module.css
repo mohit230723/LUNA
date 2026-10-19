@@ -14,23 +14,21 @@
   text-align: left;
 }
 
-/* Glass cards: translucent fill over the hero glow, a light top edge, no drop shadow. */
+/* Hairline cards: no fill, no blur, no shadow. Structure comes from the 1px graphite border. */
 .card {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--spacing-12);
-  padding: 28px;
+  padding: 40px;
   border-radius: var(--radius-card);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 60%);
-  -webkit-backdrop-filter: blur(14px) saturate(150%);
-  backdrop-filter: blur(14px) saturate(150%);
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  border: 1px solid var(--color-graphite);
+  background: transparent;
+  transition: border-color 0.2s ease;
 }
 
 .card:hover {
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: var(--color-iron);
 }
 
 .iconWrap {
@@ -40,9 +38,9 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radius-icon);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: var(--color-chalk);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-graphite);
+  color: var(--color-compass-gold);
+  background: transparent;
 }
 
 .title {
@@ -86,7 +84,7 @@
   width: 5px;
   height: 5px;
   border-radius: 9999px;
-  background: var(--color-pulse-green);
+  background: var(--color-iron);
   flex-shrink: 0;
   transform: translateY(-1px);
 }
@@ -96,8 +94,8 @@
   margin: 0;
   padding: 14px 16px;
   border-radius: var(--radius-tag);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(8, 8, 8, 0.7);
+  border: 1px solid var(--color-graphite);
+  background: var(--color-carbon);
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.5;
