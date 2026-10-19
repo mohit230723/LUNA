@@ -25,6 +25,67 @@ class ContextGraphTools:
         self.agent_id = agent_id
         self.recorder = recorder
         self.llm = llm
+        self._cid_cache: dict[str, str] = {}
+        # Models often shorten or mistype identifiers ("acc-9821" for "account:acc-9821-9984bf").
+        # Resolve them to the real cid before any tool runs so a near-miss is not an empty result.
+        for _name in (
+            "neighbors", "paths_between", "shortest_path", "shared_attributes",
+            "common_neighbors", "cluster_of", "timeline", "source_mentions",
+        ):
+            setattr(self, _name, self._with_cid_resolution(getattr(self, _name)))
+
+    _CID_PARAMS = ("cid", "src_cid", "dst_cid", "cid_a", "cid_b", "source_cid", "target_cid")
+
+    def resolve_cid(self, value: Any) -> Any:
+        """Map a possibly shortened identifier or entity name to the exact cid in this graph."""
+        if not isinstance(value, str) or not value.strip():
+            return value
+        raw = value.strip()
+        if raw in self._cid_cache:
+            return self._cid_cache[raw]
+        resolved = raw
+        try:
+            exact = self.store.read_query(
+                self.graph_name, "MATCH (n {cid: $c}) RETURN n.cid AS cid LIMIT 1", {"c": raw}
+            )
+            if not exact:
+                needle = raw.split(":", 1)[-1].lower()
+                rows = self.store.read_query(
+                    self.graph_name,
+                    "MATCH (n) WHERE n.cid IS NOT NULL AND NOT n:Source AND "
+                    "(toLower(n.cid) CONTAINS $n OR toLower(n.name) = $n OR toLower(n.name) CONTAINS $n) "
+                    "RETURN DISTINCT n.cid AS cid, n.name AS name",
+                    {"n": needle},
+                )
+                cids = [r["cid"] for r in rows if r.get("cid")]
+                if len(cids) > 1:
+                    exact_name = [r["cid"] for r in rows if str(r.get("name", "")).lower() == needle]
+                    cids = exact_name or cids
+                if len(cids) == 1:
+                    resolved = cids[0]
+        except Exception:
+            resolved = raw
+        self._cid_cache[raw] = resolved
+        return resolved
+
+    def _with_cid_resolution(self, fn: Callable[..., Any]) -> Callable[..., Any]:
+        import functools
+        import inspect
+
+        sig = inspect.signature(fn)
+
+        @functools.wraps(fn)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            try:
+                bound = sig.bind_partial(*args, **kwargs)
+            except TypeError:
+                return fn(*args, **kwargs)
+            for pname in self._CID_PARAMS:
+                if pname in bound.arguments:
+                    bound.arguments[pname] = self.resolve_cid(bound.arguments[pname])
+            return fn(*bound.args, **bound.kwargs)
+
+        return wrapper
 
     def _record(
         self,

@@ -535,7 +535,7 @@ class InvestigationPipeline:
             sys_prompt = (
                 f"You are an investigator with the skill {inv['skill_name']}: {inv['prompt_fragment']}\n"
                 f"Goal: {inv['goal']}\n"
-                f"Entities of interest: {', '.join(seed_cids)}\n"
+                f"Entities of interest (use these exact identifiers in tool calls): {', '.join(seed_cids)}\n"
                 f"Use only your tools to gather evidence from the graph. Every claim you report must cite "
                 f"evidence cids that appeared in your tool outputs. Report absence honestly: if you looked "
                 f"and found no connection within the hop limit, report kind 'absence'. Finish by returning ONLY JSON "

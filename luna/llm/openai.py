@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.request
 import urllib.error
 from typing import Any, Callable, Optional
-from luna.llm.client import LlmOutputError, describe_tool, extract_json_from_text
+from luna.llm.client import LlmOutputError, extract_json_from_text, looks_like_provider_notice, run_text_tool_loop
 
 
 def _mask_api_key(key: Optional[str]) -> str:
@@ -66,6 +67,38 @@ class OpenAICompatibleLLM:
         except Exception:
             return False
 
+    def _chat(self, payload: dict[str, Any], timeout: Optional[float] = None, attempts: int = 4) -> str:
+        """POST one chat completion and return the reply text.
+
+        Gateways that rotate models (OmniRoute combos) can hand back a provider notice such as
+        "model X is no longer available" as if it were the answer. That is never a usable reply, so
+        retry a few times (the next attempt usually lands on a working model) before giving up.
+        """
+        body = json.dumps(payload).encode("utf-8")
+        effective_timeout = timeout or self.timeout
+        last_notice = ""
+        for attempt in range(attempts):
+            req = urllib.request.Request(
+                f"{self.base_url}/chat/completions",
+                data=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self._api_key}",
+                    "User-Agent": "LUNA-OS",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=effective_timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            choices = data.get("choices") or [{}]
+            content = (choices[0].get("message") or {}).get("content") or ""
+            if not looks_like_provider_notice(content):
+                return content
+            last_notice = content.strip()
+            time.sleep(0.6 * (attempt + 1))
+        if last_notice:
+            raise RuntimeError(f"model route returned a provider notice instead of an answer: {last_notice[:160]}")
+        return ""
+
     def complete_text(
         self,
         system: str,
@@ -77,34 +110,15 @@ class OpenAICompatibleLLM:
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": user})
-
         payload = {
             "model": self.model,
-
             "stream": False,
             "messages": messages,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
-
-        req = urllib.request.Request(
-            f"{self.base_url}/chat/completions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self._api_key}",
-                "User-Agent": "LUNA-OS",
-            },
-        )
-
-        effective_timeout = timeout or self.timeout
         try:
-            with urllib.request.urlopen(req, timeout=effective_timeout) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                choices = data.get("choices", [])
-                if choices:
-                    return choices[0].get("message", {}).get("content", "")
-                return ""
+            return self._chat(payload, timeout)
         except Exception as e:
             raise RuntimeError(f"OpenAI-compatible completion failed: {e}") from e
 
@@ -122,38 +136,20 @@ class OpenAICompatibleLLM:
             f"{json.dumps(schema, indent=2)}\n"
             f"Do not include any markdown fences or explanation. Return raw JSON."
         )
-
-        messages = [
-            {"role": "system", "content": schema_prompt},
-            {"role": "user", "content": user},
-        ]
-
         payload = {
             "model": self.model,
-
             "stream": False,
-            "messages": messages,
+            "messages": [
+                {"role": "system", "content": schema_prompt},
+                {"role": "user", "content": user},
+            ],
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "response_format": {"type": "json_object"},
         }
-
-        req = urllib.request.Request(
-            f"{self.base_url}/chat/completions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self._api_key}",
-                "User-Agent": "LUNA-OS",
-            },
-        )
-
-        effective_timeout = timeout or self.timeout
         raw_text = ""
         try:
-            with urllib.request.urlopen(req, timeout=effective_timeout) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                raw_text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            raw_text = self._chat(payload, timeout)
             return extract_json_from_text(raw_text)
         except Exception as parse_err:
             repair_user = (
@@ -164,7 +160,6 @@ class OpenAICompatibleLLM:
             )
             repair_payload = {
                 "model": self.model,
-
                 "stream": False,
                 "messages": [
                     {"role": "system", "content": "You are a JSON repair assistant. Fix the JSON and return ONLY valid JSON."},
@@ -174,21 +169,11 @@ class OpenAICompatibleLLM:
                 "response_format": {"type": "json_object"},
             }
             try:
-                repair_req = urllib.request.Request(
-                    f"{self.base_url}/chat/completions",
-                    data=json.dumps(repair_payload).encode("utf-8"),
-                    headers={
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {self._api_key}",
-                        "User-Agent": "LUNA-OS",
-                    },
-                )
-                with urllib.request.urlopen(repair_req, timeout=effective_timeout) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    repaired_text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                return extract_json_from_text(repaired_text)
+                return extract_json_from_text(self._chat(repair_payload, timeout))
             except Exception as final_err:
-                raise LlmOutputError(f"Failed to produce valid JSON after repair: {final_err}. Output was: {raw_text[:200]}") from final_err
+                raise LlmOutputError(
+                    f"Failed to produce valid JSON after repair: {final_err}. Output was: {raw_text[:200]}"
+                ) from final_err
 
     def run_tool_loop(
         self,
@@ -198,67 +183,15 @@ class OpenAICompatibleLLM:
         call_tool: Callable[[str, dict[str, Any]], Any],
         max_steps: int = 8,
     ) -> str:
-        tools_desc = [describe_tool(t) for t in tools]
-        tools_str = "\n".join(tools_desc)
-
-        tool_prompt = (
-            f"{system}\n\n"
-            f"AVAILABLE TOOLS:\n{tools_str}\n\n"
-            f"To call a tool, output exactly:\n"
-            f"TOOL: <tool_name>\n"
-            f"ARGS: <json_arguments>\n\n"
-            f"When you have finished gathering evidence, output your final findings JSON directly."
-        )
-
-        history = [
-            {"role": "system", "content": tool_prompt},
-            {"role": "user", "content": user},
-        ]
-
-        for _ in range(max_steps):
-            payload = {
-                "model": self.model,
-
-                "stream": False,
-                "messages": history,
-                "temperature": self.temperature,
-                "max_tokens": self.max_tokens,
-            }
-            req = urllib.request.Request(
-                f"{self.base_url}/chat/completions",
-                data=json.dumps(payload).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self._api_key}",
-                    "User-Agent": "LUNA-OS",
-                },
+        def chat(history: list[dict[str, str]]) -> str:
+            return self._chat(
+                {
+                    "model": self.model,
+                    "stream": False,
+                    "messages": history,
+                    "temperature": self.temperature,
+                    "max_tokens": self.max_tokens,
+                }
             )
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-            tool_match = re.search(r"TOOL:\s*([A-Za-z0-9_-]+)", content)
-            args_match = re.search(r"ARGS:\s*(\{.*?\})", content, re.DOTALL)
-
-            if tool_match and args_match:
-                tool_name = tool_match.group(1).strip()
-                try:
-                    tool_args = json.loads(args_match.group(1).strip())
-                except Exception:
-                    tool_args = {}
-
-                try:
-                    tool_result = call_tool(tool_name, tool_args)
-                    result_str = json.dumps(tool_result) if not isinstance(tool_result, str) else tool_result
-                except Exception as ex:
-                    result_str = f"Tool execution error: {ex}"
-
-                history.append({"role": "assistant", "content": content})
-                history.append({
-                    "role": "user",
-                    "content": f"TOOL_RESULT ({tool_name}):\n{result_str}\n\nContinue investigating or return your final JSON findings.",
-                })
-            else:
-                return content
-
-        return content
+        return run_text_tool_loop(chat, system, user, tools, call_tool, max_steps=max_steps)

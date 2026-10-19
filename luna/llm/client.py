@@ -96,6 +96,152 @@ def describe_tool(t: Any) -> str:
     return f"- {name}: {desc}" + chr(10) + f"  Parameters: {json.dumps(params or {})}"
 
 
+
+
+_PROVIDER_NOTICE_RE = re.compile(
+    r"no longer available|please switch to|model not found|rate.?limit|quota (exceeded|exhausted|reached)|"
+    r"overloaded|try again later|temporarily unavailable|service unavailable",
+    re.IGNORECASE,
+)
+
+
+def looks_like_provider_notice(text: str) -> bool:
+    """True for an empty reply or a short provider/gateway notice that is not a real answer."""
+    t = (text or "").strip()
+    if not t:
+        return True
+    return len(t) < 400 and "{" not in t and "TOOL:" not in t and _PROVIDER_NOTICE_RE.search(t) is not None
+
+
+def _balanced_object(text: str) -> Optional[str]:
+    """Return the first balanced {...} JSON object in ``text`` (string-aware), or None."""
+    start = text.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    in_str = False
+    esc = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    return None
+
+
+def parse_tool_calls(content: str, max_calls: int = 4) -> list[tuple[str, dict[str, Any]]]:
+    """Extract every ``TOOL: name`` / ``ARGS: {json}`` pair from a model reply.
+
+    Models often batch several calls in one reply or wrap them in code fences, so all
+    pairs are honoured (up to ``max_calls``) and the JSON is read with a brace-aware scan.
+    """
+    calls: list[tuple[str, dict[str, Any]]] = []
+    for seg in re.split(r"(?=TOOL:\s*[A-Za-z0-9_-]+)", content or ""):
+        m = re.match(r"TOOL:\s*([A-Za-z0-9_-]+)", seg)
+        if not m:
+            continue
+        args: dict[str, Any] = {}
+        am = re.search(r"ARGS:\s*", seg)
+        if am:
+            blob = _balanced_object(seg[am.end():])
+            if blob:
+                try:
+                    parsed = json.loads(blob)
+                    if isinstance(parsed, dict):
+                        args = parsed
+                except json.JSONDecodeError:
+                    args = {}
+        calls.append((m.group(1), args))
+        if len(calls) >= max_calls:
+            break
+    return calls
+
+
+def run_text_tool_loop(
+    chat: Callable[[list[dict[str, str]]], str],
+    system: str,
+    user: str,
+    tools: list[Any],
+    call_tool: Callable[[str, dict[str, Any]], Any],
+    max_steps: int = 8,
+    max_result_chars: int = 6000,
+) -> str:
+    """Provider-independent tool loop over plain chat: model replies with TOOL/ARGS lines.
+
+    Guards against the usual small-model failure modes: answering without ever calling a tool,
+    batching several calls in one reply, echoing tool output as the "answer", and running out of
+    steps while still asking for tools.
+    """
+    tools_str = "\n".join(describe_tool(t) for t in tools)
+    tool_prompt = (
+        f"{system}\n\n"
+        f"AVAILABLE TOOLS:\n{tools_str}\n\n"
+        "To call a tool, output exactly:\n"
+        "TOOL: <tool_name>\n"
+        "ARGS: <json_arguments>\n\n"
+        "Use the exact identifiers shown in the task and in tool results (for example 'account:acc-9821-9984bf', "
+        "never a shortened form). You may call several tools in one reply, one TOOL/ARGS pair after another. "
+        "When you have finished gathering evidence, output ONLY your final findings JSON (no TOOL lines)."
+    )
+    history: list[dict[str, str]] = [
+        {"role": "system", "content": tool_prompt},
+        {"role": "user", "content": user},
+    ]
+    calls_made = 0
+    nudges = 0
+    for _ in range(max_steps):
+        content = chat(history)
+        calls = parse_tool_calls(content)
+        if calls:
+            history.append({"role": "assistant", "content": content})
+            blocks = []
+            for name, args in calls:
+                try:
+                    result = call_tool(name, args)
+                    text = result if isinstance(result, str) else json.dumps(result, default=str)
+                except Exception as ex:  # a failing tool is feedback for the model, not a crash
+                    text = f"Tool execution error: {ex}"
+                if len(text) > max_result_chars:
+                    text = text[:max_result_chars] + " ...[truncated]"
+                blocks.append(f"TOOL_RESULT ({name}):\n{text}")
+                calls_made += 1
+            history.append({
+                "role": "user",
+                "content": "\n\n".join(blocks)
+                + "\n\nContinue investigating, or return ONLY your final JSON findings (no TOOL lines).",
+            })
+            continue
+        if calls_made == 0 and nudges < 2 and tools:
+            nudges += 1
+            history.append({"role": "assistant", "content": content})
+            history.append({
+                "role": "user",
+                "content": "You have not called any tool yet. Findings must come from tool output. "
+                "Call a tool now using exactly:\nTOOL: <tool_name>\nARGS: <json_arguments>",
+            })
+            continue
+        return content
+
+    history.append({
+        "role": "user",
+        "content": "Tool budget used. Do NOT call any more tools. Output ONLY the final JSON findings object now.",
+    })
+    return chat(history)
+
+
 def extract_json_from_text(text: str) -> dict[str, Any]:
     """Attempt to parse JSON from text, extracting markdown code blocks if necessary."""
     text_clean = text.strip()
