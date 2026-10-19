@@ -55,3 +55,32 @@ workspaces/
 
 # Generated video projects, tools and renders (large)
 videos/
+
+# Not needed to run the project (kept locally, not published)
+.agent/
+.agents/
+.gsd/
+.claude/
+tests/
+adapters/
+ui/e2e/
+ui/src/test/
+ui/playwright.config.ts
+ui/scripts/
+/GSD-STYLE.md
+/IMPLEMENTATION_STATUS.md
+/LUNA_ARCHITECTURE_AND_PROGRESS.md
+/PAGE_BY_PAGE_INVENTORY.md
+/PROJECT_RULES.md
+/model_capabilities.yaml
+scripts/__init__.py
+scripts/bench_llm.py
+scripts/demo.py
+scripts/demo_conversations.py
+scripts/search_repo.*
+scripts/setup_search.*
+scripts/validate-*
+docs/*
+!docs/DEMO.md
+!docs/schema.md
+!docs/VIDEO_SCRIPT_4MIN.md

@@ -22,18 +22,8 @@ dependencies = [
     "fastapi>=0.110.0",
     "uvicorn>=0.28.0",
     "networkx>=3.0",
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0"
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["luna*"]
-
-[tool.pytest.ini_options]
-pythonpath = ["."]
-testpaths = ["tests"]
-markers = [
-    "integration: tests requiring a running FalkorDB instance",
-    "slow: slow tests (e.g. real subprocesses, LLMs)",
-]

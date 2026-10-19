@@ -283,20 +283,16 @@ ui/               React + Vite + Cytoscape front end
 skills/           bundled SKILL.md library
 demo/             demo brief and sample skill
 scripts/          check_llm, check_cases_flow, forge_smoke
-docs/             demo guide, specs, reports
+docs/             demo guide, graph schema, video script
 ```
 
-## Tests and checks
+## Checks
 
 ```bash
-pytest                                   # unit tests; integration tests need FalkorDB running
-cd ui && npm test                        # UI tests
 python scripts/check_llm.py              # model key and endpoint
-python scripts/check_cases_flow.py       # Cases end to end
-python scripts/forge_smoke.py --url http://127.0.0.1:8000/mcp
+python scripts/check_cases_flow.py       # Cases end to end (1-2 min)
+python scripts/forge_smoke.py --url http://127.0.0.1:8000/mcp   # MCP end to end, ends with SMOKE OK
 ```
-
-Some older tests predate the Cases and Forge work and are known to fail; the three scripts above are the supported end-to-end checks.
 
 ## Security
 
