@@ -25,7 +25,7 @@ import {
   TraceResponse,
   WhyResponse,
 } from './contract';
-import { isRunEvent, filterValidBlocks } from './guards';
+import { isRunEvent, filterValidBlocks, RUN_EVENT_TYPE_NAMES } from './guards';
 
 export class ApiError extends Error {
   error: string;
@@ -313,6 +313,11 @@ export class LiveApi implements Api {
     es.addEventListener('pipeline_event', handleEvent);
     es.addEventListener('run_event', handleEvent);
     es.addEventListener('message', handleEvent);
+    // The server names each SSE frame after its event type (understood, plan, answer, ...);
+    // an EventSource only delivers names it has a listener for.
+    for (const name of RUN_EVENT_TYPE_NAMES) {
+      es.addEventListener(name, handleEvent);
+    }
 
     return () => {
       es.close();

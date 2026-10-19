@@ -21,6 +21,7 @@ export type ConversationAction =
   | { type: 'LOAD_CONVERSATION'; conversation: Conversation }
   | { type: 'SEND_OPTIMISTIC'; userMessage: Message; assistantPlaceholder: Message }
   | { type: 'MESSAGE_CONFIRMED'; placeholderId: string; messageId: string; runId: string }
+  | { type: 'ADD_LIVE_ASSISTANT'; message: Message }
   | { type: 'RUN_EVENT'; event: RunEvent }
   | { type: 'SET_STATUS'; status: Message['status']; runId?: string }
   | { type: 'SET_ERROR'; error: string | null }
@@ -59,6 +60,23 @@ export function conversationReducer(
           messages: newMessages,
         },
         activeRunId: action.assistantPlaceholder.run_id || null,
+      };
+    }
+
+    case 'ADD_LIVE_ASSISTANT': {
+      // The user turn is already saved by the server; add only the streaming assistant message,
+      // once per run, so RUN_EVENT has a message to build the live pipeline view on.
+      if (!state.conversation) return state;
+      if (state.conversation.messages.some((m) => m.run_id && m.run_id === action.message.run_id && m.role === 'assistant')) {
+        return state;
+      }
+      return {
+        ...state,
+        conversation: {
+          ...state.conversation,
+          messages: [...state.conversation.messages, action.message],
+        },
+        activeRunId: action.message.run_id || null,
       };
     }
 

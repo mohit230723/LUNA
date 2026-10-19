@@ -21,6 +21,20 @@ import type {
 } from '../../api/contract';
 import styles from '../Platform.module.css';
 
+/** "person:marcus-sterling-506763" -> "Marcus Sterling" (drops the type prefix and trailing hash). */
+function prettyEntityName(id: string): string {
+  const body = id.includes(':') ? id.slice(id.indexOf(':') + 1) : id;
+  const parts = body.split('-').filter(Boolean);
+  if (parts.length > 1 && /^[0-9a-f]{5,8}$/i.test(parts[parts.length - 1]!)) parts.pop();
+  return parts.map((w) => (w.length > 3 || /^[a-z]+$/i.test(w) ? w.charAt(0).toUpperCase() + w.slice(1) : w.toUpperCase())).join(' ');
+}
+
+/** "organization:apex-holdings" -> "Organization"; unknown prefixes fall back to Entity. */
+function entityTypeFromId(id: string): string {
+  const prefix = id.includes(':') ? id.slice(0, id.indexOf(':')) : '';
+  return prefix ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : 'Entity';
+}
+
 export const CaseWorkspace: React.FC = () => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
@@ -164,6 +178,24 @@ export const CaseWorkspace: React.FC = () => {
     }
   }, [promptParam, caseDetail?.status]);
 
+  // When the live run ends, swap the live view for the saved turn so history and live match.
+  useEffect(() => {
+    if (!liveRunId || !conversationId) return;
+    if (runState.runId !== liveRunId) return;
+    if (runState.status === 'done' || runState.status === 'failed' || runState.status === 'cancelled') {
+      let cancelled = false;
+      (async () => {
+        await loadCase(conversationId);
+        await loadCaseList();
+        if (!cancelled) setLiveRunId(undefined);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+    return undefined;
+  }, [runState.status, runState.runId, liveRunId, conversationId, loadCase, loadCaseList]);
+
   // 5. Pass incoming run events to conversation reducer
   useEffect(() => {
     if (!runState.events || runState.events.length === 0) return;
@@ -288,6 +320,18 @@ export const CaseWorkspace: React.FC = () => {
       setActiveRunId(run_id);
       setLiveRunId(run_id);
       await loadCase(conversationId);
+      // Show the live pipeline right away; RUN_EVENTs fill it in as the run progresses.
+      dispatchConv({
+        type: 'ADD_LIVE_ASSISTANT',
+        message: {
+          id: `live_${run_id}`,
+          role: 'assistant',
+          created_at: new Date().toISOString(),
+          run_id,
+          status: 'streaming',
+          blocks: [],
+        },
+      });
       await loadCaseList();
     } catch (err: any) {
       // Handled in UI
@@ -382,7 +426,7 @@ export const CaseWorkspace: React.FC = () => {
   const previewElements = previewData
     ? {
         nodes: (previewData.path_node_ids || []).map((id: string) => ({
-          data: { id, label: id, on_path: true, type: 'Entity' },
+          data: { id, label: prettyEntityName(id), displayName: prettyEntityName(id), on_path: true, type: entityTypeFromId(id) },
         })),
         edges: (previewData.path_node_ids || []).slice(0, -1).map((id: string, i: number) => ({
           data: {

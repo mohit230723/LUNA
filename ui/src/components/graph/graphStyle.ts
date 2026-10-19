@@ -51,8 +51,8 @@ export const cytoscapeStyles: StylesheetStyle[] = [
     selector: 'node[type = "Organization"], node[type = "organization"], node[type = "Org"]',
     style: {
       'shape': 'round-rectangle',
-      'background-color': '#212121',
-      'border-color': '#474747',
+      'background-color': '#3b3d45',
+      'border-color': '#9c9c9c',
       'color': '#f3f3f3',
       'width': '42px',
       'height': '38px',
@@ -65,7 +65,21 @@ export const cytoscapeStyles: StylesheetStyle[] = [
     style: {
       'shape': 'ellipse',
       'background-color': '#080808',
-      'border-color': '#212121',
+      'border-color': '#6f6759',
+      'border-width': '1.5px',
+      'color': '#f3f3f3',
+      'width': '40px',
+      'height': '40px',
+    },
+  },
+
+  // Transaction / Event: octagon, so money movement stands out from people and accounts
+  {
+    selector: 'node[type = "Transaction"], node[type = "Event"]',
+    style: {
+      'shape': 'round-octagon',
+      'background-color': '#212121',
+      'border-color': '#c1c1c1',
       'color': '#f3f3f3',
       'width': '40px',
       'height': '40px',
@@ -130,6 +144,11 @@ export const cytoscapeStyles: StylesheetStyle[] = [
       'border-width': '2.5px',
       'opacity': 1.0,
       'z-index': 50,
+      'underlay-color': '#f3f3f3',
+      'underlay-opacity': 0.1,
+      'underlay-padding': '7px',
+      'underlay-shape': 'ellipse',
+      'font-size': '13px',
     },
   },
 
@@ -138,6 +157,7 @@ export const cytoscapeStyles: StylesheetStyle[] = [
     selector: 'node.non-path',
     style: {
       'opacity': 0.7,
+      'text-opacity': 0.6,
     },
   },
 
@@ -222,11 +242,12 @@ export const cytoscapeStyles: StylesheetStyle[] = [
   {
     selector: 'edge',
     style: {
-      'width': '1.5px',
+      'width': '1.2px',
       'line-color': '#474747',
       'target-arrow-color': '#474747',
       'target-arrow-shape': 'triangle',
-      'arrow-scale': 1.0,
+      'target-distance-from-node': 3,
+      'arrow-scale': 1.1,
       'curve-style': 'bezier',
       'control-point-step-size': 40,
       'font-family': 'IBM Plex Mono, monospace',
@@ -257,9 +278,12 @@ export const cytoscapeStyles: StylesheetStyle[] = [
     selector: 'edge[?on_path], edge.on-path',
     style: {
       'width': '2.5px',
-      'line-color': '#ffffff',
-      'target-arrow-color': '#ffffff',
+      'line-color': '#f3f3f3',
+      'target-arrow-color': '#f3f3f3',
       'z-index': 40,
+      'underlay-color': '#f3f3f3',
+      'underlay-opacity': 0.12,
+      'underlay-padding': '3px',
     },
   },
 

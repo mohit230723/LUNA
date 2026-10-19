@@ -26,7 +26,9 @@ function readChecks(result: Record<string, unknown> | null): Check[] {
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, now, selected = false, onSelect }) => {
   const titleId = `forge-task-${task.task_id}-title`;
-  const claimer = task.agent_label || task.claimed_by;
+  // Session ids are long hex strings; show a short handle unless the agent gave itself a label.
+  const rawClaimer = task.agent_label || task.claimed_by;
+  const claimer = rawClaimer && !task.agent_label && rawClaimer.length > 14 ? `${rawClaimer.slice(0, 8)}…` : rawClaimer;
   const lease = task.status === 'claimed' ? countdown(task.lease_expires_at, now) : null;
   const result = task.result;
   const summary = asString(result?.summary);

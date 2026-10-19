@@ -17,7 +17,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--spacing-16);
-  background-color: var(--color-obsidian);
+  background: rgba(16, 16, 16, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
   z-index: 20;
 }
 

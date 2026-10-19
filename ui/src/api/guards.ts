@@ -33,6 +33,9 @@ const VALID_RUN_EVENT_TYPES: Set<string> = new Set([
   'learned',
 ]);
 
+/** Every run event name the server may send as an SSE `event:` field (EventSource needs one listener per name). */
+export const RUN_EVENT_TYPE_NAMES: string[] = Array.from(VALID_RUN_EVENT_TYPES);
+
 const VALID_BLOCK_TYPES: Set<string> = new Set([
   'text',
   'routing',

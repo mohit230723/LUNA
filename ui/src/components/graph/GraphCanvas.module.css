@@ -4,6 +4,11 @@
   height: 100%;
   overflow: hidden;
   background-color: var(--color-obsidian);
+  /* A soft pool of light and a faint dot grid give the graph depth without competing with it. */
+  background-image:
+    radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255, 255, 255, 0.055) 0%, transparent 70%),
+    radial-gradient(circle, rgba(255, 255, 255, 0.075) 1px, transparent 1.3px);
+  background-size: 100% 100%, 28px 28px;
 }
 
 .cyContainer {
